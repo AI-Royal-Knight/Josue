@@ -3,7 +3,7 @@ export const DASHBOARD_NAV = {
     { title: "Home", url: "/home" },
     { title: "Project Admins", url: "/project-admins", isActive: true },
     { title: "Users", url: "/users" },
-    { title: "Project Overview", url: "/project-overview" },
+    { title: "Managing Director", url: "/managing-director" },
     { title: "Profile", url: "/profile" },
   ],
   managing_director: [
