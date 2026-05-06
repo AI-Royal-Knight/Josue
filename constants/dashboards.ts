@@ -1,29 +1,99 @@
-export const
-   DASHBOARD_NAV = [
-      {
-         title: "admin",
-         url: "#",
-         items: [
-            {
-               title: "home",
-               url: "/home",
-            },
-            {
-               title: "project admins",
-               url: "/projects-admins",
-            },
-            {
-               title: "users",
-               url: "/users",
-            },
-            {
-               title: "managing directors",
-               url: "/managing-directors",
-            },
-            {
-               title: "profile",
-               url: "/profile",
-            }
-         ],
-      }
-   ]
+export const DASHBOARD_NAV = {
+  project_admin: [
+    { title: "Project", url: "/project" },
+    { title: "Users", url: "/users" },
+    { title: "Project Overview", url: "/project-overview" },
+    { title: "Profile", url: "/profile" },
+  ],
+  managing_director: [
+    { title: "Projects Overview", url: "/projects-overview" },
+    { title: "Variation List", url: "/variation-list" },
+    { title: "Proforma NR List", url: "/proforma-nr-list" },
+    { title: "Daily Register", url: "/daily-register" },
+    { title: "Profile", url: "/profile" },
+  ],
+  project_director: [
+    { title: "Project Overview", url: "/project-overview" },
+    { title: "Create Variation", url: "/create-variation" },
+    { title: "Variation List", url: "/variation-list" },
+    { title: "Proforma NR List", url: "/proforma-nr-list" },
+    { title: "Daily Register", url: "/daily-register" },
+    { title: "Profile", url: "/profile" },
+  ],
+  procurement_department: [
+    { title: "Supplier List", url: "/supplier-list" },
+    { title: "Quotations", url: "/quotations" },
+    { title: "Quotation Lists", url: "/quotation-lists" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
+    { title: "Call Off List", url: "/call-off-list" },
+    { title: "Supplier Invoices", url: "/supplier-invoices" },
+    { title: "Profile", url: "/profile" },
+  ],
+  commercial_department: [
+    { title: "Variation List", url: "/variation-list" },
+    { title: "Variation Summary", url: "/variation-summary" },
+    { title: "Monthly Application", url: "/monthly-application" },
+    { title: "Create Variation", url: "/create-variation" },
+    { title: "Users Invoices", url: "/users-invoices" },
+    { title: "Supplier Invoices", url: "/supplier-invoices" },
+    { title: "Profile", url: "/profile" },
+  ],
+  document_controller: [
+    { title: "Invite Users", url: "/invite-users" },
+    { title: "Profile", url: "/profile" },
+  ],
+  finance_department: [
+    { title: "Invoice List", url: "/invoice-list" },
+    { title: "Supplier List", url: "/supplier-list" },
+    { title: "Profile", url: "/profile" },
+  ],
+  contracts_manager: [
+    { title: "Invite Users", url: "/invite-users" },
+    { title: "Users", url: "/users" },
+    { title: "Variation", url: "/variation" },
+    { title: "Project Overview", url: "/project-overview" },
+    { title: "Users Invoices", url: "/users-invoices" },
+    { title: "Quotation List", url: "/quotation-list" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
+    { title: "Call Off List", url: "/call-off-list" },
+    { title: "Monthly Application", url: "/monthly-application" },
+    { title: "Labour Target", url: "/labour-target" },
+    { title: "Proforma NR", url: "/proforma-nr" },
+    { title: "Loading and Clearing", url: "/loading-and-clearing" },
+    { title: "Daily Register", url: "/daily-register" },
+    { title: "Variation List", url: "/variation-list" },
+    { title: "Profile", url: "/profile" },
+  ],
+  managers: [
+    { title: "Invite Users", url: "/invite-users" },
+    { title: "Users", url: "/users" },
+    { title: "Variation", url: "/variation" },
+    { title: "Project Overview", url: "/project-overview" },
+    { title: "Users Invoices", url: "/users-invoices" },
+    { title: "Quotation List", url: "/quotation-list" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
+    { title: "Call Off List", url: "/call-off-list" },
+    { title: "Labour Target", url: "/labour-target" },
+    { title: "Proforma NR", url: "/proforma-nr" },
+    { title: "Loading and Clearing", url: "/loading-and-clearing" },
+    { title: "Daily Register", url: "/daily-register" },
+    { title: "Variation List", url: "/variation-list" },
+    { title: "Profile", url: "/profile" },
+  ],
+  supervisor: [
+    { title: "Invite Users", url: "/invite-users" },
+    { title: "Users", url: "/users" },
+    { title: "Variation", url: "/variation" },
+    { title: "Project Overview", url: "/project-overview" },
+    { title: "Users Invoices", url: "/users-invoices" },
+    { title: "Quotation List", url: "/quotation-list" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
+    { title: "Call Off List", url: "/call-off-list" },
+    { title: "Labour Target", url: "/labour-target" },
+    { title: "Proforma NR", url: "/proforma-nr" },
+    { title: "Loading and Clearing", url: "/loading-and-clearing" },
+    { title: "Daily Register", url: "/daily-register" },
+    { title: "Variation List", url: "/variation-list" },
+    { title: "Profile", url: "/profile" },
+  ],
+}
