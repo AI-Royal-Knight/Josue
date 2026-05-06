@@ -1,13 +1,10 @@
+"use client"
 import * as React from "react"
-
-import { SearchForm } from "@/components/search-form"
-import { VersionSwitcher } from "@/components/version-switcher"
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -17,70 +14,14 @@ import {
 import Image from "next/image"
 import logo from "@/assets/images/logo.png"
 import { Separator } from "./ui/separator"
-
-// This is sample data.
-const data = {
-  versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
-  navMain: [
-    {
-      title: "Build Your Application",
-      url: "#",
-      items: [
-        {
-          title: "Routing",
-          url: "#",
-        },
-        {
-          title: "Data Fetching",
-          url: "#",
-          isActive: true,
-        },
-        {
-          title: "Rendering",
-          url: "#",
-        },
-        {
-          title: "Caching",
-          url: "#",
-        },
-        {
-          title: "Styling",
-          url: "#",
-        },
-        {
-          title: "Optimizing",
-          url: "#",
-        },
-        {
-          title: "Configuring",
-          url: "#",
-        },
-        {
-          title: "Testing",
-          url: "#",
-        },
-        {
-          title: "Authentication",
-          url: "#",
-        },
-        {
-          title: "Deploying",
-          url: "#",
-        },
-        {
-          title: "Upgrading",
-          url: "#",
-        },
-        {
-          title: "Examples",
-          url: "#",
-        },
-      ],
-    },
-  ],
-}
+import { DASHBOARD_NAV } from "@/constants/dashboards"
+import { usePathname, useRouter } from "next/navigation"
+import { Button } from "./ui/button"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname()
+  const router = useRouter()
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -89,30 +30,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           defaultVersion={data.versions[0]}
         /> */}
         <div className="flex items-center gap-2 px-6 py-2">
-          <Image src={logo} alt="Logo" width={32} height={32} />
-          <h1 className="text-xl font-bold">TRESTA</h1>
+          <Button variant={"ghost"} onClick={() => router.push("/dashboard")}>
+            <Image src={logo} alt="Logo" width={32} height={32} />
+            <h1 className="text-xl font-bold">TRESTA</h1>
+          </Button>
         </div>
         {/* <SearchForm /> */}
       </SidebarHeader>
       <Separator />
       <SidebarContent>
-        {/* We create a SidebarGroup for each parent. */}
-        {data.navMain.map((item) => (
-          <SidebarGroup key={item.title}>
-            {/* <SidebarGroupLabel>{item.title}</SidebarGroupLabel> */}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {item.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={item.isActive}>
-                      <a href={item.url}>{item.title}</a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {DASHBOARD_NAV.project_admin.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={pathname === item.url}>
+                    <a href={item.url}>{item.title}</a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarRail />
     </Sidebar>

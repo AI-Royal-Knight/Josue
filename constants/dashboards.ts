@@ -1,6 +1,7 @@
 export const DASHBOARD_NAV = {
   project_admin: [
-    { title: "Project", url: "/project" },
+    { title: "Home", url: "/home" },
+    { title: "Project Admins", url: "/project-admins", isActive: true },
     { title: "Users", url: "/users" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Profile", url: "/profile" },
