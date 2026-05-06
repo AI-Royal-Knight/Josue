@@ -5,6 +5,22 @@ export const DASHBOARD_NAV = {
     { title: "Users", url: "/users" },
     { title: "Managing Director", url: "/managing-director" },
     { title: "Profile", url: "/profile" },
+
+    //  developing links for these pages, so commenting out for now
+    { title: "Projects", url: "/projects" },
+    { title: "Invite Users", url: "/invite-users" },
+    { title: "Variation", url: "/variation" },
+    { title: "Project Overview", url: "/project-overview" },
+    { title: "Users Invoices", url: "/users-invoices" },
+    { title: "Quotation List", url: "/quotation-list" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
+    { title: "Call Off List", url: "/call-off-list" },
+    { title: "Labour Target", url: "/labour-target" },
+    { title: "Proforma NR", url: "/proforma-nr" },
+    { title: "Loading and Clearing", url: "/loading-and-clearing" },
+    { title: "Daily Register", url: "/daily-register" },
+    { title: "Variation List", url: "/variation-list" },
+    { title: "Assign Management", url: "/assign-management" },
   ],
   managing_director: [
     { title: "Projects Overview", url: "/projects-overview" },
@@ -51,6 +67,7 @@ export const DASHBOARD_NAV = {
   contracts_manager: [
     { title: "Invite Users", url: "/invite-users" },
     { title: "Users", url: "/users" },
+    { title: "Assign Management", url: "/assign-management" },
     { title: "Variation", url: "/variation" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
