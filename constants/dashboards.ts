@@ -21,6 +21,10 @@ export const DASHBOARD_NAV = {
     { title: "Daily Register", url: "/daily-register" },
     { title: "Variation List", url: "/variation-list" },
     { title: "Assign Management", url: "/assign-management" },
+    { title: "Supplier List", url: "/supplier-list" },
+    { title: "variation summary", url: "/variation-summary" },
+    { title: "variation list", url: "/variation-list" },
+    { title: "supplier invoices", url: "/supplier-invoices" },
   ],
   managing_director: [
     { title: "Projects Overview", url: "/projects-overview" },
