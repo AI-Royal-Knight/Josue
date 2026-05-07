@@ -16,7 +16,7 @@ const data = [
 ]
 export default function page() {
   return (
-    <div className="w-2/3 space-y-6">
+    <div className="w-2/3 space-y-6 p-6">
       <h1 className="text-xl font-semibold">Welcome to Admin Dashboard</h1>
       <p>
         Select a section from the sidebar to manage users, project

@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 export default function Page() {
   return (
     <div className="w-full min-w-0 space-y-6 p-6">
-
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold">Project admin profile</h1>
         <p className="text-sm text-muted-foreground">
@@ -102,7 +101,7 @@ export default function Page() {
                     <span className="text-sm font-semibold text-white">
                       IPAF
                     </span>
-                    <Badge  className="bg-emerald-500/20 text-emerald-300">
+                    <Badge className="bg-emerald-500/20 text-emerald-300">
                       Valid
                     </Badge>
                   </div>
@@ -343,11 +342,8 @@ export default function Page() {
               <h2 className="font-semibold text-white">Terms & Signature</h2>
             </div>
             <div className="space-y-4">
-              <div className="rounded border border-green-500/20 bg-green-500/10 p-4">
-                <div className="flex items-center gap-2 text-sm text-green-300">
-                  <CheckCircle2 className="size-4" />
-                  Terms & Conditions accepted and agreed to
-                </div>
+              <div className="flex rounded border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                ✓ Terms & Conditions accepted and agreed to
               </div>
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card>

@@ -1,3 +1,5 @@
+import { title } from "node:process"
+
 export const DASHBOARD_NAV = {
   project_admin: [
     { title: "Home", url: "/home" },
@@ -25,6 +27,10 @@ export const DASHBOARD_NAV = {
     { title: "variation summary", url: "/variation-summary" },
     { title: "variation list", url: "/variation-list" },
     { title: "supplier invoices", url: "/supplier-invoices" },
+    { title: "monthly application", url: "/monthly-application" },
+    { title: "users invoices", url: "/users-invoices" },
+    { title: "invoice list", url: "/invoice-list" },
+    { title: "financial supplier", url: "/supplier-finance" },
   ],
   managing_director: [
     { title: "Projects Overview", url: "/projects-overview" },

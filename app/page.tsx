@@ -1,51 +1,77 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+"use client"
+
+import { useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { DASHBOARD_NAV as ACTIVE_DASHBOARD_NAV } from "@/constants/dashboards"
+import { DASHBOARD_NAV as LEGACY_DASHBOARD_NAV } from "@/config/nav"
+
+const roleLabels: Record<string, string> = {
+  project_admin: "Project Admin",
+  managing_director: "Managing Director",
+  project_director: "Project Director",
+  procurement_department: "Procurement Department",
+  commercial_department: "Commercial Department",
+  document_controller: "Document Controller",
+  finance_department: "Finance Department",
+  contracts_manager: "Contracts Manager",
+  managers: "Managers",
+  supervisor: "Supervisor",
+}
+
+const storageKey = "tresta:selectedRole"
+
+type RoleKey =
+  | keyof typeof ACTIVE_DASHBOARD_NAV
+  | keyof typeof LEGACY_DASHBOARD_NAV
+
+const roleKeys = [
+  ...new Set([
+    ...Object.keys(ACTIVE_DASHBOARD_NAV),
+    ...Object.keys(LEGACY_DASHBOARD_NAV),
+  ]),
+] as RoleKey[]
 
 export default function Page() {
+  const router = useRouter()
+
+  const roles = useMemo(
+    () =>
+      roleKeys.map((role) => ({
+        key: role,
+        label: roleLabels[role] ?? role,
+      })),
+    []
+  )
+
+  const handleSelectRole = (role: RoleKey) => {
+    window.localStorage.setItem(storageKey, role)
+    router.push("/home")
+  }
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">Build Your Application</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="aspect-video rounded-xl bg-muted/50" />
-            <div className="aspect-video rounded-xl bg-muted/50" />
-            <div className="aspect-video rounded-xl bg-muted/50" />
-          </div>
-          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <main>
+      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-10">
+
+          <Card className="border-white/10 bg-[#0b1328]/90 text-slate-100">
+            <CardHeader className="border-b border-white/10 pb-4">
+              <CardTitle className="text-lg text-center ">Dashboard roles</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 p-5 sm:grid-cols-1 xl:grid-cols-1">
+              {roles.map((role) => (
+                <Button
+                  key={role.key}
+                  type="button"
+                  onClick={() => handleSelectRole(role.key)}
+                  variant="ghost"
+                >
+                  {role.label}
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+      </div>
+    </main>
   )
 }
