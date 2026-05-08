@@ -26,6 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { Card } from "./ui/card"
 
 type UserProfileDialogProps = {
   user: {
@@ -87,7 +88,6 @@ function DetailRow({
     <div className="border-b border-white/10 py-4 last:border-b-0">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 text-slate-400">{icon}</div>
-        <div className="min-w-0 flex-1">
           <div className="text-[13px] text-slate-400">{label}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-100">
             <span className="truncate">{value}</span>
@@ -95,7 +95,6 @@ function DetailRow({
               <StatusPill tone={status.tone}>{status.label}</StatusPill>
             ) : null}
           </div>
-        </div>
       </div>
     </div>
   )
@@ -112,24 +111,20 @@ export function UserProfileDialog({ user }: UserProfileDialogProps) {
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="max-w-[920px] border-white/10 p-6 text-slate-100"
+        className="max-w-[920px]"
         showCloseButton={false}
       >
         <DialogHeader>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-start gap-4">
-              <div>
-                <User className="size-5 text-blue-400" />
-              </div>
-              <div className="space-y-3">
-                <div>
+              <div className="space-y-3 px-8">
+                  <User className="size-10 text-slate-100" />
                   <DialogTitle className="text-3xl font-semibold text-white">
                     {user.name} {user.surname}
                   </DialogTitle>
                   <DialogDescription className="sr-only">
                     Profile details for {user.name} {user.surname}
                   </DialogDescription>
-                </div>
               </div>
             </div>
 
@@ -145,10 +140,9 @@ export function UserProfileDialog({ user }: UserProfileDialogProps) {
         <div className="grid gap-8 px-8 py-7 lg:grid-cols-2">
           <section className="space-y-4">
             <div className="flex items-center gap-2 text-lg font-semibold text-white">
-              <CircleUserRound className="size-5 text-blue-400" />
               Basic Information
             </div>
-            <div className="rounded-none border border-white/10 px-5">
+            <div>
               <DetailRow
                 icon={<CircleUserRound className="size-4" />}
                 label="First Name"
@@ -172,12 +166,11 @@ export function UserProfileDialog({ user }: UserProfileDialogProps) {
             </div>
           </section>
 
-          <section className="space-y-4">
+          <div className="space-y-4">
             <div className="flex items-center gap-2 text-lg font-semibold text-white">
-              <BriefcaseBusiness className="size-5 text-blue-400" />
               Professional Details
             </div>
-            <div className="rounded-none border border-white/10 px-5">
+            <div>
               <DetailRow
                 icon={<BriefcaseBusiness className="size-4" />}
                 label="Profession"
@@ -225,10 +218,10 @@ export function UserProfileDialog({ user }: UserProfileDialogProps) {
                 }}
               />
             </div>
-          </section>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-white/10 px-8 py-6 text-sm text-slate-400">
+        <div className="flex items-center justify-between border-t border-white/10 text-sm text-slate-400 pt-4">
           <div className="flex items-center gap-2">
             <CalendarDays className="size-4" />
             Application submitted on Oct 24, 2023

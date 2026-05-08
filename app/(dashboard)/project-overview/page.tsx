@@ -1,6 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { DynamicTable } from "@/components/dynamic-table"
 import type { ColumnDef } from "@tanstack/react-table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type BreakdownRow = {
   period: string
@@ -64,11 +71,26 @@ const columns: ColumnDef<BreakdownRow>[] = [
 export default function Page() {
   return (
     <div className="w-full p-6">
-      <div className="mb-4">
-        <h2 className="text-2xl font-semibold">Riverside Tower Development</h2>
-        <p className="text-sm text-muted-foreground">
-          RT-2024-001 • 123 Thames Street, London
-        </p>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">
+            Riverside Tower Development
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            RT-2024-001 • 123 Thames Street, London
+          </p>
+        </div>
+        <div>
+          <Select>
+            <SelectTrigger className="border-white/10 bg-slate-900 w-[240px]">
+              <SelectValue placeholder="Select Project" />
+            </SelectTrigger>
+            <SelectContent className="border-white/10 bg-slate-900">
+              <SelectItem value="project-a">Project A</SelectItem>
+              <SelectItem value="project-b">Project B</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

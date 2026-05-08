@@ -5,11 +5,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { createProject } from "../actions"
-import { useFormStatus } from "react-dom"
+import { Calendar } from "@/components/ui/calendar"
 
 export default function CreateProjectForm() {
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+  const [completionDate, setCompletionDate] = useState<Date | undefined>(
+    undefined
+  )
+  const [monthlyApplicationDate, setMonthlyApplicationDate] = useState<
+    Date | undefined
+  >(undefined)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -65,33 +72,51 @@ export default function CreateProjectForm() {
             <Input id="projectValue" name="projectValue" />
           </FieldContent>
         </Field>
-        <Field>
-          <FieldLabel htmlFor="startDate">Start Date</FieldLabel>
-          <FieldContent>
-            <Input id="startDate" name="startDate" type="date" />
-          </FieldContent>
-        </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="mt-4 grid grid-cols-3 gap-4">
         <Field>
-          <FieldLabel htmlFor="completionDate">Completion Date</FieldLabel>
+          <FieldLabel htmlFor="startDate">Start Date :</FieldLabel>
           <FieldContent>
-            <Input id="completionDate" name="completionDate" type="date" />
+            <Calendar
+              mode="single"
+              selected={startDate}
+              onSelect={setStartDate}
+            />
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="monthlyApplicationDate">Monthly Application Date</FieldLabel>
+          <FieldLabel htmlFor="completionDate">Completion Date :</FieldLabel>
           <FieldContent>
-            <Input id="monthlyApplicationDate" name="monthlyApplicationDate" />
+            <Calendar
+              mode="single"
+              selected={completionDate}
+              onSelect={setCompletionDate}
+            />
+          </FieldContent>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="monthlyApplicationDate">
+            Monthly Application Date :
+          </FieldLabel>
+          <FieldContent>
+            <Calendar
+              mode="single"
+              selected={monthlyApplicationDate}
+              onSelect={setMonthlyApplicationDate}
+            />
           </FieldContent>
         </Field>
       </div>
 
       <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={() => window.history.back()}>
+        {/* <Button
+          type="button"
+          variant="outline"
+          onClick={() => setMessage(null)}
+        >
           Cancel
-        </Button>
+        </Button> */}
         <Button type="submit">Create Project</Button>
       </div>
 

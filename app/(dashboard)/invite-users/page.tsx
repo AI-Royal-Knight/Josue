@@ -134,7 +134,7 @@ export default function Page() {
           </CardContent>
         </Card>
       </div>
-      <AgTable rowData={users} columnDefs={columnDefs} />
+      <AgTable rowSelection="single" rowData={users} columnDefs={columnDefs} />
     </div>
   )
 }

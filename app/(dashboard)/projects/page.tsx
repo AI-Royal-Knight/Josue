@@ -20,7 +20,7 @@ export default function Page() {
   return (
     <div className="w-full p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-amber-400">Projects</h2>
+        <h2>Projects</h2>
         <CreateProjectDialog />
       </div>
 

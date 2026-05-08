@@ -59,13 +59,15 @@ export default function Page() {
               <CardTitle className="text-lg text-center ">Dashboard roles</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 p-5 sm:grid-cols-1 xl:grid-cols-1">
-              {roles.map((role) => (
+              {roles.map((role, idx) => (
                 <Button
                   key={role.key}
                   type="button"
                   onClick={() => handleSelectRole(role.key)}
                   variant="ghost"
+                  className="justify-start text-left"
                 >
+                  <span className="text-sm">{idx + 1}.</span>
                   {role.label}
                 </Button>
               ))}

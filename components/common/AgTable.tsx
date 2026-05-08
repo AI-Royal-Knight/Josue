@@ -27,7 +27,8 @@ const baseTheme = themeQuartz.withParams({
   headerHeight: 36,
   rowHeight: 36,
   wrapperBorderRadius: 0,
-  borderWidth: 0
+  borderWidth: 0,
+   selectedRowBackgroundColor: colors.secondary,
 })
 
 const modules = [AllCommunityModule]
