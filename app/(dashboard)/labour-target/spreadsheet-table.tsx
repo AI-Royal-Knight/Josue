@@ -251,10 +251,9 @@ export function SpreadsheetTable({
                   <td
                     key={field}
                     className="px-1 py-1"
-                    onMouseDown={(e) => {
-                      e.preventDefault()
+                    onMouseDown={() =>
                       handleCellMouseDown(rowIndex, fieldIndex)
-                    }}
+                    }
                     onMouseEnter={() =>
                       handleCellMouseEnter(rowIndex, fieldIndex)
                     }
