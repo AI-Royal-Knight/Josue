@@ -78,7 +78,7 @@ export const DASHBOARD_NAV = {
     { title: "Invite Users", url: "/invite-users" },
     { title: "Users", url: "/users" },
     { title: "Assign Management", url: "/assign-management" },
-    { title: "Variation", url: "/variation" },
+    { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Quotation List", url: "/quotation-list" },
@@ -95,7 +95,7 @@ export const DASHBOARD_NAV = {
   managers: [
     { title: "Invite Users", url: "/invite-users" },
     { title: "Users", url: "/users" },
-    { title: "Variation", url: "/variation" },
+    { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Quotation List", url: "/quotation-list" },
@@ -111,7 +111,7 @@ export const DASHBOARD_NAV = {
   supervisor: [
     { title: "Invite Users", url: "/invite-users" },
     { title: "Users", url: "/users" },
-    { title: "Variation", url: "/variation" },
+    { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Quotation List", url: "/quotation-list" },
