@@ -82,11 +82,13 @@ export default function Page() {
         </div>
         <div>
           <Select>
-            <SelectTrigger className="border-white/10 bg-slate-900 w-[240px]">
+            <SelectTrigger className="w-[240px] border-white/10 bg-slate-900">
               <SelectValue placeholder="Select Project" />
             </SelectTrigger>
             <SelectContent className="border-white/10 bg-slate-900">
-              <SelectItem value="project-a">Project A</SelectItem>
+              <SelectItem value="project-a">
+                Riverside Tower Development
+              </SelectItem>
               <SelectItem value="project-b">Project B</SelectItem>
             </SelectContent>
           </Select>

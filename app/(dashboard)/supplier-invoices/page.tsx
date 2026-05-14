@@ -1,468 +1,381 @@
 "use client"
-
-import { useState } from "react"
-import { Upload } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useCallback, useState } from "react"
+import { AgTable } from "@/components/common/AgTable"
+import Filters from "@/components/shared/filters"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import type { ColumnDef } from "@tanstack/react-table"
-import { DynamicTable } from "@/components/dynamic-table"
+import type {
+  CellValueChangedEvent,
+  ColDef,
+  ICellRendererParams,
+} from "ag-grid-community"
 
-type InvoiceItem = {
-  id: number
-  description: string
-  qty: string
-  discount: string
-  per: string
-  each: string
-  totalValue: string
-  comments: string
-}
-
-type Invoice = {
-  id: number
-  project: string
-  name: string
-  invoiceNo: string
+type SupplierInvoiceRow = {
+  no: string
+  invoiceNumber: string
+  date: string
+  poDate: string
   poRef: string
+  callOffDate: string
   callOffRef: string
   variationRef: string
   otherRef: string
-  paymentDueDate: string
+  project: string
+  supplierName: string
   invoiceTotal: string
-  items: InvoiceItem[]
+  expectedCost: string
+  paymentDueDate: string
+  approvedBy: string
+  approved: string
+  financeComments: string | null
+  procurementComments: string | null
+  commercialComments: string | null
 }
 
-const invoiceItemColumns: ColumnDef<InvoiceItem>[] = [
+type CommentField =
+  | "financeComments"
+  | "procurementComments"
+  | "commercialComments"
+
+const summaryRows = [
+  { label: "Invoices QTY", value: "0000000" },
+  { label: "Invoices Value", value: "0000000" },
+  { label: "Approved invoices", value: "0000000" },
+  { label: "Approved invoices value", value: "0000000" },
+  { label: "Invoices awaiting approval", value: "0000000" },
+  { label: "Awaiting approval value", value: "0000000" },
+  { label: "Invoices due this month", value: "0000000" },
+  { label: "Invoices value due this month", value: "0000000" },
+  { label: "Invoices paid QTY", value: "0000000" },
+  { label: "Invoices paid value", value: "0000000" },
+]
+
+const supplierRows: SupplierInvoiceRow[] = [
   {
-    accessorKey: "description",
-    header: "Description",
-    size: 250,
-    cell: ({ row }) => (
-      <Input
-        value={row.original.description}
-        className="border-white/10 bg-slate-900"
-        placeholder="Paste from excel sheet"
-      />
-    ),
+    no: "001",
+    invoiceNumber: "INV-88-2024-089",
+    date: "12 Oct 2024",
+    poDate: "01 Sep 2024",
+    poRef: "PO-45002",
+    callOffDate: "15 Sep 2024",
+    callOffRef: "CO-5921",
+    variationRef: "VAR-001",
+    otherRef: "-",
+    project: "M25 Junction 10",
+    supplierName: "Balfour Beatty",
+    invoiceTotal: "£145,000.00",
+    expectedCost: "£145,000.00",
+    paymentDueDate: "31 Oct 2024",
+    approvedBy: "Sarah Jenkins",
+    approved: "✓ Approved",
+    financeComments: "Matched to PO",
+    procurementComments: "Rates verified",
+    commercialComments: "Approved for payment",
   },
   {
-    accessorKey: "qty",
-    header: "QTY",
-    size: 80,
-    cell: ({ row }) => (
-      <Input
-        value={row.original.qty}
-        className="border-white/10 bg-slate-900"
-        placeholder="QTY"
-      />
-    ),
+    no: "002",
+    invoiceNumber: "KER-99281-A",
+    date: "14 Oct 2024",
+    poDate: "10 Aug 2024",
+    poRef: "PO-45311",
+    callOffDate: "20 Aug 2024",
+    callOffRef: "CO-8544",
+    variationRef: "-",
+    otherRef: "REF-A3",
+    project: "HS2 Phase 2A",
+    supplierName: "Kier Group",
+    invoiceTotal: "£89,450.00",
+    expectedCost: "£89,450.00",
+    paymentDueDate: "31 Oct 2024",
+    approvedBy: "Marcus Thorne",
+    approved: "✓ Approved",
+    financeComments: "Clear",
+    procurementComments: "All good",
+    commercialComments: null,
   },
   {
-    accessorKey: "discount",
-    header: "Discount",
-    size: 80,
-    cell: ({ row }) => (
-      <Input
-        value={row.original.discount}
-        className="border-white/10 bg-slate-900"
-        placeholder="0.00"
-      />
-    ),
+    no: "003",
+    invoiceNumber: "MS-2024-1102",
+    date: "18 Oct 2024",
+    poDate: "09 Oct 2024",
+    poRef: "PO-48012",
+    callOffDate: "10 Oct 2024",
+    callOffRef: "CO-1002",
+    variationRef: "VAR-004",
+    otherRef: "-",
+    project: "Thames Tideway",
+    supplierName: "Morgan Sindall",
+    invoiceTotal: "£210,000.00",
+    expectedCost: "£205,000.00",
+    paymentDueDate: "20 Nov 2024",
+    approvedBy: "Pending",
+    approved: "⊙ Pending",
+    financeComments: "Awaiting commercial review",
+    procurementComments: "Checking variation",
+    commercialComments: "Reviewing EBR variance",
   },
   {
-    accessorKey: "per",
-    header: "Per",
-    size: 70,
-    cell: ({ row }) => (
-      <Input
-        value={row.original.per}
-        className="border-white/10 bg-slate-900"
-        placeholder="Unit"
-      />
-    ),
+    no: "004",
+    invoiceNumber: "SK-LDN-449",
+    date: "02 Sep 2024",
+    poDate: "10 Jul 2024",
+    poRef: "PO-44100",
+    callOffDate: "01 Aug 2024",
+    callOffRef: "CO-4820",
+    variationRef: "-",
+    otherRef: "-",
+    project: "Holday Point C",
+    supplierName: "Skanska",
+    invoiceTotal: "£78,500.00",
+    expectedCost: "£78,500.00",
+    paymentDueDate: "30 Sep 2024",
+    approvedBy: "David Chen",
+    approved: "✗ Rejected",
+    financeComments: "Overdue - On hold",
+    procurementComments: "Disputed hours",
+    commercialComments: "Awaiting revised timesheet",
   },
   {
-    accessorKey: "each",
-    header: "Each",
-    size: 80,
-    cell: ({ row }) => (
-      <Input
-        value={row.original.each}
-        className="border-white/10 bg-slate-900"
-        placeholder="0.00"
-      />
-    ),
+    no: "005",
+    invoiceNumber: "CDS-892-B",
+    date: "20 Oct 2024",
+    poDate: "01 Oct 2024",
+    poRef: "PO-45699",
+    callOffDate: "05 Oct 2024",
+    callOffRef: "CO-8988",
+    variationRef: "-",
+    otherRef: "-",
+    project: "A14 Cambridge",
+    supplierName: "Costain",
+    invoiceTotal: "£45,200.00",
+    expectedCost: "£45,200.00",
+    paymentDueDate: "30 Nov 2024",
+    approvedBy: "Sarah Jenkins",
+    approved: "✓ Approved",
+    financeComments: "Processed",
+    procurementComments: "Processed",
+    commercialComments: "Approved",
   },
   {
-    accessorKey: "totalValue",
-    header: "Total Value",
-    size: 100,
-    cell: ({ row }) => (
-      <Input
-        value={row.original.totalValue}
-        className="border-white/10 bg-slate-900"
-        placeholder="$"
-      />
-    ),
+    no: "006",
+    invoiceNumber: "INV-88-2024-090",
+    date: "22 Oct 2024",
+    poDate: "01 Sep 2024",
+    poRef: "PO-45002",
+    callOffDate: "15 Sep 2024",
+    callOffRef: "CO-8932",
+    variationRef: "-",
+    otherRef: "-",
+    project: "M25 Junction 10",
+    supplierName: "Balfour Beatty",
+    invoiceTotal: "£112,000.00",
+    expectedCost: "£112,000.00",
+    paymentDueDate: "30 Nov 2024",
+    approvedBy: "Pending",
+    approved: "⊙ Pending",
+    financeComments: "In queue",
+    procurementComments: "Reviewing",
+    commercialComments: null,
   },
   {
-    accessorKey: "comments",
-    header: "Comments",
-    size: 180,
-    cell: ({ row }) => (
-      <Input
-        value={row.original.comments}
-        className="border-white/10 bg-slate-900"
-        placeholder="Supplier comments"
-      />
-    ),
+    no: "007",
+    invoiceNumber: "VIN-2024-001",
+    date: "25 Sep 2024",
+    poDate: "10 Sep 2024",
+    poRef: "PO-45970",
+    callOffDate: "12 Sep 2024",
+    callOffRef: "CO-9930",
+    variationRef: "VAR-002",
+    otherRef: "-",
+    project: "HS2 Phase 1",
+    supplierName: "Vinci Construction",
+    invoiceTotal: "£125,400.00",
+    expectedCost: "£125,400.00",
+    paymentDueDate: "31 Oct 2024",
+    approvedBy: "Marcus Thorne",
+    approved: "✓ Approved",
+    financeComments: "Paid Due - Processing today",
+    procurementComments: "Approved",
+    commercialComments: "Approved",
+  },
+  {
+    no: "008",
+    invoiceNumber: "BAM-NW-882",
+    date: "24 Oct 2024",
+    poDate: "25 Sep 2024",
+    poRef: "PO-45960",
+    callOffDate: "25 Sep 2024",
+    callOffRef: "CO-9960",
+    variationRef: "-",
+    otherRef: "-",
+    project: "Transpennine Route",
+    supplierName: "BAM Nuttall",
+    invoiceTotal: "£97,800.00",
+    expectedCost: "£97,800.00",
+    paymentDueDate: "30 Nov 2024",
+    approvedBy: "Pending",
+    approved: "⊙ Pending",
+    financeComments: null,
+    procurementComments: null,
+    commercialComments: null,
   },
 ]
 
 export default function Page() {
-  const [invoices, setInvoices] = useState<Invoice[]>([
-    {
-      id: 1,
-      project: "",
-      name: "",
-      invoiceNo: "",
-      poRef: "",
-      callOffRef: "",
-      variationRef: "",
-      otherRef: "",
-      paymentDueDate: "",
-      invoiceTotal: "",
-      items: [
-        {
-          id: 1,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-        {
-          id: 2,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-        {
-          id: 3,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-        {
-          id: 4,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-        {
-          id: 5,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-        {
-          id: 6,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-        {
-          id: 7,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-        {
-          id: 8,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.30",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-      ],
-    },
-  ])
+  const [rows, setRows] = useState(supplierRows)
 
-  const addInvoice = () => {
-    const newInvoice: Invoice = {
-      id: Math.max(...invoices.map((i) => i.id)) + 1,
-      project: "",
-      name: "",
-      invoiceNo: "",
-      poRef: "",
-      callOffRef: "",
-      variationRef: "",
-      otherRef: "",
-      paymentDueDate: "",
-      invoiceTotal: "",
-      items: [
-        {
-          id: 1,
-          description: "Paste from excel sheet",
-          qty: "QTY",
-          discount: "0.00",
-          per: "Unit",
-          each: "0.00",
-          totalValue: "$",
-          comments: "Supplier comments",
-        },
-      ],
+  function CommentCellRenderer(
+    params: ICellRendererParams<SupplierInvoiceRow, string> & {
+      fieldName: CommentField
     }
-    setInvoices([...invoices, newInvoice])
-  }
-
-  const addItemToInvoice = (invoiceId: number) => {
-    setInvoices(
-      invoices.map((inv) => {
-        if (inv.id === invoiceId) {
-          return {
-            ...inv,
-            items: [
-              ...inv.items,
-              {
-                id: Math.max(...inv.items.map((i) => i.id)) + 1,
-                description: "Paste from excel sheet",
-                qty: "QTY",
-                discount: "0.00",
-                per: "Unit",
-                each: "0.00",
-                totalValue: "$",
-                comments: "Supplier comments",
-              },
-            ],
-          }
+  ) {
+    return (
+      <Input
+        value={params.value ?? ""}
+        placeholder="add comment"
+        className="h-7 border-[#253046] bg-[#101012] text-xs text-slate-200 placeholder:text-slate-500"
+        onChange={(event) =>
+          params.node.setDataValue(params.fieldName, event.target.value)
         }
-        return inv
-      })
+      />
     )
   }
 
+  const columnDefs: ColDef<SupplierInvoiceRow>[] = [
+    { field: "no", headerName: "No", editable: false, minWidth: 70 },
+    {
+      field: "invoiceNumber",
+      headerName: "Invoice Number",
+      editable: true,
+      minWidth: 140,
+    },
+    { field: "date", headerName: "DATE", editable: true, minWidth: 110 },
+    { field: "poDate", headerName: "PO Date", editable: true, minWidth: 110 },
+    { field: "poRef", headerName: "PO Ref", editable: true, minWidth: 110 },
+    {
+      field: "callOffDate",
+      headerName: "Call Off Date",
+      editable: true,
+      minWidth: 120,
+    },
+    {
+      field: "callOffRef",
+      headerName: "Call Off Ref",
+      editable: true,
+      minWidth: 120,
+    },
+    {
+      field: "variationRef",
+      headerName: "Variation Ref",
+      editable: true,
+      minWidth: 120,
+    },
+    {
+      field: "otherRef",
+      headerName: "Other Ref",
+      editable: true,
+      minWidth: 110,
+    },
+    { field: "project", headerName: "Project", editable: true, minWidth: 140 },
+    {
+      field: "supplierName",
+      headerName: "Supplier Name",
+      editable: true,
+      minWidth: 140,
+    },
+    {
+      field: "invoiceTotal",
+      headerName: "Invoice Total",
+      editable: true,
+      minWidth: 130,
+    },
+    {
+      field: "expectedCost",
+      headerName: "Expected Cost",
+      editable: true,
+      minWidth: 130,
+    },
+    {
+      field: "paymentDueDate",
+      headerName: "Payment Due Date",
+      editable: true,
+      minWidth: 140,
+    },
+    {
+      field: "approvedBy",
+      headerName: "Approved By",
+      editable: true,
+      minWidth: 130,
+    },
+    {
+      field: "approved",
+      headerName: "Approved",
+      editable: true,
+      minWidth: 110,
+    },
+    {
+      field: "financeComments",
+      headerName: "Finance Comments",
+      editable: true,
+      minWidth: 150,
+      cellRenderer: CommentCellRenderer,
+      cellRendererParams: { fieldName: "financeComments" },
+    },
+    {
+      field: "procurementComments",
+      headerName: "Procurement Comments",
+      editable: true,
+      minWidth: 160,
+      cellRenderer: CommentCellRenderer,
+      cellRendererParams: { fieldName: "procurementComments" },
+    },
+    {
+      field: "commercialComments",
+      headerName: "Commercial Comments",
+      editable: true,
+      minWidth: 160,
+      cellRenderer: CommentCellRenderer,
+      cellRendererParams: { fieldName: "commercialComments" },
+    },
+  ]
+
+  const handleCellValueChanged = useCallback(
+    (params: CellValueChangedEvent<SupplierInvoiceRow>) => {
+      const updatedRows = rows.map((row) =>
+        row.no === params.data.no ? params.data : row
+      )
+      setRows(updatedRows)
+    },
+    [rows]
+  )
+
   return (
-    <div className="w-full space-y-8 p-6">
-      <h2 className="text-2xl font-semibold">Supplier Invoices</h2>
-
-      {invoices.map((invoice) => (
-        <div
-          key={invoice.id}
-        >
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className="text-sm text-slate-300">Project</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Search projects..."
-                  className="border-white/10 bg-slate-900 pr-10"
-                />
-                <svg
-                  className="absolute top-2.5 right-3 size-4 text-slate-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+    <div className="w-full min-w-0 space-y-8 p-4">
+      <div className="overflow-x-auto border border-[#0a5f4d]">
+        <div className="grid min-w-full grid-cols-2">
+          {summaryRows.map((row) => (
+            <div
+              className="grid grid-cols-[1fr_200px] border-r border-b border-[#0a5f4d] last:border-b-0"
+              key={row.label}
+            >
+              <div className="bg-[#2f67d9] px-3 py-2 text-xs font-semibold text-slate-100">
+                {row.label}
+              </div>
+              <div className="bg-[#16663f] px-3 py-2 text-xs font-semibold text-slate-100">
+                {row.value}
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm text-slate-300">Name</Label>
-              <Input
-                placeholder="Name or Auto-Fill url"
-                className="border-white/10 bg-slate-900"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm text-slate-300">Invoice No.</Label>
-              <Input
-                placeholder="Enter Invoice Number"
-                className="border-white/10 bg-slate-900"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm text-slate-300">PO Ref</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Search PO reference..."
-                  className="border-white/10 bg-slate-900 pr-10"
-                />
-                <svg
-                  className="absolute top-2.5 right-3 size-4 text-slate-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm text-slate-300">Call Off Ref</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Search call off references..."
-                  className="border-white/10 bg-slate-900 pr-10"
-                />
-                <svg
-                  className="absolute top-2.5 right-3 size-4 text-slate-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm text-slate-300">Variation Ref</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Search variation references..."
-                  className="border-white/10 bg-slate-900 pr-10"
-                />
-                <svg
-                  className="absolute top-2.5 right-3 size-4 text-slate-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm text-slate-300">Other Ref</Label>
-              <Input
-                placeholder="Enter other reference"
-                className="border-white/10 bg-slate-900"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Date</Label>
-            <div className="space-y-2">
-              <Label className="text-xs text-slate-400">Payment Due Date</Label>
-              <Input type="date" className="border-white/10 bg-slate-900" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Invoice Total</Label>
-            <Input
-              placeholder="Enter amount"
-              className="border-white/10 bg-slate-900"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Attachments</Label>
-            <div className="flex min-h-32 items-center justify-center rounded-lg border-2 border-dashed border-white/10 bg-slate-900/50">
-              <div className="text-center">
-                <Upload className="mx-auto mb-2 size-6 text-slate-400" />
-                <p className="text-sm text-slate-400">
-                  Attach PDFs (multiple allowed)
-                </p>
-                <p className="text-xs text-slate-500">
-                  Drag & drop or click to browse
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="overflow-x-auto">
-              <DynamicTable columns={invoiceItemColumns} data={invoice.items} />
-            </div>
-            <div className="flex justify-between">
-              <Button
-                variant="outline"
-                onClick={() => addItemToInvoice(invoice.id)}
-              >
-                + Add Row
-              </Button>
-              <div className="text-right">
-                <p className="text-sm text-slate-400">TOTAL</p>
-                <p className="text-xl font-semibold text-emerald-400">$</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
-      ))}
+      </div>
+      <Filters />
 
-      <Button variant="outline" onClick={addInvoice} className="w-full">
-        + Add another Invoice
-      </Button>
-
-      <Button className="w-full bg-blue-600 hover:bg-blue-700">
-        Submit Invoice
-      </Button>
+      <AgTable
+        rowData={rows}
+        columnDefs={columnDefs}
+        onCellValueChanged={handleCellValueChanged}
+        height={500}
+        pageSize={50}
+      />
     </div>
   )
 }

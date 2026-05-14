@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 
 type InvoiceListRow = {
   no: string
@@ -173,7 +174,7 @@ export default function Page() {
   const [project, setProject] = useState("all")
 
   return (
-    <div className="w-full space-y-6 bg-gradient-to-b from-[#011f1c] to-[#031e1a] p-6">
+    <div className="w-full space-y-6 p-6">
       <div className="max-w-[500px] overflow-hidden border border-[#0a5f4d]">
         {summaryRows.map((item) => (
           <div
@@ -276,7 +277,7 @@ export default function Page() {
                   {row.total}
                 </td>
                 <td className="border border-[#11473f] px-3 py-2 text-center">
-                  <PaidToggle checked={row.paid} />
+                  <Switch checked={row.paid} />
                 </td>
                 <td className="border border-[#11473f] px-3 py-2">
                   {row.dateScheduled}

@@ -1,5 +1,3 @@
-"use client"
-
 import { Card, CardContent } from "@/components/ui/card"
 import type { ColDef } from "ag-grid-community"
 import InviteUserDialog from "./invite-modal"

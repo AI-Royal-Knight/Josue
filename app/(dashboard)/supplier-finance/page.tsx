@@ -1,22 +1,15 @@
 "use client"
 
-import { useState } from "react"
-import { Download, Filter } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { useState, useCallback } from "react"
+import type {
+  CellValueChangedEvent,
+  ColDef,
+  ICellRendererParams,
+  ValueParserParams,
+} from "ag-grid-community"
+import { AgTable } from "@/components/common/AgTable"
+import Filters from "@/components/shared/filters"
+import { Switch } from "@/components/ui/switch"
 
 type SupplierInvoiceRow = {
   no: string
@@ -150,33 +143,67 @@ const supplierRows: SupplierInvoiceRow[] = [
   },
 ]
 
-function PaidToggle({ checked }: { checked: boolean }) {
-  return (
-    <button
-      type="button"
-      className={`relative h-5 w-10 rounded-full border transition ${
-        checked
-          ? "border-emerald-400 bg-emerald-500/90"
-          : "border-slate-500 bg-slate-600"
-      }`}
-      aria-label={checked ? "Paid" : "Not paid"}
-    >
-      <span
-        className={`absolute top-[1px] size-4 rounded-full bg-white transition ${
-          checked ? "right-[1px]" : "left-[1px]"
-        }`}
-      />
-    </button>
-  )
-}
-
 export default function Page() {
-  const [projectFilter, setProjectFilter] = useState("all-projects")
-  const [supplierFilter, setSupplierFilter] = useState("all-suppliers")
+  const [rows, setRows] = useState(supplierRows)
+
+  const columnDefs: ColDef<SupplierInvoiceRow>[] = [
+    { field: "no", headerName: "No", editable: false, minWidth: 80 },
+    { field: "invoiceNumber", headerName: "Invoice Number", editable: true },
+    { field: "sentDate", headerName: "Date (Supplier sent)", editable: true },
+    { field: "project", headerName: "Project", editable: true },
+    { field: "supplier", headerName: "Supplier name", editable: true },
+    { field: "sortCode", headerName: "Sort code", editable: true },
+    { field: "accountNumber", headerName: "Account number", editable: true },
+    { field: "total", headerName: "Total", editable: true },
+    { field: "paidBy", headerName: "Paid by", editable: true },
+    {
+      field: "paid",
+      headerName: "Paid",
+      editable: true,
+      minWidth: 100,
+      cellRenderer: (
+        params: ICellRendererParams<SupplierInvoiceRow, boolean>
+      ) => (params.value ? "Yes" : "No"),
+      valueParser: (
+        params: ValueParserParams<SupplierInvoiceRow, string | boolean>
+      ) => {
+        // normalize checkbox input
+        const normalizedValue = String(params.newValue).toLowerCase()
+        return normalizedValue === "true" || normalizedValue === "yes"
+      },
+    },
+    { field: "scheduledDate", headerName: "Date scheduled", editable: true },
+    { field: "releaseDate", headerName: "Release date", editable: true },
+    {
+      field: "financeComments",
+      headerName: "Finance comments",
+      editable: true,
+    },
+    {
+      field: "procurementComments",
+      headerName: "Procurement comments",
+      editable: true,
+    },
+    {
+      field: "commercialComments",
+      headerName: "Commercial comments",
+      editable: true,
+    },
+  ]
+
+  const handleCellValueChanged = useCallback(
+    (params: CellValueChangedEvent<SupplierInvoiceRow>) => {
+      const updated = rows.map((r) =>
+        r.no === params.data.no ? params.data : r
+      )
+      setRows(updated)
+    },
+    [rows]
+  )
 
   return (
-    <div className="w-full min-w-0 space-y-8 bg-gradient-to-b from-[#011f1c] to-[#031e1a] p-6">
-      <div className="max-w-[500px] overflow-hidden border border-[#0a5f4d]">
+    <div className="w-full min-w-0 space-y-8 p-4">
+      <div className="grid grid-cols-2 overflow-hidden">
         {summaryRows.map((row) => (
           <div
             className="grid grid-cols-[1fr_190px] border-b border-[#0a5f4d] last:border-b-0"
@@ -191,161 +218,14 @@ export default function Page() {
           </div>
         ))}
       </div>
+      <Filters />
 
-      <div className="flex items-center justify-end gap-3">
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <Filter className="size-3.5" />
-          Filters :
-        </div>
-
-        <Select value={projectFilter} onValueChange={setProjectFilter}>
-          <SelectTrigger className="h-9 w-[130px] border-[#2d2d2d] bg-[#101012] text-xs text-slate-200">
-            <SelectValue placeholder="All Projects" />
-          </SelectTrigger>
-          <SelectContent className="border-[#2d2d2d] bg-[#101012] text-slate-200">
-            <SelectItem value="all-projects">All Projects</SelectItem>
-            <SelectItem value="project-a">Project A</SelectItem>
-            <SelectItem value="project-b">Project B</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-          <SelectTrigger className="h-9 w-[130px] border-[#2d2d2d] bg-[#101012] text-xs text-slate-200">
-            <SelectValue placeholder="All Suppliers" />
-          </SelectTrigger>
-          <SelectContent className="border-[#2d2d2d] bg-[#101012] text-slate-200">
-            <SelectItem value="all-suppliers">All Suppliers</SelectItem>
-            <SelectItem value="office">Office</SelectItem>
-            <SelectItem value="construction">Construction</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="h-9 border-[#2d2d2d] bg-[#101012] text-xs text-slate-200 hover:bg-[#1a1a1e]"
-            >
-              <Download className="mr-1.5 size-3.5" />
-              Export
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-44 border-[#2d2d2d] bg-[#101012] text-slate-200">
-            <DropdownMenuItem className="text-xs">
-              Export as Excel (.xlsx)
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs">
-              Export as CSV (.csv)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="overflow-x-auto border border-[#0a3b35]">
-        <table className="w-full min-w-[1650px] border-collapse text-xs text-slate-300">
-          <thead>
-            <tr className="bg-[#0b7345] text-slate-100">
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                No
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Invoice Number
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Date (Supplier sent)
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Project
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Supplier name
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Sort code
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Account number
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Total
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Paid by
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-center">
-                Paid
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Date scheduled
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Release date
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Finance comments
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Procurement comments
-              </th>
-              <th className="border border-[#11473f] px-2 py-2 text-left">
-                Commercial comments
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {supplierRows.map((row, index) => (
-              <tr
-                key={row.no}
-                className={index % 2 === 0 ? "bg-[#181818]" : "bg-[#141414]"}
-              >
-                <td className="border border-[#252525] px-2 py-2">{row.no}</td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.invoiceNumber}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.sentDate}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.project}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.supplier}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.sortCode}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.accountNumber}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.total}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.paidBy}
-                </td>
-                <td className="border border-[#252525] px-2 py-2 text-center">
-                  <PaidToggle checked={row.paid} />
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.scheduledDate}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.releaseDate}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.financeComments}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.procurementComments}
-                </td>
-                <td className="border border-[#252525] px-2 py-2">
-                  {row.commercialComments}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <AgTable
+        rowData={rows}
+        columnDefs={columnDefs}
+        onCellValueChanged={handleCellValueChanged}
+        height={400}
+      />
     </div>
   )
 }
