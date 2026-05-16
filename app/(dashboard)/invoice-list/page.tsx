@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import type { ColDef } from "ag-grid-community"
 
 import {
   Select,
@@ -216,8 +217,7 @@ export default function Page() {
   ]
 
   return (
-    <div className="w-full space-y-6 p-6 bg-white">
-
+    <div className="w-full space-y-6 bg-white p-6">
       <h1 className="text-primary">Invoice List</h1>
 
       <TableStat summaryRows={summaryRows} />
