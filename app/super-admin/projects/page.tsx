@@ -107,7 +107,7 @@ export default function ProjectsPage() {
       field: "action",
       headerName: "Action",
       minWidth: 140,
-      cellRenderer: (params) => (
+      cellRenderer: (params : { data: ProjectRow }) => (
         <Button
           variant="outline"
           size="sm"
