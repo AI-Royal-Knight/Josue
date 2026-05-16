@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarFooter,
 } from "@/components/ui/sidebar"
 import Image from "next/image"
 import logo from "@/assets/images/logo.png"
@@ -39,6 +40,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
   const [selectedRole, setSelectedRole] = React.useState<string | null>(null)
 
+  const handleLogout = React.useCallback(() => {
+    router.push("/sign-in")
+  }, [router])
+
   React.useEffect(() => {
     setSelectedRole(window.localStorage.getItem(storageKey))
 
@@ -57,23 +62,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader>
-        {/* <VersionSwitcher
-          versions={data.versions}
-          defaultVersion={data.versions[0]}
-        /> */}
-        <div className="flex items-center gap-2 px-6 py-2">
+      <SidebarHeader className="h-16 justify-center border-b p-0">
+        <div className="flex w-full items-center justify-center gap-2">
           <Button variant={"ghost"} onClick={() => router.push("/")}>
             <Image src={logo} alt="Logo" width={32} height={32} />
             <h1 className="text-xl font-bold">TRESTA</h1>
           </Button>
         </div>
-        {/* <SearchForm /> */}
       </SidebarHeader>
-      <Separator />
+      {/* <hr className="text-xs tracking-[0.24em] text-slate-400 uppercase" /> */}
+      {/* <Separator /> */}
+
       <SidebarContent>
         <SidebarGroup>
-          <div className="px-3 pb-2 text-xs tracking-[0.24em] text-slate-400 uppercase">
+          <div className="pb-2 text-sm tracking-[0.10em] text-slate-400 uppercase">
             {selectedRole
               ? (roleLabels[selectedRole] ?? selectedRole)
               : "Select a role on the home page"}
@@ -97,6 +99,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="mt-auto w-full p-2">
+        <div className="w-full pb-8">
+          <Button
+            variant="destructive"
+            className="w-full justify-start"
+            onClick={handleLogout}
+          >
+            Logout
+          </Button>
+        </div>
+      </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   )

@@ -17,19 +17,14 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-[#0b1328]/90 px-4 backdrop-blur border-b">
           <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
           <DashboardBreadcrumb />
-          <div className="ml-auto flex items-center gap-4">
-            {/* <ThemeToggle /> */}
+          {/* <div className="ml-auto flex items-center gap-4">
             <UserAccountNav />
-          </div>
+          </div> */}
         </header>
-        <div className="p-0 overflow-x-auto">{children}</div>
+        <div className="overflow-x-auto">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )
