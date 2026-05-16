@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import TableStat from "@/components/common/table-stat"
 
 type InvoiceRow = {
   no: string
@@ -212,27 +213,7 @@ export default function Page() {
           </Select>
         </div>
 
-        <div className="overflow-hidden border border-[#18456a]">
-          {summaryRows.map((row) => (
-            <div
-              key={row.label}
-              className="grid grid-cols-[1fr_140px] border-b border-[#18456a] last:border-b-0"
-            >
-              <div
-                className={
-                  row.alert
-                    ? "bg-[#ff003d] px-3 py-2 text-xs font-semibold text-white"
-                    : "bg-[#14663e] px-3 py-2 text-xs font-semibold text-slate-100"
-                }
-              >
-                {row.label}
-              </div>
-              <div className="bg-[#14663e] px-3 py-2 text-xs font-semibold text-slate-100">
-                {row.value}
-              </div>
-            </div>
-          ))}
-        </div>
+        <TableStat summaryRows={summaryRows} />
       </div>
 
       <div className="overflow-x-auto border border-white/10">

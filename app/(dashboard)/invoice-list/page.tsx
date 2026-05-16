@@ -10,6 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { AgTable } from "@/components/common/AgTable"
+import ConfirmPaymentDialog from "@/components/common/confirm-payment"
+import TableStat from "@/components/common/table-stat"
 
 type InvoiceListRow = {
   no: string
@@ -24,6 +27,7 @@ type InvoiceListRow = {
   dateScheduled: string
   releaseDate: string
   comments: string
+  scheduledBy: string
 }
 
 const summaryRows = [
@@ -49,6 +53,7 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-20",
     releaseDate: "2024-01-22",
     comments: "Approved by manager",
+    scheduledBy: "John Smith",
   },
   {
     no: "2",
@@ -63,6 +68,7 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-25",
     releaseDate: "2024-01-27",
     comments: "Pending review",
+    scheduledBy: "Sarah Johnson",
   },
   {
     no: "3",
@@ -77,6 +83,7 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-21",
     releaseDate: "2024-01-23",
     comments: "Completed",
+    scheduledBy: "Michael Brown",
   },
   {
     no: "4",
@@ -91,6 +98,7 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-26",
     releaseDate: "2024-01-28",
     comments: "Awaiting approval",
+    scheduledBy: "Emma Wilson",
   },
   {
     no: "5",
@@ -105,6 +113,7 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-22",
     releaseDate: "2024-01-24",
     comments: "Processed",
+    scheduledBy: "James Davis",
   },
   {
     no: "6",
@@ -119,6 +128,7 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-27",
     releaseDate: "2024-01-29",
     comments: "In progress",
+    scheduledBy: "Olivia Martinez",
   },
   {
     no: "7",
@@ -133,6 +143,7 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-23",
     releaseDate: "2024-01-25",
     comments: "Finalized",
+    scheduledBy: "William Taylor",
   },
   {
     no: "8",
@@ -147,49 +158,69 @@ const data: InvoiceListRow[] = [
     dateScheduled: "2024-01-28",
     releaseDate: "2024-01-30",
     comments: "Under review",
+    scheduledBy: "Sophia Anderson",
   },
 ]
 
-function PaidToggle({ checked }: { checked: boolean }) {
-  return (
-    <button
-      type="button"
-      className={`relative h-6 w-11 rounded-full border transition ${
-        checked
-          ? "border-emerald-400 bg-emerald-500/90"
-          : "border-slate-500 bg-slate-600"
-      }`}
-      aria-label={checked ? "Paid" : "Not paid"}
-    >
-      <span
-        className={`absolute top-[2px] size-5 rounded-full bg-white transition ${
-          checked ? "right-[2px]" : "left-[2px]"
-        }`}
-      />
-    </button>
-  )
-}
-
 export default function Page() {
   const [project, setProject] = useState("all")
+  const [rows, setRows] = useState<InvoiceListRow[]>(data)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingRowId, setPendingRowId] = useState<string | null>(null)
+  const [nextPaid, setNextPaid] = useState(false)
+
+  function openPaymentConfirm(rowId: string, checked: boolean) {
+    setPendingRowId(rowId)
+    setNextPaid(checked)
+    setConfirmOpen(true)
+  }
+
+  function handleConfirmPaymentChange() {
+    if (!pendingRowId) return
+
+    setRows((currentRows) =>
+      currentRows.map((row) =>
+        row.no === pendingRowId ? { ...row, paid: nextPaid } : row
+      )
+    )
+    setConfirmOpen(false)
+    setPendingRowId(null)
+  }
+
+  const columnDefs: ColDef<InvoiceListRow>[] = [
+    { headerName: "No", field: "no" },
+    { headerName: "Invoice Number", field: "invoiceNumber" },
+    { headerName: "Date", field: "date" },
+    { headerName: "Project", field: "project" },
+    { headerName: "Name-USER", field: "userName" },
+    { headerName: "Sort code", field: "sortCode" },
+    { headerName: "Account number", field: "accountNumber" },
+    { headerName: "Total", field: "total" },
+    {
+      headerName: "Payment Scheduled",
+      field: "paid",
+      cellRenderer: (params: { data?: InvoiceListRow; value: boolean }) => (
+        <Switch
+          checked={params.value}
+          onCheckedChange={(checked) => {
+            if (!params.data) return
+            openPaymentConfirm(params.data.no, checked)
+          }}
+        />
+      ),
+    },
+    { headerName: "Date scheduled", field: "dateScheduled" },
+    { headerName: "Release date", field: "releaseDate" },
+    { headerName: "Scheduled by", field: "scheduledBy" },
+    { headerName: "Comments", field: "comments" },
+  ]
 
   return (
-    <div className="w-full space-y-6 p-6">
-      <div className="max-w-[500px] overflow-hidden border border-[#0a5f4d]">
-        {summaryRows.map((item) => (
-          <div
-            key={item.label}
-            className="grid grid-cols-[1fr_190px] border-b border-[#0a5f4d] last:border-b-0"
-          >
-            <div className="bg-[#2f67d9] px-3 py-2 text-xs font-semibold text-slate-100">
-              {item.label}
-            </div>
-            <div className="bg-[#16663f] px-3 py-2 text-xs font-semibold text-slate-100">
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="w-full space-y-6 p-6 bg-white">
+
+      <h1 className="text-primary">Invoice List</h1>
+
+      <TableStat summaryRows={summaryRows} />
 
       <div className="max-w-[220px]">
         <Select value={project} onValueChange={setProject}>
@@ -204,7 +235,18 @@ export default function Page() {
         </Select>
       </div>
 
-      <div className="overflow-x-auto border border-[#0a3b35]">
+      <ConfirmPaymentDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        supplierName={
+          rows.find((row) => row.no === pendingRowId)?.userName ??
+          "this supplier"
+        }
+        nextPaid={nextPaid}
+        onConfirm={handleConfirmPaymentChange}
+      />
+
+      {/* <div className="overflow-x-auto border border-[#0a3b35]">
         <table className="w-full min-w-[1450px] border-collapse text-xs text-slate-300">
           <thead>
             <tr className="bg-[#0b3b33] text-slate-200">
@@ -292,7 +334,17 @@ export default function Page() {
             ))}
           </tbody>
         </table>
-      </div>
+      </div> */}
+
+      <AgTable
+        columnDefs={columnDefs}
+        rowData={data}
+        defaultColDef={{
+          flex: 1,
+          minWidth: 100,
+          resizable: true,
+        }}
+      />
     </div>
   )
 }

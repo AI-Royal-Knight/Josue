@@ -5,6 +5,9 @@ import { AgTable } from "@/components/common/AgTable"
 import type { ColDef } from "ag-grid-community"
 import { Card, CardContent } from "@/components/ui/card"
 import BreadcrumbWithBack from "@/components/ui/breadcrumb-with-back"
+import { Badge } from "@/components/ui/badge"
+import { getRoleVariant, getStatusVariant } from "@/lib/utils"
+import StatCards from "@/components/shared/stat-cards"
 
 const data = [
   {
@@ -70,10 +73,28 @@ export default function ProjectPage({
 
   const columnDefs: ColDef<UserRow>[] = [
     { field: "name", headerName: "User Name", minWidth: 220 },
-    { field: "role", headerName: "Role", minWidth: 160 },
+    {
+      field: "role",
+      headerName: "Role",
+      minWidth: 160,
+      cellRenderer: (params: { value: string }) => {
+        const role = params.value as string
+        const variant = getRoleVariant(role)
+        return <Badge variant={variant}>{role}</Badge>
+      },
+    },
     { field: "email", headerName: "Email", minWidth: 220 },
     { field: "assignedProject", headerName: "Assigned Project", minWidth: 220 },
-    { field: "status", headerName: "Status", minWidth: 110 },
+    {
+      field: "status",
+      headerName: "Status",
+      minWidth: 110,
+      cellRenderer: (params: { value: string }) => {
+        const status = params.value as string
+        const variant = getStatusVariant(status)
+        return <Badge variant={variant}>{status}</Badge>
+      },
+    },
   ]
 
   return (
@@ -84,17 +105,7 @@ export default function ProjectPage({
           Project Details & User Management
         </p>
       </header>
-
-      <section className="flex gap-16 rounded-lg bg-card">
-        {data.map((item) => (
-          <Card key={item.title} className="w-full">
-            <CardContent>
-              <h2>{item.title}</h2>
-              <div className="text-2xl font-semibold">{item.value}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
+      <StatCards stats={data} />
 
       <section className="flex flex-1 flex-col rounded-lg bg-card">
         <h2 className="mb-3 font-semibold">Users Inside Project</h2>

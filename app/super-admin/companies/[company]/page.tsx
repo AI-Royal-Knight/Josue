@@ -6,6 +6,25 @@ import { AgTable } from "@/components/common/AgTable"
 import type { ColDef } from "ag-grid-community"
 import { Button } from "@/components/ui/button"
 import BreadcrumbWithBack from "@/components/ui/breadcrumb-with-back"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { getStatusVariant } from "@/lib/utils"
+import StatCards from "@/components/shared/stat-cards"
+
+const data = [
+  {
+    title: "Total Projects",
+    value: "3",
+  },
+  {
+    title: "Total Users",
+    value: "75",
+  },
+  {
+    title: "Total Workers",
+    value: "56",
+  },
+]
 
 type ProjectRow = {
   id: string
@@ -58,12 +77,17 @@ export default function CompanyPage({
     { field: "name", headerName: "Project Name", minWidth: 260 },
     { field: "value", headerName: "Project Value", minWidth: 120 },
     { field: "startDate", headerName: "Start Date", minWidth: 120 },
-    { field: "status", headerName: "Status", minWidth: 110 },
+    { field: "status", headerName: "Status", minWidth: 110, cellRenderer: (params: { value: string }) => {
+        const status = params.value as string
+        const variant = getStatusVariant(status)
+        return <Badge variant={variant}>{status}</Badge>
+      },
+    },
     { field: "users", headerName: "Total Users", minWidth: 110 },
     { field: "workers", headerName: "Workers", minWidth: 110 },
     {
       headerName: "Actions",
-      cellRenderer: (props: any) => {
+      cellRenderer: (props: { data: ProjectRow }) => {
         return (
           <Button variant="outline" size="sm">
             <Link href={`/super-admin/companies/${company}/${props.data.id}`}>
@@ -83,8 +107,16 @@ export default function CompanyPage({
           <h1 className="text-2xl font-bold">{company.replace(/-/g, " ")}</h1>
           <p className="text-sm text-slate-400">Company Admin Dashboard</p>
         </div>
-        <div className="text-sm text-green-400">Active</div>
+        <div className="text-sm ">
+          <div>
+            <h6>Admin owner</h6>
+            <h2>John Matthews</h2>
+          </div>
+          <div>john.matthews@example.com {<br />} +1 555-1234 </div>
+        </div>
       </header>
+
+      <StatCards stats={data} />
 
       <section className="flex flex-1 flex-col rounded-lg bg-card">
         <AgTable

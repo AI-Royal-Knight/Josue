@@ -5,6 +5,8 @@ import { AgTable } from "@/components/common/AgTable"
 import type { ColDef } from "ag-grid-community"
 import BreadcrumbWithBack from "@/components/ui/breadcrumb-with-back"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { getRoleVariant, getStatusVariant } from "@/lib/utils"
 
 type UserRow = {
   id: string
@@ -25,7 +27,7 @@ const SAMPLE_USERS: UserRow[] = [
     role: "Admin",
     company: "BuildCo Ltd",
     project: "All Projects",
-    status: "Active",
+    status: "Suspended",
     lastActive: "2 min ago",
   },
   {
@@ -35,7 +37,7 @@ const SAMPLE_USERS: UserRow[] = [
     role: "Manager",
     company: "BuildCo Ltd",
     project: "Downtown Tower Phase 1",
-    status: "Active",
+    status: "Suspended",
     lastActive: "5 min ago",
   },
   {
@@ -55,7 +57,7 @@ const SAMPLE_USERS: UserRow[] = [
     role: "Finance",
     company: "BuildCo Ltd",
     project: "Downtown Tower Phase 1",
-    status: "Active",
+    status: "Inactive",
     lastActive: "1 hour ago",
   },
   {
@@ -76,16 +78,33 @@ export default function UsersPage() {
   const columnDefs: ColDef<UserRow>[] = [
     { field: "name", headerName: "User", minWidth: 220 },
     { field: "email", headerName: "Email", minWidth: 240 },
-    { field: "role", headerName: "Role", minWidth: 140 },
+    {
+      field: "role",
+      headerName: "Role",
+      minWidth: 140,
+      cellRenderer: (params: { value: string }) => {
+        const role = params.value as string
+        const variant = getRoleVariant(role)
+        return <Badge variant={variant}>{role}</Badge>
+      },
+    },
     { field: "company", headerName: "Company", minWidth: 160 },
     { field: "project", headerName: "Project", minWidth: 160 },
-    { field: "status", headerName: "Status", minWidth: 110 },
+    {
+      field: "status",
+      headerName: "Status",
+      minWidth: 110,
+      cellRenderer: (params: { value: string }) => {
+        const status = params.value as string
+        const variant = getStatusVariant(status)
+        return <Badge variant={variant}>{status}</Badge>
+      },
+    },
     { field: "lastActive", headerName: "Last Active", minWidth: 130 },
   ]
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)] flex-col gap-6">
-
       <header>
         <h1 className="text-2xl font-bold">Users</h1>
         <p className="text-sm text-slate-400">
@@ -96,7 +115,7 @@ export default function UsersPage() {
       <div className="rounded-lg bg-card">
         <div className="mb-4 flex items-center justify-between">
           <Input placeholder="Search users by name, email, role, company, or project..." />
-          <div className="text-sm text-slate-400 w-full text-right">
+          <div className="w-full text-right text-sm text-slate-400">
             Total Users: 13 | Active: 12
           </div>
         </div>

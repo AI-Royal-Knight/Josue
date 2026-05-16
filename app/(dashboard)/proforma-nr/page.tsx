@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import TableStat from "@/components/common/table-stat"
 
 type ProformaRow = {
   no: number
@@ -160,16 +161,7 @@ export default function Page() {
         </Select>
       </div>
 
-      <div className="max-w-[420px] overflow-hidden border border-[#1e3a5f]">
-        {summaryRows.map((item) => (
-          <div key={item.label} className="grid grid-cols-2 border-b border-[#1e3a5f] last:border-b-0">
-            <div className={item.alert ? "bg-[#ff003d] px-4 py-3 text-sm font-medium text-white" : "bg-[#166534] px-4 py-3 text-sm font-medium text-white"}>
-              {item.label}
-            </div>
-            <div className="bg-[#166534] px-4 py-3 text-sm font-semibold text-white">{item.value}</div>
-          </div>
-        ))}
-      </div>
+      <TableStat summaryRows={summaryRows} />
 
       <DynamicTable columns={columns} data={rows} initialSortId="no" />
     </div>
