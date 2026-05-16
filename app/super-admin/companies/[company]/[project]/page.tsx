@@ -78,16 +78,6 @@ export default function ProjectPage({
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)] flex-col gap-6">
-      <BreadcrumbWithBack
-        items={[
-          { label: "Companies (Admins)", href: "/super-admin/companies" },
-          {
-            label: company.replace(/-/g, " "),
-            href: `/super-admin/companies/${company}`,
-          },
-          { label: project.replace(/-/g, " ") },
-        ]}
-      />
       <header>
         <h1 className="text-2xl font-bold">{project.replace(/-/g, " ")}</h1>
         <p className="text-sm text-slate-400">

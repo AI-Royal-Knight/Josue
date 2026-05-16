@@ -117,12 +117,9 @@ function InviteSupplierDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          Invite Supplier
-        </Button>
+        <Button>Invite Supplier</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[420px]
-      ">
+      <DialogContent className="max-w-[420px]">
         <DialogHeader>
           <DialogTitle className="text-3xl font-semibold">
             Supplier Invitation
@@ -169,25 +166,23 @@ function InviteSupplierDialog() {
 export default function Page() {
   return (
     <div className="w-full min-w-0 space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Supplier List</h1>
+      <div className="flex items-center justify-between gap-2">
+        <div className="max-w-[560px] overflow-hidden border border-[#1e3a5f]">
+          {summaryRows.map((item) => (
+            <div
+              className="grid grid-cols-2 border-b border-[#1e3a5f] last:border-b-0"
+              key={item.label}
+            >
+              <div className="bg-[#166534] px-4 py-3 text-sm font-medium text-white">
+                {item.label}
+              </div>
+              <div className="bg-[#166534] px-4 py-3 text-sm font-semibold text-white">
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
         <InviteSupplierDialog />
-      </div>
-
-      <div className="max-w-[560px] overflow-hidden border border-[#1e3a5f]">
-        {summaryRows.map((item) => (
-          <div
-            className="grid grid-cols-2 border-b border-[#1e3a5f] last:border-b-0"
-            key={item.label}
-          >
-            <div className="bg-[#166534] px-4 py-3 text-sm font-medium text-white">
-              {item.label}
-            </div>
-            <div className="bg-[#166534] px-4 py-3 text-sm font-semibold text-white">
-              {item.value}
-            </div>
-          </div>
-        ))}
       </div>
 
       <DynamicTable columns={columns} data={data} initialSortId="no" />

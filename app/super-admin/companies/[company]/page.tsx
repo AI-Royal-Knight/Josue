@@ -78,12 +78,6 @@ export default function CompanyPage({
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)] flex-col gap-6">
-      <BreadcrumbWithBack
-        items={[
-          { label: "Companies (Admins)", href: "/super-admin/companies" },
-          { label: company.replace(/-/g, " ") },
-        ]}
-      />
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{company.replace(/-/g, " ")}</h1>

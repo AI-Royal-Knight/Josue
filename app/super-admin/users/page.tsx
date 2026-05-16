@@ -85,7 +85,6 @@ export default function UsersPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)] flex-col gap-6">
-      <BreadcrumbWithBack items={[{ label: "Users" }]} />
 
       <header>
         <h1 className="text-2xl font-bold">Users</h1>

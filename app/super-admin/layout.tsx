@@ -12,11 +12,14 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarRail,
+  SidebarTrigger,
+  SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import logo from "@/assets/images/logo.png"
 import { useRouter } from "next/navigation"
+import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb"
 
 export default function SuperAdminLayout({
   children,
@@ -24,22 +27,26 @@ export default function SuperAdminLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+
+  const handleLogout = React.useCallback(() => {
+    router.push("/sign-in")
+  }, [router])
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <Sidebar className="w-64">
-          <SidebarHeader>
-            <div className="px-4 py-3">
-              <div className="flex gap-2 px-6 py-2">
-                <Button variant={"ghost"} onClick={() => router.push("/")}>
-                  <Image src={logo} alt="Logo" width={32} height={32} />
-                  <h1 className="text-xl font-bold">TRESTA</h1>
-                </Button>
-              </div>
-              <div className="text-sm text-slate-400">Super Admin Portal</div>
+          <SidebarHeader className="h-16 justify-center border-b">
+            <div className="flex gap-2 px-6 py-2">
+              <Button variant={"ghost"} onClick={() => router.push("/")}>
+                <Image src={logo} alt="Logo" width={32} height={32} />
+                <h1 className="text-xl font-bold">TRESTA</h1>
+              </Button>
             </div>
           </SidebarHeader>
-          <SidebarContent>
+          <SidebarContent className="p-4">
+            <div className="pb-2 text-sm tracking-[0.10em] text-slate-400 uppercase">
+              Super Admin Portal
+            </div>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
@@ -63,11 +70,29 @@ export default function SuperAdminLayout({
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
+          <SidebarFooter className="mt-auto w-full p-2">
+            <div className="w-full pb-8">
+              <Button
+                variant="destructive"
+                className="w-full justify-start"
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+            </div>
+          </SidebarFooter>
           <SidebarRail />
         </Sidebar>
 
-        <SidebarInset className="min-h-screen flex-1 bg-background p-4">
-          {children}
+        <SidebarInset className="min-h-screen flex-1 bg-background flex-col">
+          <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-[#0b1328]/90 px-4 backdrop-blur">
+            <SidebarTrigger className="-ml-1" />
+            <DashboardBreadcrumb />
+            {/* <div className="ml-auto flex items-center gap-4">
+            <UserAccountNav />
+          </div> */}
+          </header>
+          <div className="p-4 flex flex-1 flex-col min-h-0">{children}</div>
         </SidebarInset>
       </div>
     </SidebarProvider>
