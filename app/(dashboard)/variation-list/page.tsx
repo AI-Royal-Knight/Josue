@@ -126,92 +126,74 @@ const columns: ColDef<VariationRow>[] = [
   {
     headerName: "No.",
     field: "no",
-    size: 50,
   },
   {
     headerName: "Site Instruction Number",
     field: "siteInstructionNumber",
-    size: 160,
   },
   {
     headerName: "Evidence",
     field: "evidence",
-    size: 100,
   },
   {
     headerName: "Date",
     field: "date",
-    size: 100,
   },
   {
     headerName: "Variation Sheet Number",
     field: "variationSheetNumber",
-    size: 160,
   },
   {
     headerName: "Work area",
     field: "workArea",
-    size: 120,
   },
   {
     headerName: "Work section",
     field: "workSection",
-    size: 120,
   },
   {
     headerName: "Description of Works",
     field: "descriptionOfWorks",
-    size: 180,
   },
   {
     headerName: "Labour cost",
     field: "labourCost",
-    size: 120,
   },
   {
     headerName: "Material Cost",
     field: "materialCost",
-    size: 130,
   },
   {
     headerName: "Variation Amount",
     field: "variationAmount",
-    size: 140,
   },
   {
     headerName: "% Claimed",
     field: "percentClaimed",
-    size: 110,
   },
   {
     headerName: "Amount Claimed",
     field: "amountClaimed",
-    size: 130,
   },
   {
     headerName: "Client Certified Amount",
     field: "clientCertifiedAmount",
-    size: 160,
   },
   {
     headerName: "Diffrence",
     field: "diffrenceAmount",
-    size: 110,
   },
   {
     headerName: "Payment Status nr",
     field: "paymentStatusNr",
-    size: 140,
   },
   {
     headerName: "Claim GQ Comment",
     field: "claimGQComment",
-    size: 140,
   },
   {
     headerName: "Comments",
     field: "comments",
-    size: 120,
   },
 ]
 

@@ -91,7 +91,7 @@ export default function WhiteCardView() {
         minWidth: 130,
         rowSpan: (params: RowSpanParams<WhiteRow>) => {
           // Span the section cell for the block header (APARTMENTS and CORRIDORS)
-          const idx = params.node.rowIndex
+          const idx = params.node?.rowIndex ?? (params as any).rowIndex ?? 0
           if (idx === 0) return 9 // APARTMENTS block (header + subheader + 7 rows)
           if (idx === 9) return 9 // CORRIDORS block
           return 1
@@ -115,7 +115,14 @@ export default function WhiteCardView() {
         minWidth: 140,
         rowSpan: (params: RowSpanParams<WhiteRow>) => {
           // Project Value cells in header span two rows
-          if (params.data?.id === "h1" || params.data?.id === "h3") return 2
+          const idx = params.node?.rowIndex ?? (params as any).rowIndex ?? 0
+          if (
+            params.data?.id === "h1" ||
+            params.data?.id === "h3" ||
+            idx === 0 ||
+            idx === 9
+          )
+            return 2
           return 1
         },
       },
