@@ -1,7 +1,7 @@
 "use client"
 
-import type { ColumnDef } from "@tanstack/react-table"
-import { DynamicTable } from "@/components/dynamic-table"
+import type { ColDef } from "ag-grid-community"
+import { AgTable } from "@/components/common/AgTable"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -151,106 +151,54 @@ const data: PurchaseOrderRow[] = [
   },
 ]
 
-const columns: ColumnDef<PurchaseOrderRow>[] = [
+const columns: ColDef<PurchaseOrderRow>[] = [
+  { headerName: "No.", field: "no" },
+  { headerName: "Quotation Ref", field: "quotationRef" },
+  { headerName: "Project", field: "project" },
+  { headerName: "Main Folder", field: "mainFolder" },
+  { headerName: "Sub Folder", field: "subFolder" },
+  { headerName: "Variation Ref", field: "variationRef" },
+  { headerName: "Supplier Name", field: "supplierName" },
+  { headerName: "Supplier Email address", field: "supplierEmail" },
+  { headerName: "Date of Quote Approved", field: "dateOfQuoteApproved" },
+  { headerName: "Quote Total", field: "quoteTotal" },
   {
-    accessorKey: "no",
-    header: "No.",
-    size: 50,
-  },
-  {
-    accessorKey: "quotationRef",
-    header: "Quotation Ref",
-    size: 120,
-  },
-  {
-    accessorKey: "project",
-    header: "Project",
-    size: 140,
-  },
-  {
-    accessorKey: "mainFolder",
-    header: "Main Folder",
-    size: 120,
-  },
-  {
-    accessorKey: "subFolder",
-    header: "Sub Folder",
-    size: 120,
-  },
-  {
-    accessorKey: "variationRef",
-    header: "Variation Ref",
-    size: 110,
-  },
-  {
-    accessorKey: "supplierName",
-    header: "Supplier Name",
-    size: 150,
-  },
-  {
-    accessorKey: "supplierEmail",
-    header: "Supplier Email address",
-    size: 180,
-  },
-  {
-    accessorKey: "dateOfQuoteApproved",
-    header: "Date of Quote Approved",
-    size: 150,
-  },
-  {
-    accessorKey: "quoteTotal",
-    header: "Quote Total",
-    size: 120,
-  },
-  {
-    accessorKey: "createPo",
-    header: "Create PO",
-    size: 110,
-    cell: ({ row }) => (
+    headerName: "Create PO",
+    field: "createPo",
+    cellRenderer: (params: { data?: PurchaseOrderRow }) => (
       <Button
         size="sm"
-        variant={row.original.createPo === "PO Created" ? "default" : "outline"}
+        variant={params.data?.createPo === "PO Created" ? "default" : "outline"}
       >
-        {row.original.createPo}
+        {params.data?.createPo}
       </Button>
     ),
   },
+  { headerName: "Date PO was Created", field: "datePOCreated" },
   {
-    accessorKey: "datePOCreated",
-    header: "Date PO was Created",
-    size: 150,
-  },
-  {
-    accessorKey: "sendReminder",
-    header: "Send Reminder",
-    size: 110,
-    cell: ({ row }) => (
+    headerName: "Send Reminder",
+    field: "sendReminder",
+    cellRenderer: (params: { data?: PurchaseOrderRow }) => (
       <Button size="sm" variant="ghost">
-        🔔 {row.original.sendReminder}
+        🔔 {params.data?.sendReminder}
       </Button>
     ),
   },
+  { headerName: "Procurement Comments", field: "procurementComments" },
   {
-    accessorKey: "procurementComments",
-    header: "Procurement Comments",
-    size: 150,
-  },
-  {
-    accessorKey: "requestToReQuote",
-    header: "Request to Re-quote",
-    size: 140,
-    cell: ({ row }) => (
+    headerName: "Request to Re-quote",
+    field: "requestToReQuote",
+    cellRenderer: (params: { data?: PurchaseOrderRow }) => (
       <Button size="sm" variant="outline">
-        {row.original.requestToReQuote}
+        {params.data?.requestToReQuote}
       </Button>
     ),
   },
   {
-    accessorKey: "approvalQuotation",
-    header: "Approval Quotation",
-    size: 130,
-    cell: ({ row }) => {
-      const status = row.original.approvalQuotation
+    headerName: "Approval Quotation",
+    field: "approvalQuotation",
+    cellRenderer: (params: { data?: PurchaseOrderRow }) => {
+      const status = params.data?.approvalQuotation
       return (
         <Badge variant={status === "Approved" ? "default" : "secondary"}>
           {status}
@@ -259,9 +207,8 @@ const columns: ColumnDef<PurchaseOrderRow>[] = [
     },
   },
   {
-    accessorKey: "approvalRelatedRequests",
-    header: "Quote Approval Related Requests",
-    size: 200,
+    headerName: "Quote Approval Related Requests",
+    field: "approvalRelatedRequests",
   },
 ]
 
@@ -287,7 +234,7 @@ export default function Page() {
       </div>
 
       <div className="mt-8 overflow-x-auto">
-        <DynamicTable columns={columns} data={data} />
+        <AgTable rowData={data} columnDefs={columns} height="auto" />
       </div>
     </div>
   )

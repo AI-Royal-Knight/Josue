@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
+import { type ColDef } from "ag-grid-community"
 import { Button } from "@/components/ui/button"
 import { AssignUserModal } from "./_components/assign-user-modal"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AgTable } from "@/components/common/AgTable"
 
 type RoleAssignment = {
   role: string
@@ -56,10 +57,10 @@ export default function Page() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
-  const handleOpenModal = (role: string) => {
+  const handleOpenModal = useCallback((role: string) => {
     setSelectedRole(role)
     setModalOpen(true)
-  }
+  }, [])
 
   const handleUpdateUsers = (
     updatedUsers: Array<{ id: string; name: string; checked: boolean }>
@@ -76,63 +77,46 @@ export default function Page() {
   }
 
   const currentAssignment = assignments.find((a) => a.role === selectedRole)
+  const columns: ColDef<RoleAssignment>[] = [
+    { headerName: "Role", field: "role", minWidth: 220 },
+    {
+      headerName: "Assigned Users",
+      field: "users",
+      cellRenderer: (params: { data?: RoleAssignment }) => {
+        return (
+          <div className="flex flex-wrap gap-2">
+            {params.data?.users.map((u) => (
+              <span
+                key={u.id}
+                className="inline-flex items-center rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-200"
+              >
+                {u.name}
+              </span>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
+      headerName: "Action",
+      cellRenderer: (params: { data?: RoleAssignment }) => (
+        <div className="text-center">
+          <Button
+            variant="outline"
+            className="border-white/10 bg-slate-800 text-xs text-slate-200 hover:bg-slate-700"
+            onClick={() => handleOpenModal(params.data?.role || "")}
+          >
+            Assign User
+          </Button>
+        </div>
+      ),
+      minWidth: 160,
+    },
+  ]
 
   return (
-    <div className="w-full p-4">
-      <Card className="w-full">
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-white/10">
-                <tr>
-                  <th className="px-6 pb-3 text-left text-sm font-semibold text-slate-100">
-                    Role
-                  </th>
-                  <th className="px-6 pb-3 text-left text-sm font-semibold text-slate-100">
-                    Assigned Users
-                  </th>
-                  <th className="px-6 pb-3 text-center text-sm font-semibold text-slate-100">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {assignments.map((assignment, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-b border-white/5 hover:bg-white/2.5"
-                  >
-                    <td className="px-6 py-4 text-sm text-slate-100">
-                      {assignment.role}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {assignment.users.map((user) => (
-                          <span
-                            key={user.id}
-                            className="inline-flex items-center rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-200"
-                          >
-                            {user.name}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <Button
-                        variant="outline"
-                        className="border-white/10 bg-slate-800 text-xs text-slate-200 hover:bg-slate-700"
-                        onClick={() => handleOpenModal(assignment.role)}
-                      >
-                        Assign User
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      </Card>
+    <div className="w-full">
+      <AgTable rowData={assignments} columnDefs={columns} height="auto" />
 
       <AssignUserModal
         open={modalOpen}

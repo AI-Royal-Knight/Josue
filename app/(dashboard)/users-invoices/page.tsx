@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import type { ColDef, RowClassParams } from "ag-grid-community"
 import {
   Select,
   SelectContent,
@@ -9,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
+import { AgTable } from "@/components/common/AgTable"
 
 type InvoiceRow = {
   no: string
@@ -192,6 +194,65 @@ const rows: InvoiceRow[] = [
 
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
+  const columns = useMemo<ColDef<InvoiceRow>[]>(
+    () => [
+      { headerName: "No.", field: "no", minWidth: 60 },
+      { headerName: "Invoice Number", field: "invoiceNumber", minWidth: 160 },
+      { headerName: "Date", field: "date", minWidth: 120 },
+      {
+        headerName: "Variation sheet no.",
+        field: "variationSheetNo",
+        minWidth: 140,
+      },
+      { headerName: "NFI Proforma no.", field: "nfiProformaNo", minWidth: 140 },
+      { headerName: "Project", field: "project", minWidth: 160 },
+      { headerName: "Work area", field: "workArea", minWidth: 120 },
+      { headerName: "Work section", field: "workSection", minWidth: 140 },
+      {
+        headerName: "Description of Work",
+        field: "description",
+        minWidth: 200,
+      },
+      { headerName: "Created by", field: "createdBy", minWidth: 140 },
+      { headerName: "Approved by", field: "approvedBy", minWidth: 140 },
+      { headerName: "Approved", field: "approved", minWidth: 100 },
+      {
+        headerName: "TOTAL",
+        field: "total",
+        minWidth: 120,
+        cellStyle: { textAlign: "right" },
+      },
+      {
+        headerName: "Paid",
+        field: "paid",
+        minWidth: 120,
+        cellStyle: { textAlign: "right" },
+      },
+      { headerName: "Date paid", field: "datePaid", minWidth: 120 },
+      { headerName: "Paid by", field: "paidBy", minWidth: 140 },
+      {
+        headerName: "Finance team comments",
+        field: "financeComments",
+        minWidth: 200,
+      },
+      {
+        headerName: "Commercial team comments",
+        field: "commercialComments",
+        minWidth: 200,
+      },
+    ],
+    []
+  )
+
+  const gridOptions = useMemo(
+    () => ({
+      getRowStyle: (params: RowClassParams) =>
+        params.data?.highlight
+          ? { background: "#1ea84d", color: "#ffffff" }
+          : undefined,
+    }),
+    []
+  )
 
   return (
     <div className="w-full space-y-6 p-6">
@@ -217,178 +278,14 @@ export default function Page() {
       </div>
 
       <div className="overflow-x-auto border border-white/10">
-        <table className="w-full min-w-[1950px] border-collapse text-xs text-slate-300">
-          <thead>
-            <tr className="bg-[#0f1d36] text-[10px] text-slate-400">
-              <th
-                colSpan={2}
-                className="border border-[#1d3150] px-2 py-1 text-left"
-              >
-                INFORMATION AUTOMATIC WHEN USER SUBMITS INVOICE
-              </th>
-              <th
-                colSpan={4}
-                className="border border-[#1d3150] px-2 py-1 text-left"
-              >
-                name of managing staff
-              </th>
-              <th
-                colSpan={4}
-                className="border border-[#1d3150] px-2 py-1 text-left"
-              >
-                times given when invoice is approved and it also gets added to
-                finance invoice list
-              </th>
-              <th
-                colSpan={2}
-                className="border border-[#1d3150] px-2 py-1 text-left"
-              >
-                finance team initials invoice person
-              </th>
-              <th
-                colSpan={2}
-                className="border border-[#1d3150] px-2 py-1 text-left"
-              >
-                when finance team decides
-              </th>
-              <th
-                colSpan={2}
-                className="border border-[#1d3150] px-2 py-1 text-left"
-              >
-                Name of finance team staff initials
-              </th>
-              <th
-                colSpan={2}
-                className="border border-[#1d3150] px-2 py-1 text-left"
-              >
-                comments
-              </th>
-            </tr>
-            <tr className="bg-[#1f3571] text-[11px] text-slate-100">
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                No.
-              </th>
-              <th className="border border-[#1d3150] bg-[#e3b000] px-2 py-1.5 text-left text-black">
-                Invoice Number
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Date
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Variation sheet no.
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                NFI Proforma no.
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Project
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Work area
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Work section
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Description of Work
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Created by
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Approved by
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Approved
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-right">
-                TOTAL
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-right">
-                Paid
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Date paid
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Paid by
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Finance team comments
-              </th>
-              <th className="border border-[#1d3150] px-2 py-1.5 text-left">
-                Commercial team comments
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.no}
-                className={
-                  row.highlight
-                    ? "bg-[#1ea84d]/90 text-slate-100"
-                    : "bg-[#0a1730] even:bg-[#0a1a33]"
-                }
-              >
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.no}
-                </td>
-                <td className="border border-[#1d3150] bg-[#e3b000] px-2 py-1.5 font-semibold text-black">
-                  {row.invoiceNumber}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.date}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.variationSheetNo}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.nfiProformaNo}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.project}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.workArea}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.workSection}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.description}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.createdBy}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.approvedBy}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.approved}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5 text-right">
-                  {row.total}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5 text-right">
-                  {row.paid}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.datePaid}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.paidBy}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.financeComments}
-                </td>
-                <td className="border border-[#1d3150] px-2 py-1.5">
-                  {row.commercialComments}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="min-w-[1200px]">
+          <AgTable
+            rowData={rows}
+            columnDefs={columns}
+            height="auto"
+            gridOptions={gridOptions}
+          />
+        </div>
       </div>
     </div>
   )

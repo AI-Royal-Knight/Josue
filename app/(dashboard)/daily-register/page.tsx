@@ -1,6 +1,6 @@
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColDef } from "ag-grid-community"
 
-import { DynamicTable } from "@/components/dynamic-table"
+import { AgTable } from "@/components/common/AgTable"
 import {
   Select,
   SelectContent,
@@ -86,18 +86,18 @@ const rows: DailyRegisterRow[] = [
   },
 ]
 
-const columns: ColumnDef<DailyRegisterRow>[] = [
-  { accessorKey: "no", header: "No." },
-  { accessorKey: "name", header: "Name" },
-  { accessorKey: "surname", header: "Sure name" },
-  { accessorKey: "project", header: "Project" },
-  { accessorKey: "date", header: "Date" },
-  { accessorKey: "clockInTime", header: "Clock in Time" },
-  { accessorKey: "clockInGps", header: "Clock in GPS" },
-  { accessorKey: "clockOut", header: "Clock out" },
-  { accessorKey: "clockOutGps", header: "Clock out GPS" },
-  { accessorKey: "profession", header: "Profession" },
-  { accessorKey: "management", header: "Management" },
+const columns: ColDef<DailyRegisterRow>[] = [
+  { headerName: "No.", field: "no" },
+  { headerName: "Name", field: "name" },
+  { headerName: "Sure name", field: "surname" },
+  { headerName: "Project", field: "project" },
+  { headerName: "Date", field: "date" },
+  { headerName: "Clock in Time", field: "clockInTime" },
+  { headerName: "Clock in GPS", field: "clockInGps" },
+  { headerName: "Clock out", field: "clockOut" },
+  { headerName: "Clock out GPS", field: "clockOutGps" },
+  { headerName: "Profession", field: "profession" },
+  { headerName: "Management", field: "management" },
 ]
 
 export default function Page() {
@@ -120,7 +120,7 @@ export default function Page() {
 
       <TableStat summaryRows={summaryRows} />
 
-      <DynamicTable columns={columns} data={rows} initialSortId="no" />
+      <AgTable rowData={rows} columnDefs={columns} height="auto" />
     </div>
   )
 }

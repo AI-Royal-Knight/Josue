@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef } from "ag-grid-community"
-import BreadcrumbWithBack from "@/components/ui/breadcrumb-with-back"
+// BreadcrumbWithBack removed (unused)
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,7 +13,7 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
-  SheetTrigger,
+  // SheetTrigger removed (unused)
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { getStatusVariant } from "@/lib/utils"
@@ -107,7 +107,7 @@ export default function ProjectsPage() {
       field: "action",
       headerName: "Action",
       minWidth: 140,
-      cellRenderer: (params : { data: ProjectRow }) => (
+      cellRenderer: (params: { data: ProjectRow }) => (
         <Button
           variant="outline"
           size="sm"

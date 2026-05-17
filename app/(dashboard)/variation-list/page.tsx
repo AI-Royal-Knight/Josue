@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColDef } from "ag-grid-community"
 import {
   Select,
   SelectContent,
@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DynamicTable } from "@/components/dynamic-table"
+import { AgTable } from "@/components/common/AgTable"
 import { Card } from "@/components/ui/card"
 
 type VariationRow = {
@@ -122,95 +122,95 @@ const data: VariationRow[] = [
   },
 ]
 
-const columns: ColumnDef<VariationRow>[] = [
+const columns: ColDef<VariationRow>[] = [
   {
-    accessorKey: "no",
-    header: "No.",
+    headerName: "No.",
+    field: "no",
     size: 50,
   },
   {
-    accessorKey: "siteInstructionNumber",
-    header: "Site Instruction Number",
+    headerName: "Site Instruction Number",
+    field: "siteInstructionNumber",
     size: 160,
   },
   {
-    accessorKey: "evidence",
-    header: "Evidence",
+    headerName: "Evidence",
+    field: "evidence",
     size: 100,
   },
   {
-    accessorKey: "date",
-    header: "Date",
+    headerName: "Date",
+    field: "date",
     size: 100,
   },
   {
-    accessorKey: "variationSheetNumber",
-    header: "Variation Sheet Number",
+    headerName: "Variation Sheet Number",
+    field: "variationSheetNumber",
     size: 160,
   },
   {
-    accessorKey: "workArea",
-    header: "Work area",
+    headerName: "Work area",
+    field: "workArea",
     size: 120,
   },
   {
-    accessorKey: "workSection",
-    header: "Work section",
+    headerName: "Work section",
+    field: "workSection",
     size: 120,
   },
   {
-    accessorKey: "descriptionOfWorks",
-    header: "Description of Works",
+    headerName: "Description of Works",
+    field: "descriptionOfWorks",
     size: 180,
   },
   {
-    accessorKey: "labourCost",
-    header: "Labour cost",
+    headerName: "Labour cost",
+    field: "labourCost",
     size: 120,
   },
   {
-    accessorKey: "materialCost",
-    header: "Material Cost",
+    headerName: "Material Cost",
+    field: "materialCost",
     size: 130,
   },
   {
-    accessorKey: "variationAmount",
-    header: "Variation Amount",
+    headerName: "Variation Amount",
+    field: "variationAmount",
     size: 140,
   },
   {
-    accessorKey: "percentClaimed",
-    header: "% Claimed",
+    headerName: "% Claimed",
+    field: "percentClaimed",
     size: 110,
   },
   {
-    accessorKey: "amountClaimed",
-    header: "Amount Claimed",
+    headerName: "Amount Claimed",
+    field: "amountClaimed",
     size: 130,
   },
   {
-    accessorKey: "clientCertifiedAmount",
-    header: "Client Certified Amount",
+    headerName: "Client Certified Amount",
+    field: "clientCertifiedAmount",
     size: 160,
   },
   {
-    accessorKey: "diffrenceAmount",
-    header: "Diffrence",
+    headerName: "Diffrence",
+    field: "diffrenceAmount",
     size: 110,
   },
   {
-    accessorKey: "paymentStatusNr",
-    header: "Payment Status nr",
+    headerName: "Payment Status nr",
+    field: "paymentStatusNr",
     size: 140,
   },
   {
-    accessorKey: "claimGQComment",
-    header: "Claim GQ Comment",
+    headerName: "Claim GQ Comment",
+    field: "claimGQComment",
     size: 140,
   },
   {
-    accessorKey: "comments",
-    header: "Comments",
+    headerName: "Comments",
+    field: "comments",
     size: 120,
   },
 ]
@@ -254,7 +254,7 @@ export default function Page() {
       </div>
 
       <div className="mt-8 overflow-x-auto">
-        <DynamicTable columns={columns} data={data} />
+        <AgTable rowData={data} columnDefs={columns} height="auto" />
       </div>
     </div>
   )

@@ -1,7 +1,8 @@
 "use client"
 
-import type { ColumnDef } from "@tanstack/react-table"
-import { DynamicTable } from "@/components/dynamic-table"
+import type { ColDef } from "ag-grid-community"
+
+import { AgTable } from "@/components/common/AgTable"
 import { UserProfileDialog } from "@/components/user-profile-dialog"
 
 type UserRow = {
@@ -113,59 +114,59 @@ const users: UserRow[] = [
   },
 ]
 
-const columns: ColumnDef<UserRow>[] = [
-  { accessorKey: "name", header: "Name" },
-  { accessorKey: "surname", header: "Surname" },
-  { accessorKey: "email", header: "Email" },
-  { accessorKey: "profession", header: "Profession" },
-  { accessorKey: "cscsCardNo", header: "CSCS Card No" },
+const columns: ColDef<UserRow>[] = [
+  { headerName: "Name", field: "name" },
+  { headerName: "Surname", field: "surname" },
+  { headerName: "Email", field: "email" },
+  { headerName: "Profession", field: "profession" },
+  { headerName: "CSCS Card No", field: "cscsCardNo" },
   {
-    accessorKey: "cscsExpiryDate",
-    header: "CSCS Expiry Date",
-    cell: ({ row }) => (
+    headerName: "CSCS Expiry Date",
+    field: "cscsExpiryDate",
+    cellRenderer: (params: { data?: UserRow; value: string }) => (
       <span
         className={
-          row.original.cscsExpiryTone === "red"
+          params.data?.cscsExpiryTone === "red"
             ? "text-red-500"
             : "text-emerald-400"
         }
       >
-        {row.original.cscsExpiryDate}
+        {params.value}
       </span>
     ),
   },
-  { accessorKey: "ipaf", header: "IPAF" },
+  { headerName: "IPAF", field: "ipaf" },
   {
-    accessorKey: "pasma",
-    header: "PASMA",
-    cell: ({ row }) => (
-      <span className="whitespace-pre-line">{row.original.pasma}</span>
+    headerName: "PASMA",
+    field: "pasma",
+    cellRenderer: (params: { value: string }) => (
+      <span className="whitespace-pre-line">{params.value}</span>
     ),
   },
-  { accessorKey: "company", header: "Company" },
-  { accessorKey: "ssstsSmsts", header: "SSSTS/SMSTS" },
+  { headerName: "Company", field: "company" },
+  { headerName: "SSSTS/SMSTS", field: "ssstsSmsts" },
   {
-    accessorKey: "expiryDate",
-    header: "Expiry Date",
-    cell: ({ row }) => (
+    headerName: "Expiry Date",
+    field: "expiryDate",
+    cellRenderer: (params: { data?: UserRow; value: string }) => (
       <span
         className={
-          row.original.expiryTone === "red"
+          params.data?.expiryTone === "red"
             ? "text-red-500"
             : "text-emerald-400"
         }
       >
-        {row.original.expiryDate}
+        {params.value}
       </span>
     ),
   },
   {
-    id: "profile",
-    header: "Profile",
-    cell: ({ row }) => <UserProfileDialog user={row.original} />,
+    headerName: "Profile",
+    cellRenderer: (params: { data?: UserRow }) =>
+      params.data ? <UserProfileDialog user={params.data} /> : null,
   },
 ]
 
 export function UsersScreen() {
-  return <DynamicTable columns={columns} data={users} initialSortId="name" />
+  return <AgTable rowData={users} columnDefs={columns} height="auto" />
 }

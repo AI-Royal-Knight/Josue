@@ -1,8 +1,8 @@
 "use client"
 
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColDef } from "ag-grid-community"
 
-import { DynamicTable } from "@/components/dynamic-table"
+import { AgTable } from "@/components/common/AgTable"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -41,10 +41,10 @@ const directors: DirectorRow[] = [
   },
 ]
 
-const columns: ColumnDef<DirectorRow>[] = [
-  { accessorKey: "name", header: "Name" },
-  { accessorKey: "surname", header: "Surname" },
-  { accessorKey: "emailAddress", header: "Email Address" },
+const columns: ColDef<DirectorRow>[] = [
+  { headerName: "Name", field: "name" },
+  { headerName: "Surname", field: "surname" },
+  { headerName: "Email Address", field: "emailAddress" },
 ]
 
 function InviteManagingDirectorDialog() {
@@ -91,7 +91,7 @@ export function ManagingDirectorScreen() {
           Export
         </Button>
       </div>
-      <DynamicTable columns={columns} data={directors} initialSortId="name" />
+      <AgTable rowData={directors} columnDefs={columns} height="auto" />
     </div>
   )
 }

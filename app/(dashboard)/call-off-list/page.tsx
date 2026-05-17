@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColDef } from "ag-grid-community"
 import {
   Select,
   SelectContent,
@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DynamicTable } from "@/components/dynamic-table"
+import { AgTable } from "@/components/common/AgTable"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -221,107 +221,27 @@ const data: CallOffRow[] = [
   },
 ]
 
-const columns: ColumnDef<CallOffRow>[] = [
-  {
-    accessorKey: "poRef",
-    header: "PO Ref",
-    size: 100,
-  },
-  {
-    accessorKey: "callOffRef",
-    header: "Call Off Ref",
-    size: 110,
-  },
-  {
-    accessorKey: "project",
-    header: "Project",
-    size: 130,
-  },
-  {
-    accessorKey: "mainFolder",
-    header: "Main Folder",
-    size: 120,
-  },
-  {
-    accessorKey: "subFolder",
-    header: "Sub Folder",
-    size: 110,
-  },
-  {
-    accessorKey: "variationRef",
-    header: "Variation Ref.",
-    size: 110,
-  },
-  {
-    accessorKey: "supplierName",
-    header: "Supplier Name",
-    size: 140,
-  },
-  {
-    accessorKey: "supplierEmail",
-    header: "Supplier Email Adds",
-    size: 160,
-  },
-  {
-    accessorKey: "no",
-    header: "No.",
-    size: 60,
-  },
-  {
-    accessorKey: "productDescription",
-    header: "Product Description",
-    size: 180,
-  },
-  {
-    accessorKey: "totalQty",
-    header: "Total QTY",
-    size: 100,
-  },
-  {
-    accessorKey: "unit",
-    header: "UNIT",
-    size: 80,
-  },
-  {
-    accessorKey: "unitPrice",
-    header: "Unit Price",
-    size: 110,
-  },
-  {
-    accessorKey: "qtyRemaining",
-    header: "QTY Remaining",
-    size: 120,
-  },
-  {
-    accessorKey: "callOffQty",
-    header: "Call Off QTY",
-    size: 120,
-  },
-  {
-    accessorKey: "callOffPrice",
-    header: "Call Off Price",
-    size: 130,
-  },
-  {
-    accessorKey: "callOffDate",
-    header: "Call Off Date",
-    size: 120,
-  },
-  {
-    accessorKey: "expectedDeliveryDate",
-    header: "Expected Delivery Date",
-    size: 150,
-  },
-  {
-    accessorKey: "callOffBy",
-    header: "Call-off By",
-    size: 110,
-  },
-  {
-    accessorKey: "approveBy",
-    header: "Approve By",
-    size: 110,
-  },
+const columns: ColDef<CallOffRow>[] = [
+  { headerName: "PO Ref", field: "poRef" },
+  { headerName: "Call Off Ref", field: "callOffRef" },
+  { headerName: "Project", field: "project" },
+  { headerName: "Main Folder", field: "mainFolder" },
+  { headerName: "Sub Folder", field: "subFolder" },
+  { headerName: "Variation Ref.", field: "variationRef" },
+  { headerName: "Supplier Name", field: "supplierName" },
+  { headerName: "Supplier Email Adds", field: "supplierEmail" },
+  { headerName: "No.", field: "no" },
+  { headerName: "Product Description", field: "productDescription" },
+  { headerName: "Total QTY", field: "totalQty" },
+  { headerName: "UNIT", field: "unit" },
+  { headerName: "Unit Price", field: "unitPrice" },
+  { headerName: "QTY Remaining", field: "qtyRemaining" },
+  { headerName: "Call Off QTY", field: "callOffQty" },
+  { headerName: "Call Off Price", field: "callOffPrice" },
+  { headerName: "Call Off Date", field: "callOffDate" },
+  { headerName: "Expected Delivery Date", field: "expectedDeliveryDate" },
+  { headerName: "Call-off By", field: "callOffBy" },
+  { headerName: "Approve By", field: "approveBy" },
 ]
 
 export default function Page() {
@@ -363,7 +283,7 @@ export default function Page() {
       </div>
 
       <div className="mt-8 overflow-x-auto">
-        <DynamicTable columns={columns} data={data} />
+        <AgTable rowData={data} columnDefs={columns} height="auto" />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColDef } from "ag-grid-community"
 
-import { DynamicTable } from "@/components/dynamic-table"
+import { AgTable } from "@/components/common/AgTable"
 import {
   Select,
   SelectContent,
@@ -38,8 +38,16 @@ const summaryRows = [
   { label: "Proforma NR Invoice Awaiting approved", value: "200", alert: true },
   { label: "Awaiting approval proforma NR value", value: "200", alert: true },
   { label: "Proforma NR invoices due this week", value: "200", alert: false },
-  { label: "Proforma NR invoices due value this week", value: "200", alert: false },
-  { label: "Proforma NR invoices value due this week", value: "200", alert: false },
+  {
+    label: "Proforma NR invoices due value this week",
+    value: "200",
+    alert: false,
+  },
+  {
+    label: "Proforma NR invoices value due this week",
+    value: "200",
+    alert: false,
+  },
   { label: "Proforma NR invoices paid QTY", value: "200", alert: false },
   { label: "Proforma NR invoices paid value", value: "200", alert: false },
 ]
@@ -123,24 +131,24 @@ const rows: ProformaRow[] = [
   },
 ]
 
-const columns: ColumnDef<ProformaRow>[] = [
-  { accessorKey: "no", header: "No." },
-  { accessorKey: "invoiceNumber", header: "Invoice Number" },
-  { accessorKey: "date", header: "Date" },
-  { accessorKey: "nrProformaNo", header: "NR Proforma no." },
-  { accessorKey: "project", header: "Project" },
-  { accessorKey: "workArea", header: "Work area" },
-  { accessorKey: "workSection", header: "Work section" },
-  { accessorKey: "descriptionOfWorks", header: "Description of Works" },
-  { accessorKey: "createdBy", header: "Created by" },
-  { accessorKey: "approvedBy", header: "Approved by" },
-  { accessorKey: "approved", header: "Approved" },
-  { accessorKey: "total", header: "TOTAL" },
-  { accessorKey: "paid", header: "Paid" },
-  { accessorKey: "datePaid", header: "Date paid" },
-  { accessorKey: "paidBy", header: "Paid by" },
-  { accessorKey: "financeComments", header: "Finance team comments" },
-  { accessorKey: "commercialComments", header: "Commercial team Comments" },
+const columns: ColDef<ProformaRow>[] = [
+  { headerName: "No.", field: "no" },
+  { headerName: "Invoice Number", field: "invoiceNumber" },
+  { headerName: "Date", field: "date" },
+  { headerName: "NR Proforma no.", field: "nrProformaNo" },
+  { headerName: "Project", field: "project" },
+  { headerName: "Work area", field: "workArea" },
+  { headerName: "Work section", field: "workSection" },
+  { headerName: "Description of Works", field: "descriptionOfWorks" },
+  { headerName: "Created by", field: "createdBy" },
+  { headerName: "Approved by", field: "approvedBy" },
+  { headerName: "Approved", field: "approved" },
+  { headerName: "TOTAL", field: "total" },
+  { headerName: "Paid", field: "paid" },
+  { headerName: "Date paid", field: "datePaid" },
+  { headerName: "Paid by", field: "paidBy" },
+  { headerName: "Finance team comments", field: "financeComments" },
+  { headerName: "Commercial team Comments", field: "commercialComments" },
 ]
 
 export default function Page() {
@@ -163,7 +171,7 @@ export default function Page() {
 
       <TableStat summaryRows={summaryRows} />
 
-      <DynamicTable columns={columns} data={rows} initialSortId="no" />
+      <AgTable rowData={rows} columnDefs={columns} height="auto" />
     </div>
   )
 }

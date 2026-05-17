@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
-import { DynamicTable } from "@/components/dynamic-table"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColDef } from "ag-grid-community"
+import { AgTable } from "@/components/common/AgTable"
 import {
   Select,
   SelectContent,
@@ -58,14 +58,14 @@ const data: BreakdownRow[] = [
   },
 ]
 
-const columns: ColumnDef<BreakdownRow>[] = [
-  { accessorKey: "period", header: "Date 15th to 15th" },
-  { accessorKey: "applicationValue", header: "Application Value" },
-  { accessorKey: "projectValue", header: "Project Value" },
-  { accessorKey: "labourTarget", header: "Labour Target" },
-  { accessorKey: "overspend", header: "Overspend" },
-  { accessorKey: "unclaimed", header: "Unclaimed" },
-  { accessorKey: "poCalledOff", header: "PO Called off" },
+const columns: ColDef<BreakdownRow>[] = [
+  { headerName: "Date 15th to 15th", field: "period" },
+  { headerName: "Application Value", field: "applicationValue" },
+  { headerName: "Project Value", field: "projectValue" },
+  { headerName: "Labour Target", field: "labourTarget" },
+  { headerName: "Overspend", field: "overspend" },
+  { headerName: "Unclaimed", field: "unclaimed" },
+  { headerName: "PO Called off", field: "poCalledOff" },
 ]
 
 export default function Page() {
@@ -120,17 +120,7 @@ export default function Page() {
 
       <div className="mt-8">
         <h3 className="mb-3 text-sm font-medium">Financial Breakdown</h3>
-        <Card>
-          <CardContent>
-            <div className="w-full overflow-x-auto">
-              <DynamicTable
-                columns={columns}
-                data={data}
-                initialSortId="period"
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <AgTable rowData={data} columnDefs={columns} height="auto" />
       </div>
     </div>
   )
