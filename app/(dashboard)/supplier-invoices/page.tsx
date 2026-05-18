@@ -8,6 +8,7 @@ import type {
   ColDef,
   ICellRendererParams,
 } from "ag-grid-community"
+import TableStat from "@/components/common/table-stat"
 
 type SupplierInvoiceRow = {
   no: string
@@ -350,23 +351,7 @@ export default function Page() {
 
   return (
     <div className="w-full min-w-0 space-y-8 p-4">
-      <div className="overflow-x-auto border border-[#0a5f4d]">
-        <div className="grid min-w-full grid-cols-2">
-          {summaryRows.map((row) => (
-            <div
-              className="grid grid-cols-[1fr_200px] border-r border-b border-[#0a5f4d] last:border-b-0"
-              key={row.label}
-            >
-              <div className="bg-[#2f67d9] px-3 py-2 text-xs font-semibold text-slate-100">
-                {row.label}
-              </div>
-              <div className="bg-[#16663f] px-3 py-2 text-xs font-semibold text-slate-100">
-                {row.value}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <TableStat summaryRows={summaryRows} />
       <Filters />
 
       <AgTable
