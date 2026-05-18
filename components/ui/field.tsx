@@ -28,7 +28,7 @@ const FieldContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("text-sm", className)} {...props} />
+  <div ref={ref} className={cn("text-sm mt-2", className)} {...props} />
 ))
 FieldContent.displayName = "FieldContent"
 

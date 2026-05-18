@@ -90,10 +90,12 @@ export default function Page() {
                 {role.label}
               </Button>
             ))}
+            <Button onClick={() => router.push("/supplier")} variant="outline">
+              Supplier
+            </Button>
             <Button
               onClick={() => router.push("/super-admin")}
               variant="outline"
-              className="mt-4"
             >
               SUPER ADMIN
             </Button>
