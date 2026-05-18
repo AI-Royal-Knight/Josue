@@ -244,15 +244,15 @@ export default function Page() {
     []
   )
 
-  const gridOptions = useMemo(
-    () => ({
-      getRowStyle: (params: RowClassParams) =>
-        params.data?.highlight
-          ? { background: "#1ea84d", color: "#ffffff" }
-          : undefined,
-    }),
-    []
-  )
+//   const gridOptions = useMemo(
+//     () => ({
+//       getRowStyle: (params: RowClassParams) =>
+//         params.data?.highlight
+//           ? { background: "#1ea84d", color: "#ffffff" }
+//           : undefined,
+//     }),
+//     []
+//   )
 
   return (
     <div className="w-full space-y-6 p-6">
@@ -283,7 +283,7 @@ export default function Page() {
             rowData={rows}
             columnDefs={columns}
             height="auto"
-            gridOptions={gridOptions}
+            // gridOptions={gridOptions}
           />
         </div>
       </div>

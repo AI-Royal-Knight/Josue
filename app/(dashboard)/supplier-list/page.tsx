@@ -19,6 +19,7 @@ import { AgTable } from "@/components/common/AgTable"
 import Filters from "@/components/shared/filters"
 import { Switch } from "@/components/ui/switch"
 import ConfirmPaymentDialog from "@/components/common/confirm-payment"
+import TableStat from "@/components/common/table-stat"
 
 type SupplierRow = {
   no: string
@@ -240,24 +241,10 @@ export default function Page() {
   ]
 
   return (
-    <div className="w-full min-w-0 space-y-6 p-6 bg-white">
+    <div className="w-full min-w-0 space-y-6 bg-white p-6">
       <h1 className="text-primary">Supplier List</h1>
-
-      <div className="max-w-[500px] overflow-hidden border border-[#0a5f4d]">
-        {summaryRows.map((item) => (
-          <div
-            key={item.label}
-            className="grid grid-cols-[1fr_190px] border-b border-[#0a5f4d] last:border-b-0"
-          >
-            <div className="bg-[#2f67d9] px-3 py-2 text-xs font-semibold text-slate-100">
-              {item.label}
-            </div>
-            <div className="bg-[#16663f] px-3 py-2 text-xs font-semibold text-slate-100">
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
+      
+      <TableStat summaryRows={summaryRows} />
 
       <div className="flex justify-between">
         <InviteSupplierDialog />

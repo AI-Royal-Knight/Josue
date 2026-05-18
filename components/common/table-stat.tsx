@@ -1,6 +1,10 @@
+import { AgTable } from "./AgTable"
+import type { ColDef } from "ag-grid-community"
+
 type StatRow = {
   label: string
   value: string
+  alert?: boolean
 }
 
 type TableStatProps = {
@@ -8,21 +12,42 @@ type TableStatProps = {
 }
 
 export default function TableStat({ summaryRows = [] }: TableStatProps) {
+  const columnDefs: ColDef<StatRow>[] = [
+    {
+      field: "label",
+      headerName: "",
+      flex: 1,
+      sortable: false,
+      filter: false,
+      resizable: false,
+      cellClass: "px-3 text-xs font-semibold text-slate-100",
+    },
+    {
+      field: "value",
+      headerName: "",
+      flex: 0.5,
+      sortable: false,
+      filter: false,
+      resizable: false,
+      cellClass: "px-3 text-xs font-semibold text-slate-100",
+      cellStyle: { textAlign: "center" },
+    },
+  ]
+
   return (
-    <div className="max-w-[500px] overflow-hidden border border-[#0a5f4d]">
-      {Array.isArray(summaryRows) && summaryRows.map((item) => (
-        <div
-          key={item.label}
-          className="grid grid-cols-[1fr_190px] border-b border-[#0a5f4d] last:border-b-0"
-        >
-          <div className="bg-blue-900 px-3 py-2 text-xs font-semibold text-slate-100">
-            {item.label}
-          </div>
-          <div className="bg-[#16663f] px-3 py-2 text-xs font-semibold text-slate-100">
-            {item.value}
-          </div>
-        </div>
-      ))}
+    <div className="max-w-[500px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
+      <AgTable
+        rowData={summaryRows}
+        columnDefs={columnDefs}
+        height="auto"
+        defaultColDef={{ sortable: false, filter: false, resizable: false }}
+        gridOptions={{
+          headerHeight: 0,
+          suppressCellFocus: true,
+          domLayout: "autoHeight",
+        }}
+        noRowsText="No summary data available"
+      />
     </div>
   )
 }

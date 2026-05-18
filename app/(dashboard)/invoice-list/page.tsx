@@ -33,11 +33,11 @@ type InvoiceListRow = {
 
 const summaryRows = [
   { label: "Approved Invoices", value: "1000" },
-  { label: "Approved Invoices Value", value: "400" },
+  { label: "Approved Invoices Value", value: "£400" },
   { label: "Invoices Due This Week", value: "200" },
-  { label: "Invoices Value Due This Week", value: "200" },
+  { label: "Invoices Value Due This Week", value: "£200" },
   { label: "Invoices Paid QTY", value: "200" },
-  { label: "Invoices Paid Value", value: "200" },
+  { label: "Invoices Paid Value", value: "£200" },
 ]
 
 const data: InvoiceListRow[] = [

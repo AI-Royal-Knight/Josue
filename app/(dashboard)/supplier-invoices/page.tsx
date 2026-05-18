@@ -351,8 +351,14 @@ export default function Page() {
 
   return (
     <div className="w-full min-w-0 space-y-8 p-4">
-      <TableStat summaryRows={summaryRows} />
-      <Filters />
+      <div className="flex justify-between">
+        <div className="flex-1">
+          <TableStat summaryRows={summaryRows} />
+        </div>
+        <div className="ml-4 flex items-end gap-4">
+          <Filters />
+        </div>
+      </div>
 
       <AgTable
         rowData={rows}

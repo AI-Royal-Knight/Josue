@@ -18,7 +18,8 @@ const baseTheme = themeQuartz.withParams({
   backgroundColor: colors.background,
   foregroundColor: colors.foreground,
   headerTextColor: colors.headerText,
-  headerBackgroundColor: colors.headerBackground,
+  //   headerBackgroundColor: colors.headerBackground,
+  headerBackgroundColor: colors.oddRowBackground,
   oddRowBackgroundColor: colors.oddRowBackground,
   borderColor: colors.border,
   headerColumnResizeHandleColor: colors.headerColumnResizeHandle,
@@ -27,8 +28,8 @@ const baseTheme = themeQuartz.withParams({
   headerHeight: 36,
   rowHeight: 36,
   wrapperBorderRadius: 0,
-  borderWidth: 0,
-   selectedRowBackgroundColor: colors.secondary,
+  borderWidth: 1,
+  selectedRowBackgroundColor: colors.secondary,
 })
 
 const modules = [AllCommunityModule]

@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select"
 import { DynamicTable } from "@/components/dynamic-table"
 import { Card } from "@/components/ui/card"
+import { AgTable } from "@/components/common/AgTable"
+import TableStat from "@/components/common/table-stat"
 
 type VariationSummaryRow = {
   no: string
@@ -298,6 +300,15 @@ const columns: ColumnDef<VariationSummaryRow>[] = [
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
 
+  const columnDefs = columns.map((col) => ({
+    headerName: col.header,
+    field: col.accessorKey,
+    width: col.size,
+    sortable: false,
+    filter: false,
+    resizable: false,
+  }))
+
   return (
     <div className="w-full space-y-6 p-6">
       <div>
@@ -319,7 +330,7 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      {/* <div className="grid grid-cols-3 gap-4">
         {summaryMetrics.map((metric) => (
           <Card
             key={metric.label}
@@ -331,11 +342,24 @@ export default function Page() {
             </p>
           </Card>
         ))}
-      </div>
+      </div> */}
 
-      <div className="mt-8 overflow-x-auto">
-        <DynamicTable columns={columns} data={data} />
-      </div>
+      <TableStat summaryRows={summaryMetrics} />
+
+        <AgTable
+            rowData={data}
+            columnDefs={columnDefs}
+            height="auto"
+            defaultColDef={{ sortable: false, filter: false, resizable: false }}
+            gridOptions={{
+              headerHeight: 40,
+              suppressCellFocus: true,
+              domLayout: "autoHeight",
+            }}
+            noRowsText="No variation data available"
+          />
+
+      {/* <DynamicTable columns={columns} data={data} /> */}
     </div>
   )
 }

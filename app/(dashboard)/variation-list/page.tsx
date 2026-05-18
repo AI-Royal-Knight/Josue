@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select"
 import { AgTable } from "@/components/common/AgTable"
 import { Card } from "@/components/ui/card"
+import TableStat from "@/components/common/table-stat"
 
 type VariationRow = {
   no: string
@@ -221,19 +222,7 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {summaryMetrics.map((metric) => (
-          <Card
-            key={metric.label}
-            className="border-white/10 bg-gradient-to-b from-[#182842] to-[#0e1728] p-4"
-          >
-            <p className="text-xs text-slate-400">{metric.label}</p>
-            <p className="mt-2 text-lg font-semibold text-emerald-400">
-              {metric.value}
-            </p>
-          </Card>
-        ))}
-      </div>
+      <TableStat summaryRows={summaryMetrics} />
 
       <div className="mt-8 overflow-x-auto">
         <AgTable rowData={data} columnDefs={columns} height="auto" />

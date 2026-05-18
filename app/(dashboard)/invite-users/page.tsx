@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { ColDef } from "ag-grid-community"
 import InviteUserDialog from "./invite-modal"
 import { AgTable } from "@/components/common/AgTable"
+import TableStat from "@/components/common/table-stat"
 
 type UserRow = {
   name: string
@@ -103,34 +104,18 @@ export default function Page() {
     <div className="w-full space-y-6 p-6">
       <h2 className="text-xl font-semibold">Document Controller</h2>
 
-      <div className="flex items-start justify-between gap-6">
-        <div className="space-y-5">
-          <div className="flex items-center gap-8">
-            <InviteUserDialog />
-          </div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <TableStat
+            summaryRows={[
+              { label: "Total Users", value: "4" },
+              { label: "Approved Users", value: "2" },
+              { label: "CSCS Card Expired", value: "2", alert: true },
+            ]}
+          />
         </div>
 
-        <Card className="min-w-[230px] overflow-hidden border border-cyan-500/60 bg-[#1a2a3f]">
-          <CardContent className="space-y-4">
-            <div className="border-b border-cyan-500/40 pb-2 text-xs text-slate-200">
-              Users Summary
-            </div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between text-slate-300">
-                <span>Users</span>
-                <span>4</span>
-              </div>
-              <div className="flex justify-between text-slate-300">
-                <span>Approved users</span>
-                <span>2</span>
-              </div>
-              <div className="flex justify-between text-slate-300">
-                <span>CSCS Card Expired</span>
-                <span className="text-red-400">2</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <InviteUserDialog />
       </div>
       <AgTable rowSelection="single" rowData={users} columnDefs={columnDefs} />
     </div>
