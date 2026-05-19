@@ -224,10 +224,10 @@ export default function Page() {
 
       <div className="max-w-[220px]">
         <Select value={project} onValueChange={setProject}>
-          <SelectTrigger className="border-[#0a5f4d] bg-[#062724] text-slate-200">
+          <SelectTrigger className="bg-primary">
             <SelectValue placeholder="Project" />
           </SelectTrigger>
-          <SelectContent className="border-[#0a5f4d] bg-[#062724] text-slate-200">
+          <SelectContent>
             <SelectItem value="all">All Projects</SelectItem>
             <SelectItem value="alpha">Project Alpha</SelectItem>
             <SelectItem value="beta">Project Beta</SelectItem>
