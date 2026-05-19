@@ -1,4 +1,3 @@
-import React from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Button } from '../ui/button'
 
