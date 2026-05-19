@@ -211,7 +211,17 @@ export default function Page() {
 
   const columnDefs: ColDef<SupplierRow>[] = [
     { headerName: "No", field: "no" },
-    { headerName: "Invoice Number", field: "invoiceNumber" },
+    {
+      headerName: "Invoice Number",
+      field: "invoiceNumber",
+      cellRenderer: (params: { data?: SupplierRow; value: string }) => (
+        <a
+          className={`hover:underline ${params.data?.paid ? "text-green-500" : "text-red-500"}`}
+        >
+          {params.value}
+        </a>
+      ),
+    },
     { headerName: "Date", field: "date" },
     { headerName: "Project", field: "project" },
     { headerName: "Supplier name", field: "supplierName" },
@@ -243,12 +253,12 @@ export default function Page() {
   return (
     <div className="w-full min-w-0 space-y-6 bg-white p-6">
       <h1 className="text-primary">Supplier List</h1>
-      
+
       <TableStat summaryRows={summaryRows} />
 
       <div className="flex justify-between">
         <InviteSupplierDialog />
-        <Filters />
+        {/* <Filters /> */}
       </div>
 
       <ConfirmPaymentDialog
@@ -267,7 +277,7 @@ export default function Page() {
         rowData={rows}
         defaultColDef={{
           flex: 1,
-          minWidth: 100,
+          minWidth: 130,
           resizable: true,
         }}
       />
