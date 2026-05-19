@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card"
 import type { ColDef } from "ag-grid-community"
 import InviteUserDialog from "./invite-modal"
 import { AgTable } from "@/components/common/AgTable"
@@ -86,7 +85,7 @@ const users: UserRow[] = [
 const columnDefs: ColDef<UserRow>[] = [
   { headerName: "First Name", field: "name" },
   { headerName: "Last Name", field: "surname" },
-  { headerName: "Email", field: "email" },
+  { headerName: "Email", field: "email", minWidth: 240 },
   { headerName: "Profession", field: "profession" },
   { headerName: "CSCS Card No.", field: "cscsCardNo" },
   { headerName: "CSCS Expiry Date", field: "cscsExpiryDate" },
@@ -102,7 +101,7 @@ const columnDefs: ColDef<UserRow>[] = [
 export default function Page() {
   return (
     <div className="w-full space-y-6 p-6">
-      <h2 className="text-xl font-semibold">Document Controller</h2>
+      <h2 className="text-xl font-semibold">Invite Users</h2>
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
@@ -117,7 +116,12 @@ export default function Page() {
 
         <InviteUserDialog />
       </div>
-      <AgTable rowSelection="single" rowData={users} columnDefs={columnDefs} />
+      <AgTable
+        rowSelection="single"
+        rowData={users}
+        columnDefs={columnDefs}
+        defaultColDef={{ flex: 1, minWidth: 140, resizable: true }}
+      />
     </div>
   )
 }

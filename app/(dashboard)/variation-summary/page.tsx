@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
 import {
   Select,
   SelectContent,
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/select"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
+import type { ColDef } from "ag-grid-community"
 
 type VariationSummaryRow = {
   no: string
@@ -202,110 +202,85 @@ const data: VariationSummaryRow[] = [
   },
 ]
 
-const columns: ColumnDef<VariationSummaryRow>[] = [
+const columns: ColDef<VariationSummaryRow>[] = [
   {
-    accessorKey: "no",
-    header: "No.",
-    size: 50,
+     headerName: "No.",
+    field: "no",
+    minWidth: 80,
   },
   {
-    accessorKey: "siteInstructionNumber",
-    header: "Site Instruction Number",
-    size: 160,
+    headerName: "Site Instruction Number",
+    field: "siteInstructionNumber",
+    minWidth: 160,
   },
   {
-    accessorKey: "evidence",
-    header: "Evidence",
-    size: 100,
+    headerName: "Evidence",
+    field: "evidence",
   },
   {
-    accessorKey: "date",
-    header: "Date",
-    size: 100,
+    headerName: "Date",
+    field: "date",
   },
   {
-    accessorKey: "variationSheetNumber",
-    header: "Variation Sheet Number",
-    size: 160,
+    headerName: "Variation Sheet Number",
+    field: "variationSheetNumber",
   },
   {
-    accessorKey: "workArea",
-    header: "Work Area",
-    size: 120,
+    headerName: "Work Area",
+    field: "workArea",
   },
   {
-    accessorKey: "workSection",
-    header: "Work section",
-    size: 120,
+    headerName: "Work section",
+    field: "workSection",
   },
   {
-    accessorKey: "descriptionOfWorks",
-    header: "Description of Works",
-    size: 180,
+    headerName: "Description of Works",
+    field: "descriptionOfWorks",
   },
   {
-    accessorKey: "labourCost",
-    header: "Labour cost",
-    size: 120,
+    headerName: "Labour cost",
+    field: "labourCost",
   },
   {
-    accessorKey: "materialCost",
-    header: "Material Cost",
-    size: 130,
+    headerName: "Material Cost",
+    field: "materialCost",
   },
   {
-    accessorKey: "variationAmount",
-    header: "Variation Amount",
-    size: 140,
+    headerName: "Variation Amount",
+    field: "variationAmount",
   },
   {
-    accessorKey: "percentClaimed",
-    header: "% Claimed",
-    size: 110,
+    headerName: "% Claimed",
+    field: "percentClaimed",
   },
   {
-    accessorKey: "amountClaimed",
-    header: "Amount Claimed",
-    size: 130,
+    headerName: "Amount Claimed",
+    field: "amountClaimed",
   },
   {
-    accessorKey: "clientCertifiedAmount",
-    header: "Client Certified Amount",
-    size: 160,
+    headerName: "Client Certified Amount",
+    field: "clientCertifiedAmount",
   },
   {
-    accessorKey: "diffrenceAmount",
-    header: "Diffrence",
-    size: 110,
+    headerName: "Diffrence",
+    field: "diffrenceAmount",
   },
   {
-    accessorKey: "paymentStatusNr",
-    header: "Payment Status nr",
-    size: 140,
+    headerName: "Payment Status nr",
+    field: "paymentStatusNr",
   },
   {
-    accessorKey: "claimGQComment",
-    header: "Claim GQ Comment",
-    size: 140,
+    headerName: "Claim GQ Comment",
+    field: "claimGQComment",
   },
   {
-    accessorKey: "comments",
-    header: "Comments",
-    size: 120,
+    headerName: "Comments",
+    field: "comments",
   },
 ]
 
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
-
-  const columnDefs = columns.map((col) => ({
-    headerName: typeof col.header === "string" ? col.header : undefined,
-    field: (col as any).accessorKey,
-    width: (col as any).size,
-    sortable: false,
-    filter: false,
-    resizable: false,
-  }))
 
   return (
     <div className="w-full space-y-6 p-6">
@@ -328,36 +303,23 @@ export default function Page() {
         </div>
       </div>
 
-      {/* <div className="grid grid-cols-3 gap-4">
-        {summaryMetrics.map((metric) => (
-          <Card
-            key={metric.label}
-            className="border-white/10 bg-gradient-to-b from-[#182842] to-[#0e1728] p-4"
-          >
-            <p className="text-xs text-slate-400">{metric.label}</p>
-            <p className="mt-2 text-lg font-semibold text-emerald-400">
-              {metric.value}
-            </p>
-          </Card>
-        ))}
-      </div> */}
-
       <TableStat summaryRows={summaryMetrics} />
 
       <AgTable
         rowData={data}
-        columnDefs={columnDefs}
+        columnDefs={columns}
         height="auto"
-        defaultColDef={{ sortable: false, filter: false, resizable: false }}
         gridOptions={{
           headerHeight: 40,
           suppressCellFocus: true,
           domLayout: "autoHeight",
         }}
         noRowsText="No variation data available"
+        defaultColDef={{
+         flex: 1,
+         minWidth: 120
+        }}
       />
-
-      {/* <DynamicTable columns={columns} data={data} /> */}
     </div>
   )
 }

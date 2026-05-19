@@ -8,6 +8,9 @@
 !.yarn/releases
 !.yarn/versions
 
+labour*
+skills*
+
 # testing
 /coverage
 

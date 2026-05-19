@@ -247,11 +247,11 @@ export default function Page() {
       field: "invoiceNumber",
       headerName: "Invoice Number",
       editable: true,
-      minWidth: 140,
+      minWidth: 160,
     },
-    { field: "date", headerName: "DATE", editable: true, minWidth: 110 },
-    { field: "poDate", headerName: "PO Date", editable: true, minWidth: 110 },
-    { field: "poRef", headerName: "PO Ref", editable: true, minWidth: 110 },
+    { field: "date", headerName: "DATE", editable: true, minWidth: 120 },
+    { field: "poDate", headerName: "PO Date", editable: true, minWidth: 120 },
+    { field: "poRef", headerName: "PO Ref", editable: true, minWidth: 120 },
     {
       field: "callOffDate",
       headerName: "Call Off Date",
@@ -311,7 +311,17 @@ export default function Page() {
       field: "approved",
       headerName: "Approved",
       editable: true,
-      minWidth: 110,
+      minWidth: 120,
+      cellStyle: (params) => {
+        if (params.value === "✓ Approved") {
+          return { color: "green", fontWeight: "bold", textAlign: "center" }
+        } else if (params.value === "✗ Rejected") {
+          return { color: "red", fontWeight: "bold", textAlign: "center" }
+        } else if (params.value === "⊙ Pending") {
+          return { color: "orange", fontWeight: "bold", textAlign: "center" }
+        }
+        return { textAlign: "center" }
+      },
     },
     {
       field: "financeComments",
@@ -351,6 +361,7 @@ export default function Page() {
 
   return (
     <div className="w-full min-w-0 space-y-8 p-4">
+      <h2 className="text-xl font-semibold">Supplier Invoices</h2>
       <div className="flex justify-between">
         <div className="flex-1">
           <TableStat summaryRows={summaryRows} />

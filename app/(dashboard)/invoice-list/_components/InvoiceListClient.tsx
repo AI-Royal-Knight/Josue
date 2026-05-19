@@ -51,7 +51,7 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
       : rows.filter((r) => r.project.toLowerCase().includes(project))
 
   const columnDefs: ColDef<InvoiceListRow>[] = [
-    { headerName: "No", field: "no" },
+    { headerName: "No", field: "no", minWidth: 60, filter: false },
     {
       headerName: "Invoice Number",
       field: "invoiceNumber",
@@ -62,13 +62,14 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
           {params.value}
         </a>
       ),
+      minWidth: 160,
     },
-    { headerName: "Date", field: "date" },
-    { headerName: "Project", field: "project" },
-    { headerName: "Name-USER", field: "userName" },
-    { headerName: "Sort code", field: "sortCode" },
-    { headerName: "Account number", field: "accountNumber" },
-    { headerName: "Total", field: "total" },
+    { headerName: "Date", field: "date", minWidth: 120 },
+    { headerName: "Project", field: "project", minWidth: 140 },
+    { headerName: "Name-USER", field: "userName", minWidth: 160 },
+    { headerName: "Sort code", field: "sortCode", minWidth: 140 },
+    { headerName: "Account number", field: "accountNumber", minWidth: 160 },
+    { headerName: "Total", field: "total", minWidth: 120 },
     {
       headerName: "Payment Scheduled",
       field: "paid",
