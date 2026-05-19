@@ -9,8 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DynamicTable } from "@/components/dynamic-table"
-import { Card } from "@/components/ui/card"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 
@@ -301,9 +299,9 @@ export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
 
   const columnDefs = columns.map((col) => ({
-    headerName: col.header,
-    field: col.accessorKey,
-    width: col.size,
+    headerName: typeof col.header === "string" ? col.header : undefined,
+    field: (col as any).accessorKey,
+    width: (col as any).size,
     sortable: false,
     filter: false,
     resizable: false,
@@ -346,18 +344,18 @@ export default function Page() {
 
       <TableStat summaryRows={summaryMetrics} />
 
-        <AgTable
-            rowData={data}
-            columnDefs={columnDefs}
-            height="auto"
-            defaultColDef={{ sortable: false, filter: false, resizable: false }}
-            gridOptions={{
-              headerHeight: 40,
-              suppressCellFocus: true,
-              domLayout: "autoHeight",
-            }}
-            noRowsText="No variation data available"
-          />
+      <AgTable
+        rowData={data}
+        columnDefs={columnDefs}
+        height="auto"
+        defaultColDef={{ sortable: false, filter: false, resizable: false }}
+        gridOptions={{
+          headerHeight: 40,
+          suppressCellFocus: true,
+          domLayout: "autoHeight",
+        }}
+        noRowsText="No variation data available"
+      />
 
       {/* <DynamicTable columns={columns} data={data} /> */}
     </div>
