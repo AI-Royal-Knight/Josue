@@ -40,6 +40,7 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
         rowData={summaryRows}
         columnDefs={columnDefs}
         height="auto"
+        suppressCellClickAction
         defaultColDef={{ sortable: false, filter: false, resizable: false }}
         gridOptions={{
           headerHeight: 0,

@@ -4,6 +4,7 @@ import { useMemo, useRef, useCallback, useState } from "react"
 import { AgGridProvider, AgGridReact } from "ag-grid-react"
 import {
   AllCommunityModule,
+  type CellClickedEvent,
   themeQuartz,
   type ColDef,
   type GridReadyEvent,
@@ -66,6 +67,7 @@ export function AgTable<TData extends object>({
   rowSelection,
   onSelectionChanged,
   onRowClicked,
+  suppressCellClickAction = false,
   onCellValueChanged,
   onGridReady,
   gridOptions,
@@ -221,15 +223,29 @@ export function AgTable<TData extends object>({
     [onRowClicked]
   )
 
-  const handleCellClicked = useCallback(() => {
-    if (dateColumns.length > 0) {
-      setDateField(String(dateColumns[0]))
-    }
+  const handleCellClicked = useCallback(
+    (event: CellClickedEvent<TData>) => {
+      if (suppressCellClickAction) return
 
-    setExportMessage(null)
-    setDateRange(undefined)
-    setIsExportDialogOpen(true)
-  }, [dateColumns])
+      const target = event.event?.target
+      if (target instanceof HTMLElement) {
+        const interactiveElement = target.closest(
+          "button, input, select, textarea, a, label, [role='switch'], [data-cell-click-ignore]"
+        )
+
+        if (interactiveElement) return
+      }
+
+      if (dateColumns.length > 0) {
+        setDateField(String(dateColumns[0]))
+      }
+
+      setExportMessage(null)
+      setDateRange(undefined)
+      setIsExportDialogOpen(true)
+    },
+    [dateColumns, suppressCellClickAction]
+  )
 
   const isAutoHeight = height === "auto"
   const containerStyle = isAutoHeight

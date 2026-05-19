@@ -1,4 +1,11 @@
-import { CellValueChangedEvent, ColDef, Components, GridApi, GridOptions, themeQuartz } from "ag-grid-community"
+import {
+  CellValueChangedEvent,
+  ColDef,
+  Components,
+  GridApi,
+  GridOptions,
+  themeQuartz,
+} from "ag-grid-community"
 
 export type AgTableProps<TData extends object> = {
   /** Row data */
@@ -37,6 +44,9 @@ export type AgTableProps<TData extends object> = {
 
   /** Fired when a row is clicked */
   onRowClicked?: (row: TData) => void
+
+  /** Disable the built-in cell click action for display-only grids */
+  suppressCellClickAction?: boolean
 
   /** Fired when an editable cell value changes */
   onCellValueChanged?: (params: CellValueChangedEvent<TData>) => void

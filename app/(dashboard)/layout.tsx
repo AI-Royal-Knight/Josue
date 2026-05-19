@@ -17,7 +17,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-[#0b1328]/90 px-4 backdrop-blur border-b">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-[#0b1328] px-4 backdrop-blur border-b">
           <SidebarTrigger className="-ml-1" />
           <DashboardBreadcrumb />
           {/* <div className="ml-auto flex items-center gap-4">
