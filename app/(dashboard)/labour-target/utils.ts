@@ -30,7 +30,7 @@ export const FIELD_HEADERS: {
   },
   {
     field: "projectValue",
-    label: "Project Value ($)",
+    label: "Project Value (€)",
     placeholder: "0.00",
   },
   {

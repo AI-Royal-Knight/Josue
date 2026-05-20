@@ -8,7 +8,7 @@ export default function CreateProjectDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 text-white">+ Create New Project</Button>
+        <Button>+ Create New Project</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>

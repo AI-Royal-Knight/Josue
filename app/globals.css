@@ -1,8 +1,71 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "reactflow/dist/style.css";
 
 @custom-variant dark (&:is(.dark *));
+
+@keyframes rf-dots-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 140px 140px;
+  }
+}
+
+@keyframes rf-edge-march {
+  to {
+    stroke-dashoffset: -96;
+  }
+}
+
+.rf-drifting-dots {
+  background-image: radial-gradient(
+    circle,
+    rgba(30, 58, 95, 0.55) 1px,
+    transparent 1px
+  );
+  background-size: 28px 28px;
+  animation: rf-dots-drift 18s linear infinite;
+}
+
+/* Labour Target: moving dotted connectors */
+.react-flow__edge.rf-lt-edge .react-flow__edge-path {
+  stroke-dasharray: 2 10;
+  stroke-linecap: round;
+  animation: rf-edge-march 1.2s linear infinite;
+}
+
+/* React Flow controls (zoom in/out) — keep consistent with app theme */
+.react-flow__controls {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  background: transparent;
+  color: hsl(var(--popover-foreground));
+  border: none;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.react-flow__controls-button:hover {
+  background: hsl(var(--muted));
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+.react-flow__controls-button svg {
+  stroke: currentColor;
+}
+
+.react-flow__controls-button svg * {
+  stroke: currentColor;
+}
 
 ::-webkit-scrollbar {
   width: 8px;

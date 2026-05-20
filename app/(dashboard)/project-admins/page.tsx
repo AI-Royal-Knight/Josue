@@ -28,12 +28,13 @@ export default function page() {
   return (
     <>
       <div className="w-full min-w-0 overflow-x-auto px-4">
-        <div className="flex justify-end gap-4 py-4">
+        <div className="flex justify-between gap-4 py-4">
+         <h2>Project Admins</h2>
           <InviteDialog />
-          <Button variant={"outline"}>
+          {/* <Button variant={"outline"}>
             <Download />
             Export
-          </Button>
+          </Button> */}
         </div>
         <AgTable rowData={projectAmins} columnDefs={columnDefs} height="auto" />
       </div>

@@ -40,7 +40,7 @@ export default function Page() {
   ]
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full px-6 py-4">
       <div className="mb-4 flex items-center justify-between">
         <h2>Projects</h2>
         <CreateProjectDialog />

@@ -47,7 +47,8 @@ export default function Page() {
   ]
 
   return (
-    <div className="w-full min-w-0 space-y-8 p-6">
+    <div className="w-full min-w-0 space-y-8 px-6 py-4">
+      <h2>Quotations</h2>
 
    <div className="max-w-4xl">
 

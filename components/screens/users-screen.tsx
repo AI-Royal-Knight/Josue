@@ -168,5 +168,10 @@ const columns: ColDef<UserRow>[] = [
 ]
 
 export function UsersScreen() {
-  return <AgTable rowData={users} columnDefs={columns} height="auto" />
+  return (
+    <div className="w-full min-w-0 px-6 py-4 space-y-6">
+      <h2>Users</h2>
+      <AgTable rowData={users} columnDefs={columns} height="auto" />
+    </div>
+  )
 }

@@ -129,8 +129,10 @@ export default function Page() {
 
   return (
     <div className="w-full min-w-0 space-y-6 p-6 text-slate-100">
+
+      <h2>Loading and Clearing</h2>
       <Select>
-        <SelectTrigger className="bg-[#1a2842] w-[240px]">
+        <SelectTrigger className="w-[240px] bg-[#1a2842]">
           <SelectValue placeholder="Select project" />
         </SelectTrigger>
         <SelectContent>
@@ -154,26 +156,22 @@ export default function Page() {
         </CardContent>
       </Card>
 
-      {/* <Card className="border-white/10 bg-[#0b1328]/90 text-slate-100"> */}
-        {/* <CardContent> */}
-          <AgTable
-            rowData={rows}
-            columnDefs={columnDefs}
-            rowSelection="multiple"
-            height={60}
-            defaultColDef={{
-              filter: false,
-              sortable: false,
-              resizable: true,
-              flex: 1,
-            }}
-            gridOptions={{
-              suppressCellFocus: false,
-              rowHeight: 28,
-            }}
-          />
-        {/* </CardContent> */}
-      {/* </Card> */}
+      <AgTable
+        rowData={rows}
+        columnDefs={columnDefs}
+        rowSelection="multiple"
+        height={60}
+        defaultColDef={{
+          filter: false,
+          sortable: false,
+          resizable: true,
+          flex: 1,
+        }}
+        gridOptions={{
+          suppressCellFocus: false,
+          rowHeight: 28,
+        }}
+      />
 
       <Card>
         <CardContent className="flex items-center justify-between">

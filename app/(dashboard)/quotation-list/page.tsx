@@ -118,8 +118,8 @@ const rows: QuotationListRow[] = [
 ]
 
 const columns: ColDef<QuotationListRow>[] = [
-  { headerName: "No.", field: "no" },
-  { headerName: "Quotes Ref", field: "quotesRef" },
+  { headerName: "No.", field: "no", maxWidth: 60, filter: false },
+  { headerName: "Quotes Ref", field: "quotesRef", minWidth: 140 },
   { headerName: "Project", field: "project" },
   { headerName: "Main Folder", field: "mainFolder" },
   { headerName: "Sub Folder", field: "subFolder" },
@@ -127,7 +127,12 @@ const columns: ColDef<QuotationListRow>[] = [
   { headerName: "Supplier Name", field: "supplierName" },
   { headerName: "Supplier Email address", field: "supplierEmailAddress" },
   { headerName: "Date of Quote Approved", field: "dateOfQuoteApproved" },
-  { headerName: "Quote Total", field: "quoteTotal" },
+  {
+    headerName: "Quote Total",
+    field: "quoteTotal",
+    cellStyle: { textAlign: "right" },
+    minWidth: 140,
+  },
   {
     headerName: "Create PO",
     field: "createPoStatus",
@@ -144,6 +149,7 @@ const columns: ColDef<QuotationListRow>[] = [
         </Button>
       )
     },
+    minWidth: 160
   },
   { headerName: "Date PO was created", field: "datePoWasCreated" },
   {
@@ -202,16 +208,19 @@ const columns: ColDef<QuotationListRow>[] = [
         </div>
       )
     },
+    minWidth: 160
   },
   {
     headerName: "Quote approval / denial Reasons",
     field: "quoteApprovalReasons",
+    minWidth: 200
   },
 ]
 
 export default function Page() {
   return (
-    <div className="w-full min-w-0 p-6">
+    <div className="w-full min-w-0 px-6 py-4">
+      <h2 className="mb-4">Quotation List</h2>
       <AgTable rowData={rows} columnDefs={columns} height="auto" />
     </div>
   )

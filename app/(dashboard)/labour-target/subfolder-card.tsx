@@ -1,16 +1,21 @@
-"use client";
+"use client"
 
-import { forwardRef } from "react";
-import { cn } from "@/lib/utils";
-import type { Subfolder } from "./types";
+import { forwardRef } from "react"
+import { cn } from "@/lib/utils"
+import type { Subfolder } from "./types"
 
 type SubfolderCardProps = {
-  subfolder: Subfolder;
-  onClick: () => void;
-};
+  subfolder: Subfolder
+  onClick: () => void
+}
 
-const COLUMNS = ["Work section", "Work area", "Project Value", "Labour Target"];
-const FIELDS = ["workSection", "workArea", "projectValue", "labourTarget"] as const;
+const COLUMNS = ["Work section", "Work area", "Project Value", "Labour Target"]
+const FIELDS = [
+  "workSection",
+  "workArea",
+  "projectValue",
+  "labourTarget",
+] as const
 
 export const SubfolderCard = forwardRef<HTMLDivElement, SubfolderCardProps>(
   ({ subfolder, onClick }, ref) => {
@@ -18,10 +23,10 @@ export const SubfolderCard = forwardRef<HTMLDivElement, SubfolderCardProps>(
       <div
         ref={ref}
         onClick={onClick}
-        className="cursor-pointer overflow-hidden rounded-none border border-[#1e3a5f] transition-all duration-150 hover:border-[#3d7abf] hover:shadow-[0_0_0_1px_#3d7abf22]"
+        className="cursor-pointer overflow-hidden rounded-none border border-[#1e3a5f] transition-all duration-150 hover:border-[#3d7abf] hover:shadow-[0_0_0_1px_#3d7abf22] bg-primary"
       >
-        {/* Green subfolder header */}
-        <div className="bg-[#2ecc71] px-3 py-2 text-[13px] font-semibold text-[#0a1a0a]">
+        {/* Subfolder header */}
+        <div className="px-3 py-2 text-[13px] text-center font-semibold text-primary-foreground">
           {subfolder.name}
         </div>
 
@@ -61,8 +66,8 @@ export const SubfolderCard = forwardRef<HTMLDivElement, SubfolderCardProps>(
           </tbody>
         </table>
       </div>
-    );
+    )
   }
-);
+)
 
-SubfolderCard.displayName = "SubfolderCard";
+SubfolderCard.displayName = "SubfolderCard"

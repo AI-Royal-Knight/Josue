@@ -96,6 +96,7 @@ export default function Page() {
           </div>
         )
       },
+      cellStyle: { display: "flex", alignItems: "center" },
     },
     {
       headerName: "Action",
@@ -115,7 +116,8 @@ export default function Page() {
   ]
 
   return (
-    <div className="w-full">
+    <div className="w-full px-6 py-4">
+      <h2 className="mb-4">Assign Management</h2>
       <AgTable rowData={assignments} columnDefs={columns} height="auto" />
 
       <AssignUserModal

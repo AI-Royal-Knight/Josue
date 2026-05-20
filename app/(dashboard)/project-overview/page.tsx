@@ -71,6 +71,7 @@ const columns: ColDef<BreakdownRow>[] = [
 export default function Page() {
   return (
     <div className="w-full p-6">
+      <h2 className="mb-4">Project Overview</h2>
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">

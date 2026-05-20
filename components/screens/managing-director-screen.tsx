@@ -51,9 +51,7 @@ function InviteManagingDirectorDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="h-8 rounded-none bg-blue-600 px-4 text-[11px] text-white hover:bg-blue-500">
-          Send Invite
-        </Button>
+        <Button>Send Invite</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
@@ -71,10 +69,7 @@ function InviteManagingDirectorDialog() {
           </Field>
         </form>
         <DialogFooter>
-          <Button variant="outline">Cancel</Button>
-          <Button className="bg-blue-600 text-white hover:bg-blue-500">
-            Send Invite
-          </Button>
+          <Button>Send Invite</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -84,12 +79,13 @@ function InviteManagingDirectorDialog() {
 export function ManagingDirectorScreen() {
   return (
     <div className="w-full min-w-0 px-6">
-      <div className="flex items-center justify-end gap-4 py-4">
+      <div className="flex items-center justify-between gap-4 py-4">
+         <h2>Managing Director</h2>
         <InviteManagingDirectorDialog />
-        <Button variant={"outline"}>
+        {/* <Button variant={"outline"}>
           <Download />
           Export
-        </Button>
+        </Button> */}
       </div>
       <AgTable rowData={directors} columnDefs={columns} height="auto" />
     </div>
