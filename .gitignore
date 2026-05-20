@@ -8,8 +8,9 @@
 !.yarn/releases
 !.yarn/versions
 
-labour*
 skills*
+*.csv
+*.xlsx
 
 # testing
 /coverage
