@@ -138,13 +138,13 @@ export default function OnboardingWizard({
 
   const resolver = useMemo(() => {
     return async (...args: Parameters<ReturnType<typeof zodResolver>>) => {
-      const baseResolver = zodResolver(schemaRef.current)
+      const baseResolver = zodResolver(schemaRef.current as any)
       return baseResolver(...args)
     }
   }, [])
 
   const form = useForm<OnboardingFormValues>({
-    resolver: resolver as unknown as ReturnType<typeof zodResolver>,
+    resolver: resolver as any,
     defaultValues: { ...onboardingDefaultValues, email: inviteEmail } as any,
     mode: "onSubmit",
   })

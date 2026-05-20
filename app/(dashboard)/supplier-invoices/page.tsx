@@ -313,14 +313,20 @@ export default function Page() {
       editable: true,
       minWidth: 120,
       cellStyle: (params) => {
+        // always include color and fontWeight to satisfy CellStyle index signature
+        const base = {
+          color: "inherit",
+          fontWeight: "normal",
+          textAlign: "center",
+        } as const
         if (params.value === "✓ Approved") {
-          return { color: "green", fontWeight: "bold", textAlign: "center" }
+          return { ...base, color: "green", fontWeight: "bold" }
         } else if (params.value === "✗ Rejected") {
-          return { color: "red", fontWeight: "bold", textAlign: "center" }
+          return { ...base, color: "red", fontWeight: "bold" }
         } else if (params.value === "⊙ Pending") {
-          return { color: "orange", fontWeight: "bold", textAlign: "center" }
+          return { ...base, color: "orange", fontWeight: "bold" }
         }
-        return { textAlign: "center" }
+        return base
       },
     },
     {

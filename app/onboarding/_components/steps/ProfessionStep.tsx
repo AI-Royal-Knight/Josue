@@ -73,7 +73,7 @@ export default function ProfessionStep() {
     formState: { errors },
   } = useFormContext<OnboardingFormValues>()
 
-  const selected = useWatch<OnboardingFormValues>({ name: "professions" }) ?? []
+  const selected = (useWatch<OnboardingFormValues>({ name: "professions" }) as string[]) ?? []
   const [search, setSearch] = useState("")
 
   const filteredCategories = useMemo(() => {

@@ -49,7 +49,7 @@ export default function BasicInfoStep() {
     formState: { errors },
   } = useFormContext<OnboardingFormValues>()
 
-  const password = useWatch<OnboardingFormValues>({ name: "password" }) ?? ""
+  const password = (useWatch<OnboardingFormValues>({ name: "password" }) as string) ?? ""
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
