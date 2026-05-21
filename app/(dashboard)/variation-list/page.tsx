@@ -27,17 +27,25 @@ type VariationRow = {
   variationAmount: string
   percentClaimed: string
   amountClaimed: string
-  clientCertifiedAmount: string
-  diffrenceAmount: string
-  paymentStatusNr: string
-  claimGQComment: string
+  createdBy: string
+  approved: string
+  openFile: string
+  submittedToClient: string
+  clientQS: string
+  signedByClient: string
+  addToVariationSummary: string
   comments: string
+  assignedUser: string
 }
 
 const summaryMetrics = [
   { label: "Variations QTY", value: "0000" },
+  { label: "Added to Variation Summary", value: "400" },
   { label: "Variations Value", value: "000" },
-  { label: "Changed Value", value: "000" },
+  { label: "Approved Variations", value: "000" },
+  { label: "Awaiting Approval", value: "000" },
+  { label: "Submitted to Client", value: "000" },
+  { label: "Signed by Client", value: "000" },
 ]
 
 const data: VariationRow[] = [
@@ -55,11 +63,15 @@ const data: VariationRow[] = [
     variationAmount: "",
     percentClaimed: "",
     amountClaimed: "",
-    clientCertifiedAmount: "",
-    diffrenceAmount: "",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
+    createdBy: "",
+    approved: "",
+    openFile: "",
+    submittedToClient: "",
+    clientQS: "",
+    signedByClient: "Yes",
+    addToVariationSummary: "Yes",
+    comments: "This is a comment",
+    assignedUser: "John Smith",
   },
   {
     no: "2",
@@ -75,11 +87,15 @@ const data: VariationRow[] = [
     variationAmount: "",
     percentClaimed: "",
     amountClaimed: "",
-    clientCertifiedAmount: "",
-    diffrenceAmount: "",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
+    createdBy: "",
+    approved: "",
+    openFile: "",
+    submittedToClient: "",
+    clientQS: "",
+    signedByClient: "Yes",
+    addToVariationSummary: "Yes",
+    comments: "This is a comment",
+    assignedUser: "John Smith",
   },
   {
     no: "3",
@@ -95,11 +111,15 @@ const data: VariationRow[] = [
     variationAmount: "",
     percentClaimed: "",
     amountClaimed: "",
-    clientCertifiedAmount: "",
-    diffrenceAmount: "",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
+    createdBy: "",
+    approved: "",
+    openFile: "",
+    submittedToClient: "",
+    clientQS: "",
+    signedByClient: "Yes",
+    addToVariationSummary: "Yes",
+    comments: "This is a comment",
+    assignedUser: "John Smith",
   },
   {
     no: "4",
@@ -115,11 +135,15 @@ const data: VariationRow[] = [
     variationAmount: "",
     percentClaimed: "",
     amountClaimed: "",
-    clientCertifiedAmount: "",
-    diffrenceAmount: "",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
+    createdBy: "",
+    approved: "",
+    openFile: "",
+    submittedToClient: "",
+    clientQS: "",
+    signedByClient: "Yes",
+    addToVariationSummary: "Yes",
+    comments: "This is a comment",
+    assignedUser: "John Smith",
   },
 ]
 
@@ -127,6 +151,8 @@ const columns: ColDef<VariationRow>[] = [
   {
     headerName: "No.",
     field: "no",
+    maxWidth: 70,
+    filter: false,
   },
   {
     headerName: "Site Instruction Number",
@@ -177,24 +203,97 @@ const columns: ColDef<VariationRow>[] = [
     field: "amountClaimed",
   },
   {
-    headerName: "Client Certified Amount",
-    field: "clientCertifiedAmount",
+    headerName: "Created by",
+    field: "createdBy",
   },
   {
-    headerName: "Diffrence",
-    field: "diffrenceAmount",
+    headerName: "Approved",
+    field: "approved",
   },
   {
-    headerName: "Payment Status nr",
+    headerName: "Open File",
     field: "paymentStatusNr",
   },
   {
-    headerName: "Claim GQ Comment",
+    headerName: "Submitted to Client",
     field: "claimGQComment",
+  },
+  {
+    headerName: "Client QS",
+    field: "comments",
+  },
+  {
+    headerName: "Signed by Client",
+    field: "signedByClient",
+    // cellRenderer: (params: { data?: VariationRow }) => {
+    //   const signed = params.data?.signedByClient === "Yes"
+    //   return (
+    //     <span
+    //       className={`inline-flex rounded-full px-2 py-1 text-xs ${
+    //         signed ? "bg-green-500 text-white" : "bg-red-500 text-white"
+    //       }`}
+    //     >
+    //       {params.data?.signedByClient}
+    //     </span>
+    //   )
+    // },
+    // filter: false,
+    // maxWidth: 120,
+    // cellStyle: { textAlign: "center" },
+    // sortable: false,
+    // resizable: false,
+    // suppressMenu: true,
+    // suppressSorting: true,
+    // suppressMovable: true,
+    // suppressSizeToFit: true,
+    // suppressAutoSize: true,
+    // suppressCellFlash: true,
+    // suppressKeyboardEvent: (params) => {
+    //   const key = params.event.key
+    //   return key === "Enter" || key === " "
+    // },
+    // onCellClicked: (params) => {
+    //   if (params.data?.signedByClient === "Yes") {
+    //     alert(`Viewing signed document for ${params.data.siteInstructionNumber}`)
+    //   } else {
+    //     alert(`Viewing unsigned document for ${params.data.siteInstructionNumber}`)
+    //   }
+    // },
+    // cellClass: "cursor-pointer",
+    // minWidth: 150,
+    // filter: false,
+    // sortable: false,
+    // resizable: false,
+    // suppressMenu: true,
+    // suppressSorting: true,
+    // suppressMovable: true,
+    // suppressSizeToFit: true,
+    // suppressAutoSize: true,
+    // suppressCellFlash: true,
+    // suppressKeyboardEvent: (params) => {
+    //   const key = params.event.key
+    //   return key === "Enter" || key === " "
+    // },
+    // onCellClicked: (params) => {
+    //   if (params.data?.signedByClient === "Yes") {
+    //     alert(`Viewing signed document for ${params.data.siteInstructionNumber}`)
+    //   } else {
+    //     alert(`Viewing unsigned document for ${params.data.siteInstructionNumber}`)
+    //   }
+    // },
+    // cellClass: "cursor-pointer",
+  },
+  {
+    headerName: "Add to Variation Summary",
+    field: "addToVariationSummary",
   },
   {
     headerName: "Comments",
     field: "comments",
+  },
+  {
+    headerName: "Assigned User",
+    field: "assignedUser",
   },
 ]
 
@@ -225,7 +324,12 @@ export default function Page() {
       <TableStat summaryRows={summaryMetrics} />
 
       <div className="mt-8 overflow-x-auto">
-        <AgTable rowData={data} columnDefs={columns} height="auto" />
+        <AgTable
+          rowData={data}
+          columnDefs={columns}
+          height="auto"
+          defaultColDef={{ minWidth: 180 }}
+        />
       </div>
     </div>
   )

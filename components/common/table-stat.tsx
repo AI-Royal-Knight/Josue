@@ -35,13 +35,18 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
   ]
 
   return (
-    <div className="max-w-[500px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
+    <div className="w-full max-w-[400px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
       <AgTable
         rowData={summaryRows}
         columnDefs={columnDefs}
         height="auto"
         suppressCellClickAction
-        defaultColDef={{ sortable: false, filter: false, resizable: false }}
+        defaultColDef={{
+          sortable: false,
+          filter: false,
+          resizable: false,
+          minWidth: 0,
+        }}
         gridOptions={{
           headerHeight: 0,
           suppressCellFocus: true,

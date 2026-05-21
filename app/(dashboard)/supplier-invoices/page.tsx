@@ -44,8 +44,8 @@ const summaryRows = [
   { label: "Approved invoices value", value: "0000000" },
   { label: "Invoices awaiting approval", value: "0000000" },
   { label: "Awaiting approval value", value: "0000000" },
-  { label: "Invoices due this month", value: "0000000" },
-  { label: "Invoices value due this month", value: "0000000" },
+  { label: "Invoices due this week", value: "0000000" },
+  { label: "Invoices value due this week", value: "0000000" },
   { label: "Invoices paid QTY", value: "0000000" },
   { label: "Invoices paid value", value: "0000000" },
 ]
@@ -242,76 +242,73 @@ export default function Page() {
   }
 
   const columnDefs: ColDef<SupplierInvoiceRow>[] = [
-    { field: "no", headerName: "No", editable: false, minWidth: 70 },
+    {
+      field: "no",
+      headerName: "No",
+      editable: false,
+      minWidth: 70,
+      filter: false,
+    },
     {
       field: "invoiceNumber",
       headerName: "Invoice Number",
       editable: true,
       minWidth: 160,
     },
-    { field: "date", headerName: "DATE", editable: true, minWidth: 120 },
-    { field: "poDate", headerName: "PO Date", editable: true, minWidth: 120 },
-    { field: "poRef", headerName: "PO Ref", editable: true, minWidth: 120 },
+   //  { field: "date", headerName: "DATE", editable: true },
+    { field: "poDate", headerName: "PO Date", editable: true },
+    { field: "poRef", headerName: "PO Ref", editable: true },
     {
       field: "callOffDate",
       headerName: "Call Off Date",
       editable: true,
-      minWidth: 120,
     },
     {
       field: "callOffRef",
       headerName: "Call Off Ref",
       editable: true,
-      minWidth: 120,
     },
     {
       field: "variationRef",
       headerName: "Variation Ref",
       editable: true,
-      minWidth: 120,
     },
-    {
-      field: "otherRef",
-      headerName: "Other Ref",
-      editable: true,
-      minWidth: 110,
-    },
+   //  {
+   //    field: "otherRef",
+   //    headerName: "Other Ref",
+   //    editable: true,
+   //  },
     { field: "project", headerName: "Project", editable: true, minWidth: 140 },
     {
       field: "supplierName",
       headerName: "Supplier Name",
       editable: true,
-      minWidth: 140,
     },
     {
       field: "invoiceTotal",
       headerName: "Invoice Total",
       editable: true,
-      minWidth: 130,
     },
     {
       field: "expectedCost",
       headerName: "Expected Cost",
       editable: true,
-      minWidth: 130,
     },
     {
       field: "paymentDueDate",
       headerName: "Payment Due Date",
       editable: true,
-      minWidth: 140,
+      minWidth: 180,
     },
     {
       field: "approvedBy",
       headerName: "Approved By",
       editable: true,
-      minWidth: 130,
     },
     {
       field: "approved",
       headerName: "Approved",
       editable: true,
-      minWidth: 120,
       cellStyle: (params) => {
         // always include color and fontWeight to satisfy CellStyle index signature
         const base = {
@@ -333,7 +330,6 @@ export default function Page() {
       field: "financeComments",
       headerName: "Finance Comments",
       editable: true,
-      minWidth: 150,
       cellRenderer: CommentCellRenderer,
       cellRendererParams: { fieldName: "financeComments" },
     },
@@ -372,9 +368,9 @@ export default function Page() {
         <div className="flex-1">
           <TableStat summaryRows={summaryRows} />
         </div>
-        <div className="ml-4 flex items-end gap-4">
+        {/* <div className="ml-4 flex items-end gap-4">
           <Filters />
-        </div>
+        </div> */}
       </div>
 
       <AgTable

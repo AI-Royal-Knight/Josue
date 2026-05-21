@@ -48,11 +48,12 @@ type SupplierRow = {
 }
 
 const summaryRows = [
-  { label: "Total Credit", value: "£2,500,000" },
-  { label: "Credit Used", value: "£845,200" },
-  { label: "Available Credit", value: "£1,654,800" },
-  { label: "Total Suppliers", value: "184" },
-  { label: "Active Suppliers", value: "156" },
+  { label: "Approved Invoices", value: "1000" },
+  { label: "Approved Invoices Value", value: "£845,200" },
+  { label: "Invoices Due This Week", value: "184" },
+  { label: "Invoices Value Due This Week", value: "£1,654,800" },
+  { label: "Invoices Paid QTY", value: "156" },
+  { label: "Invoices Paid Value", value: "£1,200,000" },
 ]
 
 const initialData: SupplierRow[] = [
@@ -222,7 +223,7 @@ export default function Page() {
         </a>
       ),
     },
-    { headerName: "Date", field: "date" },
+    { headerName: "Date(Supplier sent)", field: "date", minWidth: 150 },
     { headerName: "Project", field: "project" },
     { headerName: "Supplier name", field: "supplierName" },
     { headerName: "Sort code", field: "sortCode" },
@@ -231,7 +232,7 @@ export default function Page() {
     { headerName: "Payment due date", field: "paymentDueDate" },
     { headerName: "Paid by", field: "paidBy" },
     {
-      headerName: "Payment Scheduled",
+      headerName: "Paid",
       field: "paid",
       cellRenderer: (params: { data?: SupplierRow; value: boolean }) => (
         <Switch
@@ -256,10 +257,10 @@ export default function Page() {
 
       <TableStat summaryRows={summaryRows} />
 
-      <div className="flex justify-between">
-        <InviteSupplierDialog />
-        {/* <Filters /> */}
-      </div>
+      {/* <div className="flex justify-between"> */}
+      {/* <InviteSupplierDialog /> */}
+      {/* <Filters /> */}
+      {/* </div> */}
 
       <ConfirmPaymentDialog
         open={confirmOpen}

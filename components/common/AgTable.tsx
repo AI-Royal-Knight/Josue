@@ -88,7 +88,7 @@ export function AgTable<TData extends object>({
   const mergedDefaultColDef = useMemo<ColDef<TData>>(
     () => ({
       flex: 1,
-      minWidth: 120,
+      minWidth: 150,
       resizable: true,
       filter: true,
       sortable: true,

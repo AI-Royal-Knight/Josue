@@ -125,8 +125,8 @@ const columns: ColDef<QuotationListRow>[] = [
   { headerName: "Sub Folder", field: "subFolder" },
   { headerName: "Variation Ref", field: "variationRef" },
   { headerName: "Supplier Name", field: "supplierName" },
-  { headerName: "Supplier Email address", field: "supplierEmailAddress" },
-  { headerName: "Date of Quote Approved", field: "dateOfQuoteApproved" },
+  { headerName: "Supplier Email address", field: "supplierEmailAddress", minWidth: 200 },
+  { headerName: "Date of Quote Approved", field: "dateOfQuoteApproved", minWidth: 220 },
   {
     headerName: "Quote Total",
     field: "quoteTotal",
@@ -151,7 +151,7 @@ const columns: ColDef<QuotationListRow>[] = [
     },
     minWidth: 160
   },
-  { headerName: "Date PO was created", field: "datePoWasCreated" },
+  { headerName: "Date PO was created", field: "datePoWasCreated", minWidth: 200 },
   {
     headerName: "Send Reminder",
     cellRenderer: () => (
@@ -164,7 +164,7 @@ const columns: ColDef<QuotationListRow>[] = [
       </Button>
     ),
   },
-  { headerName: "Procurement Comments", field: "procurementComments" },
+  { headerName: "Procurement Comments", field: "procurementComments", minWidth: 200 },
   {
     headerName: "Request to Re-quote",
     field: "requestRequote",
@@ -213,7 +213,7 @@ const columns: ColDef<QuotationListRow>[] = [
   {
     headerName: "Quote approval / denial Reasons",
     field: "quoteApprovalReasons",
-    minWidth: 200
+    minWidth: 250
   },
 ]
 
@@ -221,7 +221,7 @@ export default function Page() {
   return (
     <div className="w-full min-w-0 px-6 py-4">
       <h2 className="mb-4">Quotation List</h2>
-      <AgTable rowData={rows} columnDefs={columns} height="auto" />
+      <AgTable rowData={rows} columnDefs={columns} height="auto" defaultColDef={{ flex: 1, minWidth: 150 }} />
     </div>
   )
 }

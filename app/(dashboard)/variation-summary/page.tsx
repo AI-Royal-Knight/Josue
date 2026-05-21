@@ -270,7 +270,7 @@ const columns: ColDef<VariationSummaryRow>[] = [
     field: "paymentStatusNr",
   },
   {
-    headerName: "Claim GQ Comment",
+    headerName: "Claim QS Comment",
     field: "claimGQComment",
   },
   {
@@ -278,6 +278,66 @@ const columns: ColDef<VariationSummaryRow>[] = [
     field: "comments",
   },
 ]
+
+const totalRow: VariationSummaryRow = {
+  no: "",
+  siteInstructionNumber: "TOTAL",
+  evidence: "",
+  date: "",
+  variationSheetNumber: "",
+  workArea: "",
+  workSection: "",
+  descriptionOfWorks: "",
+
+  labourCost: `£${data
+    .reduce(
+      (sum, row) =>
+        sum + Number(row.labourCost.replace(/[^\d.-]/g, "") || 0),
+      0
+    )
+    .toFixed(2)}`,
+
+  materialCost: "",
+
+  variationAmount: `£${data
+    .reduce(
+      (sum, row) =>
+        sum + Number(row.variationAmount.replace(/[^\d.-]/g, "") || 0),
+      0
+    )
+    .toFixed(2)}`,
+
+  percentClaimed: "",
+
+  amountClaimed: `£${data
+    .reduce(
+      (sum, row) =>
+        sum + Number(row.amountClaimed.replace(/[^\d.-]/g, "") || 0),
+      0
+    )
+    .toFixed(2)}`,
+
+  clientCertifiedAmount: `£${data
+    .reduce(
+      (sum, row) =>
+        sum +
+        Number(row.clientCertifiedAmount.replace(/[^\d.-]/g, "") || 0),
+      0
+    )
+    .toFixed(2)}`,
+
+  diffrenceAmount: `£${data
+    .reduce(
+      (sum, row) =>
+        sum + Number(row.diffrenceAmount.replace(/[^\d.-]/g, "") || 0),
+      0
+    )
+    .toFixed(2)}`,
+
+  paymentStatusNr: "",
+  claimGQComment: "",
+  comments: "",
+}
 
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
@@ -313,6 +373,16 @@ export default function Page() {
           headerHeight: 40,
           suppressCellFocus: true,
           domLayout: "autoHeight",
+         //  grandTotalRow: "bottom"
+         pinnedBottomRowData: [totalRow],
+         getRowStyle: (params: any) => {
+           if (params.node.isRowPinned()) {
+             return { fontWeight: "bold", backgroundColor: "#1E3A8A80"}
+           }
+           return {}
+         },
+         getRowClass: (params) =>
+           params.node.isRowPinned() ? "pinned-row" : "",
         }}
         noRowsText="No variation data available"
         defaultColDef={{

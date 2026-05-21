@@ -54,7 +54,7 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   procurement_department: [
-    { title: "Supplier List", url: "/supplier-list" },
+    { title: "Supplier List", url: "/supplier-lists" },
     { title: "Quotations", url: "/quotations" },
     { title: "Quotation Lists", url: "/quotation-list" },
     { title: "Purchase Order List", url: "/purchase-order-list" },

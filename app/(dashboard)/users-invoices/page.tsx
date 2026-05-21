@@ -196,7 +196,7 @@ export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
   const columns = useMemo<ColDef<InvoiceRow>[]>(
     () => [
-      { headerName: "No.", field: "no", minWidth: 60 },
+      { headerName: "No.", field: "no", minWidth: 70, filter: false },
       { headerName: "Invoice Number", field: "invoiceNumber", minWidth: 160 },
       { headerName: "Date", field: "date", minWidth: 120 },
       {

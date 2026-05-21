@@ -71,7 +71,7 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
     { headerName: "Account number", field: "accountNumber", minWidth: 160 },
     { headerName: "Total", field: "total", minWidth: 120 },
     {
-      headerName: "Payment Scheduled",
+      headerName: "Paid",
       field: "paid",
       type: "",
       cellRenderer: (params: { data?: InvoiceListRow; value: boolean }) => (

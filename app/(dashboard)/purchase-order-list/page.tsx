@@ -223,7 +223,7 @@ export default function Page() {
       <TableStat summaryRows={summaryMetrics} />
 
       <div className="mt-8 overflow-x-auto">
-        <AgTable rowData={data} columnDefs={columns} height="auto" />
+        <AgTable rowData={data} columnDefs={columns} height="auto" defaultColDef={{ flex: 1, minWidth: 150 }} />
       </div>
     </div>
   )

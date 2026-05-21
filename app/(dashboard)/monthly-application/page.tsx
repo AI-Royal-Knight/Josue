@@ -18,6 +18,7 @@ import ApplicationView from "./_components/ApplicationView"
 type MonthlyTab = "variation-summary" | "white-card" | "application"
 
 const variationTotals = {
+   qty: "10000",
   labourCost: "£4,920.00",
   materialCost: "£5,610.00",
   valuationAmount: "£10,530.00",
@@ -27,9 +28,9 @@ const variationTotals = {
 }
 
 const summaryRows = [
-  { label: "Labour cost", value: variationTotals.labourCost },
-  { label: "Material cost", value: variationTotals.materialCost },
-  { label: "Valuation amount", value: variationTotals.valuationAmount },
+  { label: "Variation QTY", value: variationTotals.qty },
+  { label: "Variation Value", value: variationTotals.materialCost },
+  { label: "Claimed Value", value: variationTotals.amountClaimed },
 ]
 
 export default function Page() {
