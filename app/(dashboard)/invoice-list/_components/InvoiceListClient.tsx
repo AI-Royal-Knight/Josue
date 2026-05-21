@@ -86,7 +86,6 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
     },
     { headerName: "Date scheduled", field: "dateScheduled" },
     { headerName: "Release date", field: "releaseDate" },
-    { headerName: "Scheduled by", field: "scheduledBy" },
     { headerName: "Comments", field: "comments" },
   ]
 

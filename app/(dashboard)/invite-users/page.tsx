@@ -1,7 +1,9 @@
+"use client"
 import type { ColDef } from "ag-grid-community"
 import InviteUserDialog from "./invite-modal"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
+import { UserProfileDialog } from "@/components/user-profile-dialog"
 
 type UserRow = {
   name: string
@@ -83,17 +85,56 @@ const users: UserRow[] = [
 ]
 
 const columnDefs: ColDef<UserRow>[] = [
-  { headerName: "First Name", field: "name" },
-  { headerName: "Last Name", field: "surname" },
-  { headerName: "Email", field: "email", minWidth: 240 },
+  { headerName: "Name", field: "name" },
+  { headerName: "Surname", field: "surname" },
+  { headerName: "Email", field: "email" },
   { headerName: "Profession", field: "profession" },
-  { headerName: "CSCS Card No.", field: "cscsCardNo" },
-  { headerName: "CSCS Expiry Date", field: "cscsExpiryDate" },
+  { headerName: "CSCS Card No", field: "cscsCardNo" },
+  {
+    headerName: "CSCS Expiry Date",
+    field: "cscsExpiryDate",
+    cellRenderer: (params: { data?: UserRow; value: string }) => (
+      <span
+        className={
+          params.data?.cscsExpiryTone === "red"
+            ? "text-red-500"
+            : "text-emerald-400"
+        }
+      >
+        {params.value}
+      </span>
+    ),
+  },
   { headerName: "IPAF", field: "ipaf" },
-  { headerName: "PASMA", field: "pasma" },
+  {
+    headerName: "PASMA",
+    field: "pasma",
+    cellRenderer: (params: { value: string }) => (
+      <span className="whitespace-pre-line">{params.value}</span>
+    ),
+  },
   { headerName: "Company", field: "company" },
   { headerName: "SSSTS/SMSTS", field: "ssstsSmsts" },
-  { headerName: "SSSTS/SMSTS Expiry", field: "expiryDate" },
+  {
+    headerName: "Expiry Date",
+    field: "expiryDate",
+    cellRenderer: (params: { data?: UserRow; value: string }) => (
+      <span
+        className={
+          params.data?.expiryTone === "red"
+            ? "text-red-500"
+            : "text-emerald-400"
+        }
+      >
+        {params.value}
+      </span>
+    ),
+  },
+  {
+    headerName: "Profile",
+    cellRenderer: (params: { data?: UserRow }) =>
+      params.data ? <UserProfileDialog user={params.data} /> : null,
+  },
   { headerName: "Approved User", field: "approvedUser" },
   { headerName: "Approved By", field: "approvedBy" },
 ]

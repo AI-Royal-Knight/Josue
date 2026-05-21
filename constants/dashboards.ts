@@ -95,7 +95,7 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
-    { title: "Variation List", url: "/variation-list" },
+    { title: "Variations List", url: "/variations-list" },
     { title: "Profile", url: "/profile" },
   ],
   managers: [
@@ -111,7 +111,7 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
-    { title: "Variation List", url: "/variation-list" },
+    { title: "Variation List", url: "/variations-list" },
     { title: "Profile", url: "/profile" },
   ],
   supervisor: [
