@@ -36,6 +36,7 @@ type VariationRow = {
   addToVariationSummary: string
   comments: string
   assignedUser: string
+
 }
 
 const summaryMetrics = [
@@ -212,15 +213,15 @@ const columns: ColDef<VariationRow>[] = [
   },
   {
     headerName: "Open File",
-    field: "paymentStatusNr",
+    field: "openFile",
   },
   {
     headerName: "Submitted to Client",
-    field: "claimGQComment",
+    field: "submittedToClient",
   },
   {
     headerName: "Client QS",
-    field: "comments",
+    field: "clientQS",
   },
   {
     headerName: "Signed by Client",

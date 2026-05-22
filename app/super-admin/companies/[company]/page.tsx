@@ -34,6 +34,8 @@ type ProjectRow = {
   status: string
   users: number
   workers: number
+  managers?: number
+  contracts?: string
 }
 
 const SAMPLE_PROJECTS: ProjectRow[] = [
@@ -85,6 +87,8 @@ export default function CompanyPage({
     },
     { field: "users", headerName: "Total Users", minWidth: 110 },
     { field: "workers", headerName: "Workers", minWidth: 110 },
+    { headerName: "Managers", field: "managers", minWidth: 110, cellRenderer: () => "2" },
+    { headerName: "Contracts", field: "contracts", minWidth: 110, cellRenderer: () => "Sara Johnson" },
     {
       headerName: "Actions",
       cellRenderer: (props: { data: ProjectRow }) => {

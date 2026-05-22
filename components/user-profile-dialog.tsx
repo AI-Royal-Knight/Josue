@@ -28,7 +28,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Card } from "./ui/card"
 
-type UserProfileDialogProps = {
+export type UserProfileDialogProps = {
   user: {
     name: string
     surname: string

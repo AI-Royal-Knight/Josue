@@ -377,7 +377,7 @@ export default function Page() {
          pinnedBottomRowData: [totalRow],
          getRowStyle: (params: any) => {
            if (params.node.isRowPinned()) {
-             return { fontWeight: "bold", backgroundColor: "#1E3A8A80"}
+             return { fontWeight: "bold", backgroundColor: "#1E3A8A80"} as any
            }
            return {}
          },

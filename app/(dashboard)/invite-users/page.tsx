@@ -3,7 +3,7 @@ import type { ColDef } from "ag-grid-community"
 import InviteUserDialog from "./invite-modal"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
-import { UserProfileDialog } from "@/components/user-profile-dialog"
+import { UserProfileDialog, UserProfileDialogProps } from "@/components/user-profile-dialog"
 
 type UserRow = {
   name: string
@@ -12,11 +12,15 @@ type UserRow = {
   profession: string
   cscsCardNo: string
   cscsExpiryDate: string
+  // optional tone flags used for conditional colouring in the table
+  cscsExpiryTone?: string
   ipaf: string
   pasma: string
   company: string
   ssstsSmsts: string
   expiryDate: string
+  // optional tone for expiryDate colouring
+  expiryTone?: string
   approvedUser: string
   approvedBy: string
 }
@@ -132,7 +136,7 @@ const columnDefs: ColDef<UserRow>[] = [
   },
   {
     headerName: "Profile",
-    cellRenderer: (params: { data?: UserRow }) =>
+    cellRenderer: (params: { data?: UserProfileDialogProps["user"] }) =>
       params.data ? <UserProfileDialog user={params.data} /> : null,
   },
   { headerName: "Approved User", field: "approvedUser" },
