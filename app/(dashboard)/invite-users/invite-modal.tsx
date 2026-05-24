@@ -44,7 +44,7 @@ export default function InviteUserDialog() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label>Profession</Label>
             <div>
               <Select>
@@ -64,7 +64,7 @@ export default function InviteUserDialog() {
           <div className="space-y-2">
             <Label>Company Name</Label>
             <Input placeholder="BuildRight Corp." />
-          </div>
+          </div> */}
 
           <div className="flex justify-end gap-4">
             <Button variant="outline">Cancel</Button>

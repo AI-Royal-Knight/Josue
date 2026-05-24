@@ -4,12 +4,21 @@ import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { createProject } from "../actions"
 import { Calendar } from "@/components/ui/calendar"
+import { VAT_OPTIONS } from "@/constants/projects"
 
 export default function CreateProjectForm() {
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [vatRate, setVatRate] = useState<string>("")
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [completionDate, setCompletionDate] = useState<Date | undefined>(
     undefined
@@ -21,17 +30,22 @@ export default function CreateProjectForm() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
+    // Inject the controlled vatRate value since Select isn't a native input
+    formData.set("vatRate", vatRate)
 
     startTransition(async () => {
       const result = await createProject(null, formData)
       if (result.success) {
         setMessage(result.message)
         e.currentTarget.reset()
+        setVatRate("")
       } else {
         setMessage(result.error)
       }
     })
   }
+
+  const selectedOption = VAT_OPTIONS.find((o) => o.value === vatRate)
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 py-2">
@@ -52,9 +66,37 @@ export default function CreateProjectForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <Field>
-          <FieldLabel htmlFor="vatTemp">VAT/Temp</FieldLabel>
+          <FieldLabel htmlFor="vatRate">VAT Rate</FieldLabel>
           <FieldContent>
-            <Input id="vatTemp" name="vatTemp" />
+            <Select value={vatRate} onValueChange={setVatRate}>
+              <SelectTrigger id="vatRate">
+                <SelectValue placeholder="Select VAT rate" />
+              </SelectTrigger>
+              <SelectContent>
+                {VAT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedOption && (
+              <p className="mt-1 text-xs text-slate-400">
+                Effective rate:{" "}
+                <span
+                  className={
+                    selectedOption.rate === 20
+                      ? "font-semibold text-amber-400"
+                      : "font-semibold text-green-400"
+                  }
+                >
+                  {selectedOption.rate}%
+                </span>
+                {selectedOption.rate === 20
+                  ? " — VAT will be added to monthly applications and suppliers may charge VAT."
+                  : " — No VAT charged on monthly applications or supplier invoices."}
+              </p>
+            )}
           </FieldContent>
         </Field>
         <Field>
@@ -110,17 +152,13 @@ export default function CreateProjectForm() {
       </div>
 
       <div className="flex justify-end gap-3">
-        {/* <Button
-          type="button"
-          variant="outline"
-          onClick={() => setMessage(null)}
-        >
-          Cancel
-        </Button> */}
-        <Button type="submit">Create Project</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Creating…" : "Create Project"}
+        </Button>
       </div>
 
       {message && <p className="text-sm text-green-600">{message}</p>}
     </form>
   )
 }
+

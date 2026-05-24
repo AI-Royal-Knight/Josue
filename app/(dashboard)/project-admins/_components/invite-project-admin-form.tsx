@@ -78,7 +78,7 @@ export default function InviteProjectAdminForm() {
           />
         </FieldContent>
       </Field>
-      <Field>
+      {/* <Field>
         <FieldLabel htmlFor="role">Role</FieldLabel>
         <FieldContent>
           <Select value={role} onValueChange={setRole} name="role" required>
@@ -94,7 +94,7 @@ export default function InviteProjectAdminForm() {
             </SelectContent>
           </Select>
         </FieldContent>
-      </Field>
+      </Field> */}
       <Field>
         <FieldLabel htmlFor="project">Project Assignment</FieldLabel>
         <FieldContent>

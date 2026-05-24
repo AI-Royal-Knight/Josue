@@ -1,5 +1,7 @@
-import { Card, CardContent } from "@/components/ui/card"
-import type { ColDef } from "ag-grid-community"
+"use client"
+
+import { useRef, useCallback } from "react"
+import type { ColDef, GridApi } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import {
   Select,
@@ -9,10 +11,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
 
 type BreakdownRow = {
   period: string
   applicationValue: number
+  totalSpent?: number
   projectValue: number
   labourTarget: number
   overspend: number
@@ -115,30 +120,228 @@ const data: BreakdownRow[] = [
 ]
 
 const columns: ColDef<BreakdownRow>[] = [
-  { headerName: "Date 15th to 15th", field: "period" },
-  { headerName: "Application Value", field: "applicationValue" },
-  { headerName: "Project Value", field: "projectValue" },
-  { headerName: "Labour Target", field: "labourTarget" },
-  { headerName: "Overspend", field: "overspend" },
-  { headerName: "Unclaimed", field: "unclaimed" },
-  { headerName: "Money on Hold", field: "moneyOnHold" },
-  { headerName: "PO Called off", field: "poCalledOff" },
-  { headerName: "Loading and clearing", field: "loadingAndClearing" },
-  { headerName: "Management prelims", field: "managementPrelims" },
-  { headerName: "Plant Hire", field: "plantHire" },
-  { headerName: "Proforma NR", field: "proformaNR" },
+  { headerName: "Date 15th to 15th", field: "period", minWidth: 180 },
+  {
+    headerName: "Application Value",
+    field: "applicationValue",
+    headerClass: "bg-green-700 text-white",
+  },
+  {
+    headerName: "Total Spent",
+    field: "totalSpent",
+    headerClass: "bg-green-700 text-white",
+    valueGetter: (params) => {
+      const data = params.data as BreakdownRow
+      return (
+        data.projectValue +
+        data.overspend +
+        data.poCalledOff +
+        data.managementPrelims +
+        data.loadingAndClearing +
+        data.proformaNR
+      )
+    },
+    cellRenderer: (params: { value: number }) => {
+      const value = params.value as number
+      return (
+        <span className="text-green-500">
+          {value.toLocaleString("en-GB", {
+            style: "currency",
+            currency: "GBP",
+          })}
+        </span>
+      )
+    },
+  },
+  {
+    headerName: "Project Value",
+    field: "projectValue",
+    headerClass: "bg-green-700 text-white",
+  },
+  {
+    headerName: "Labour Target",
+    field: "labourTarget",
+    headerClass: "bg-green-700 text-white",
+  },
+  {
+    headerName: "Overspend",
+    field: "overspend",
+    headerClass: "bg-red-600 text-white",
+    cellRenderer: (params: { value: number }) => {
+      const value = params.value as number
+      return (
+        <span className="text-red-500">
+          {value.toLocaleString("en-GB", {
+            style: "currency",
+            currency: "GBP",
+          })}
+        </span>
+      )
+    },
+  },
+  {
+    headerName: "Unclaimed",
+    field: "unclaimed",
+    headerClass: "bg-green-700 text-white",
+    cellRenderer: (params: { value: number }) => {
+      const value = params.value as number
+      return (
+        <span className="text-green-500">
+          {value.toLocaleString("en-GB", {
+            style: "currency",
+            currency: "GBP",
+          })}
+        </span>
+      )
+    },
+  },
+  {
+    headerName: "Money on Hold",
+    field: "moneyOnHold",
+    headerClass: "bg-red-600 text-white",
+    cellRenderer: (params: { value: number }) => {
+      const value = params.value as number
+      return (
+        <span className="text-red-500">
+          {value.toLocaleString("en-GB", {
+            style: "currency",
+            currency: "GBP",
+          })}
+        </span>
+      )
+    },
+  },
+  {
+    headerName: "PO Called off",
+    field: "poCalledOff",
+    headerClass: "bg-green-700 text-white",
+  },
+  {
+    headerName: "Loading and clearing",
+    field: "loadingAndClearing",
+    headerClass: "bg-green-700 text-white",
+  },
+  {
+    headerName: "Management prelims",
+    field: "managementPrelims",
+    headerClass: "bg-green-700 text-white",
+  },
+  {
+    headerName: "Plant Hire",
+    field: "plantHire",
+    headerClass: "bg-green-700 text-white",
+  },
+  {
+    headerName: "Proforma NR",
+    field: "proformaNR",
+    headerClass: "bg-red-600 text-white",
+    cellRenderer: (params: { value: number }) => {
+      const value = params.value as number
+      return (
+        <span className="text-red-500">
+          {value.toLocaleString("en-GB", {
+            style: "currency",
+            currency: "GBP",
+          })}
+        </span>
+      )
+    },
+  },
   {
     headerName: "Proforma NR Material Estimate",
     field: "proformaNRMaterialEstimate",
+    headerClass: "bg-red-600 text-white",
+    cellRenderer: (params: { value: number }) => {
+      const value = params.value as number
+      return (
+        <span className="text-red-500">
+          {value.toLocaleString("en-GB", {
+            style: "currency",
+            currency: "GBP",
+          })}
+        </span>
+      )
+    },
   },
-  { headerName: "Variation Value", field: "variationValue" },
-  { headerName: "Variation Labour Value", field: "variationLabourValue" },
-  { headerName: "Variation Labour Target", field: "variationLabourTarget" },
-  { headerName: "Variation PO Called Off", field: "variationPoCalledOff" },
-  { headerName: "Variation Claimed", field: "variationClaimed" },
+  {
+    headerName: "Variation Value",
+    field: "variationValue",
+    headerClass: "bg-orange-600 text-white",
+  },
+  {
+    headerName: "Variation Labour Value",
+    field: "variationLabourValue",
+    headerClass: "bg-orange-600 text-white",
+  },
+  {
+    headerName: "Variation Labour Target",
+    field: "variationLabourTarget",
+    headerClass: "bg-orange-600 text-white",
+  },
+  {
+    headerName: "Variation PO Called Off",
+    field: "variationPoCalledOff",
+    headerClass: "bg-orange-600 text-white",
+  },
+  {
+    headerName: "Variation Claimed",
+    field: "variationClaimed",
+    headerClass: "bg-orange-600 text-white",
+  },
 ]
 
 export default function Page() {
+  const gridApiRef = useRef<GridApi<BreakdownRow> | null>(null)
+
+  const handleDownload = useCallback(() => {
+    if (!gridApiRef.current) return
+    const rows: BreakdownRow[] = []
+    gridApiRef.current.forEachNode((node) => {
+      if (node.data) rows.push(node.data)
+    })
+
+    const exportableColumns = columns.filter((c) => c.field && !c.hide)
+    const csvEscape = (value: unknown) => {
+      const text = value === null || value === undefined ? "" : String(value)
+      return `"${text.replaceAll('"', '""')}"`
+    }
+
+    const headers = exportableColumns
+      .map((c) => csvEscape(c.headerName || String(c.field || "")))
+      .join(",")
+
+    const body = rows
+      .map((row) =>
+        exportableColumns
+          .map((c) => {
+            if (!c.field) return csvEscape("")
+            // Compute totalSpent for the calculated column
+            if (c.field === "totalSpent") {
+              const total =
+                row.projectValue +
+                row.overspend +
+                row.poCalledOff +
+                row.managementPrelims +
+                row.loadingAndClearing +
+                row.proformaNR
+              return csvEscape(`£${total.toLocaleString("en-GB")}`)
+            }
+            return csvEscape((row as Record<string, unknown>)[String(c.field)])
+          })
+          .join(",")
+      )
+      .join("\n")
+
+    const csv = [headers, body].join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `financial-breakdown-${new Date().toISOString().slice(0, 10)}.csv`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
   return (
     <div className="w-full p-6">
       <h2 className="mb-4">Project Overview</h2>
@@ -166,28 +369,6 @@ export default function Page() {
         </div>
       </div>
 
-      {/* <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="col-span-1">
-          <CardContent>
-            <div className="text-sm text-muted-foreground">Project Value</div>
-            <div className="mt-2 font-semibold">1000</div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent>
-            <div className="text-sm text-muted-foreground">Total PO Raised</div>
-            <div className="mt-2 font-semibold">300</div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent>
-            <div className="text-sm text-muted-foreground">
-              Total Variation PO Raised
-            </div>
-            <div className="mt-2 font-semibold">320</div>
-          </CardContent>
-        </Card>
-      </div> */}
       <div className="flex w-full flex-col gap-6 md:flex-row md:items-start md:justify-start">
         <TableStat
           summaryRows={[
@@ -202,20 +383,47 @@ export default function Page() {
           summaryRows={[
             { label: "Total PO Raised", value: "£1,000,000" },
             { label: "Total Variation PO Raised", value: "£300" },
-            { label: "Proforma NR", value: "£320" },
-            { label: "Proforma NR Material Estimate", value: "£50,000" },
-            { label: "Total Unclaimed", value: "£150,000" },
-            { label: "Total Overspend", value: "£150,000" },
+            { label: "Proforma NR", value: "£320", valueColor: "red" },
+            {
+              label: "Proforma NR Material Estimate",
+              value: "£50,000",
+              valueColor: "red",
+            },
+            {
+              label: "Total Unclaimed",
+              value: "£150,000",
+              valueColor: "green",
+            },
+            {
+              label: "Total Overspend",
+              value: "£150,000",
+              valueColor: "red",
+            },
           ]}
         />
       </div>
 
       <div className="mt-8">
-        <h3 className="mb-3 text-sm font-medium">Financial Breakdown</h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-medium">Financial Breakdown</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Download CSV
+          </Button>
+        </div>
         <AgTable
           rowData={data}
           columnDefs={columns}
           height="auto"
+          suppressCellClickAction
+          onGridReady={(api) => {
+            gridApiRef.current = api
+          }}
           defaultColDef={{
             minWidth: 160,
           }}
