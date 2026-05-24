@@ -5,7 +5,6 @@ type StatRow = {
   label: string
   value: string
   alert?: boolean
-  /** Optional colour override for the value cell: "red" | "green" */
   valueColor?: "red" | "green" | undefined
 }
 
@@ -68,7 +67,7 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
   return (
     <div className="w-full max-w-[400px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
       <AgTable
-        rowData={summaryRows}
+        rowData={[{ label: "", value: "Value" }, ...summaryRows]}
         columnDefs={columnDefs}
         height="auto"
         suppressCellClickAction

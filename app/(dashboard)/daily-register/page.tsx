@@ -89,9 +89,9 @@ const rows: DailyRegisterRow[] = [
 ]
 
 const columns: ColDef<DailyRegisterRow>[] = [
-  { headerName: "No.", field: "no" },
+  { headerName: "No.", field: "no", maxWidth: 60, filter: false },
   { headerName: "Name", field: "name" },
-  { headerName: "Sure name", field: "surname" },
+  { headerName: "Surname", field: "surname" },
   { headerName: "Project", field: "project" },
   { headerName: "Date", field: "date" },
   { headerName: "Clock in Time", field: "clockInTime" },

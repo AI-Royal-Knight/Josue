@@ -15,12 +15,7 @@ const navItems = [
     label: "Labour Target",
     href: "labour-target",
     icon: Users,
-  },
-  {
-    label: "Profile",
-    href: "profile",
-    icon: User,
-  },
+  }
 ]
 
 export function ProjectLayoutClient({ projectId }: { projectId: string }) {

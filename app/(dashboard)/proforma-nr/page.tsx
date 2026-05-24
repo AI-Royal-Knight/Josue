@@ -18,8 +18,6 @@ type ProformaRow = {
   date: string
   nrProformaNo: string
   project: string
-  workArea: string
-  workSection: string
   descriptionOfWorks: string
   createdBy: string
   approvedBy: string
@@ -61,8 +59,6 @@ const rows: ProformaRow[] = [
     date: "2023-10-01",
     nrProformaNo: "NR-PF-1000",
     project: "Project A",
-    workArea: "Main Site",
-    workSection: "Main Site",
     descriptionOfWorks: "General contracting works",
     createdBy: "John Doe",
     approvedBy: "Jane Smith",
@@ -80,8 +76,6 @@ const rows: ProformaRow[] = [
     date: "2023-10-02",
     nrProformaNo: "NR-PF-1001",
     project: "Project B",
-    workArea: "Sub Site B",
-    workSection: "Sub Site B",
     descriptionOfWorks: "General contracting works",
     createdBy: "John Doe",
     approvedBy: "Pending",
@@ -99,8 +93,6 @@ const rows: ProformaRow[] = [
     date: "2023-10-03",
     nrProformaNo: "NR-PF-1002",
     project: "Project C",
-    workArea: "Main Site",
-    workSection: "Main Site",
     descriptionOfWorks: "General contracting works",
     createdBy: "John Doe",
     approvedBy: "Jane Smith",
@@ -118,8 +110,6 @@ const rows: ProformaRow[] = [
     date: "2023-10-04",
     nrProformaNo: "NR-PF-1003",
     project: "Project D",
-    workArea: "Sub Site B",
-    workSection: "Sub Site B",
     descriptionOfWorks: "General contracting works",
     createdBy: "John Doe",
     approvedBy: "Pending",
@@ -139,8 +129,6 @@ const columns: ColDef<ProformaRow>[] = [
   { headerName: "Date", field: "date" },
   { headerName: "NR Proforma no.", field: "nrProformaNo" },
   { headerName: "Project", field: "project" },
-  { headerName: "Work area", field: "workArea" },
-  { headerName: "Work section", field: "workSection" },
   { headerName: "Description of Works", field: "descriptionOfWorks" },
   { headerName: "Created by", field: "createdBy" },
   { headerName: "Approved by", field: "approvedBy" },

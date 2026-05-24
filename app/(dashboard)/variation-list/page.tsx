@@ -10,7 +10,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { AgTable } from "@/components/common/AgTable"
-import { Card } from "@/components/ui/card"
 import TableStat from "@/components/common/table-stat"
 
 type VariationRow = {
@@ -19,8 +18,6 @@ type VariationRow = {
   evidence: string
   date: string
   variationSheetNumber: string
-  workArea: string
-  workSection: string
   descriptionOfWorks: string
   labourCost: string
   materialCost: string
@@ -28,7 +25,7 @@ type VariationRow = {
   percentClaimed: string
   amountClaimed: string
   createdBy: string
-  approved: string
+  approved: boolean
   openFile: string
   submittedToClient: string
   clientQS: string
@@ -36,7 +33,6 @@ type VariationRow = {
   addToVariationSummary: string
   comments: string
   assignedUser: string
-
 }
 
 const summaryMetrics = [
@@ -44,7 +40,7 @@ const summaryMetrics = [
   { label: "Added to Variation Summary", value: "400" },
   { label: "Variations Value", value: "000" },
   { label: "Approved Variations", value: "000" },
-  { label: "Awaiting Approval", value: "000" },
+  { label: "Awaiting Approval", value: "000", valueColor: "red" },
   { label: "Submitted to Client", value: "000" },
   { label: "Signed by Client", value: "000" },
 ]
@@ -56,8 +52,6 @@ const data: VariationRow[] = [
     evidence: "",
     date: "",
     variationSheetNumber: "",
-    workArea: "",
-    workSection: "",
     descriptionOfWorks: "",
     labourCost: "",
     materialCost: "",
@@ -65,7 +59,7 @@ const data: VariationRow[] = [
     percentClaimed: "",
     amountClaimed: "",
     createdBy: "",
-    approved: "",
+    approved: true,
     openFile: "",
     submittedToClient: "",
     clientQS: "",
@@ -89,7 +83,7 @@ const data: VariationRow[] = [
     percentClaimed: "",
     amountClaimed: "",
     createdBy: "",
-    approved: "",
+    approved: false,
     openFile: "",
     submittedToClient: "",
     clientQS: "",
@@ -113,7 +107,7 @@ const data: VariationRow[] = [
     percentClaimed: "",
     amountClaimed: "",
     createdBy: "",
-    approved: "",
+    approved: true,
     openFile: "",
     submittedToClient: "",
     clientQS: "",
@@ -137,7 +131,7 @@ const data: VariationRow[] = [
     percentClaimed: "",
     amountClaimed: "",
     createdBy: "",
-    approved: "",
+    approved: false,
     openFile: "",
     submittedToClient: "",
     clientQS: "",
@@ -158,6 +152,13 @@ const columns: ColDef<VariationRow>[] = [
   {
     headerName: "Site Instruction Number",
     field: "siteInstructionNumber",
+    cellRenderer: (params: { data?: VariationRow; value?: string }) => (
+      <a
+        className={`hover:underline ${params.data?.approved ? "text-green-500" : "text-red-500"}`}
+      >
+        {params.value}
+      </a>
+    ),
   },
   {
     headerName: "Evidence",
@@ -170,14 +171,6 @@ const columns: ColDef<VariationRow>[] = [
   {
     headerName: "Variation Sheet Number",
     field: "variationSheetNumber",
-  },
-  {
-    headerName: "Work area",
-    field: "workArea",
-  },
-  {
-    headerName: "Work section",
-    field: "workSection",
   },
   {
     headerName: "Description of Works",

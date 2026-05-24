@@ -6,7 +6,7 @@ export const DASHBOARD_NAV = {
     { title: "Project Admins", url: "/project-admins", isActive: true },
     { title: "Users", url: "/users" },
     { title: "Managing Director", url: "/managing-director" },
-    { title: "Profile", url: "/profile" },
+    { title: "Profile", url: "/admin/profile" },
 
     //  developing links for these pages, so commenting out for now
     //  { title: "Projects", url: "/projects" },
