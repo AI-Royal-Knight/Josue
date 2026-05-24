@@ -108,10 +108,52 @@ export default function CreateProjectForm() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
+         <Field>
+            <FieldLabel htmlFor="description">Developer/Client Name</FieldLabel>
+            <FieldContent>
+               <Input id="description" name="description" />
+            </FieldContent>
+         </Field>
+         <Field>
+            <FieldLabel htmlFor="description">Developer/Client Address</FieldLabel>
+            <FieldContent>
+               <Input id="description" name="description" />
+            </FieldContent>
+         </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <Field>
           <FieldLabel htmlFor="projectValue">Project Value</FieldLabel>
           <FieldContent>
-            <Input id="projectValue" name="projectValue" />
+            <Input id="projectValue" name="projectValue" type="number" />
+          </FieldContent>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="materialEstimate">Material Estimate</FieldLabel>
+          <FieldContent>
+            <Input id="materialEstimate" name="materialEstimate" type="number" />
+          </FieldContent>
+        </Field>
+        </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <Field>
+          <FieldLabel htmlFor="labourEstimate">Labour Estimate</FieldLabel>
+          <FieldContent>
+            <Input id="labourEstimate" name="labourEstimate" type="number" />
+          </FieldContent>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="prelimsEstimate">Prelims Estimate</FieldLabel>
+          <FieldContent>
+            <Input id="prelimsEstimate" name="prelimsEstimate" type="number" />
+          </FieldContent>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="estimateProfit">Estimate Profit</FieldLabel>
+          <FieldContent>
+            <Input id="estimateProfit" name="estimateProfit" type="number" />
           </FieldContent>
         </Field>
       </div>
@@ -161,4 +203,3 @@ export default function CreateProjectForm() {
     </form>
   )
 }
-

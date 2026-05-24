@@ -44,6 +44,9 @@ export type UserProfileDialogProps = {
     expiryDate: string
     expiryTone: "emerald" | "red"
   }
+  /** Only document_controller can approve/reject */
+  canApprove?: boolean
+  onAction?: (action: "accept" | "reject") => void
 }
 
 function StatusPill({
@@ -100,8 +103,13 @@ function DetailRow({
   )
 }
 
-export function UserProfileDialog({ user }: UserProfileDialogProps) {
+export function UserProfileDialog({ user, canApprove = false, onAction }: UserProfileDialogProps) {
   const [open, setOpen] = useState(false)
+
+  const handleAction = (action: "accept" | "reject") => {
+    onAction?.(action)
+    setOpen(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -129,10 +137,18 @@ export function UserProfileDialog({ user }: UserProfileDialogProps) {
             </div>
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Reject
-              </Button>
-              <Button>Accept</Button>
+              {canApprove ? (
+                <>
+                  <Button variant="outline" onClick={() => handleAction("reject")}>
+                    Reject
+                  </Button>
+                  <Button onClick={() => handleAction("accept")}>Accept</Button>
+                </>
+              ) : (
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Close
+                </Button>
+              )}
             </div>
           </div>
         </DialogHeader>
