@@ -1,14 +1,27 @@
 "use client"
+
 import { useCallback, useState } from "react"
 import { AgTable } from "@/components/common/AgTable"
-import Filters from "@/components/shared/filters"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type {
   CellValueChangedEvent,
   ColDef,
   ICellRendererParams,
 } from "ag-grid-community"
 import TableStat from "@/components/common/table-stat"
+
+type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
 type SupplierInvoiceRow = {
   no: string
@@ -26,7 +39,7 @@ type SupplierInvoiceRow = {
   expectedCost: string
   paymentDueDate: string
   approvedBy: string
-  approved: string
+  approved: ApprovalStatus
   financeComments: string | null
   procurementComments: string | null
   commercialComments: string | null
@@ -37,20 +50,26 @@ type CommentField =
   | "procurementComments"
   | "commercialComments"
 
+type PendingToggle = {
+  no: string
+  invoiceNumber: string
+  nextApproved: boolean
+}
+
 const summaryRows = [
-  { label: "Invoices QTY", value: "0000000" },
-  { label: "Invoices Value", value: "0000000" },
-  { label: "Approved invoices", value: "0000000" },
-  { label: "Approved invoices value", value: "0000000" },
-  { label: "Invoices awaiting approval", value: "0000000" },
-  { label: "Awaiting approval value", value: "0000000" },
-  { label: "Invoices due this week", value: "0000000" },
-  { label: "Invoices value due this week", value: "0000000" },
-  { label: "Invoices paid QTY", value: "0000000" },
-  { label: "Invoices paid value", value: "0000000" },
+  { label: "Invoices", qty: "1", value: "2" },
+  { label: "Approved invoices", qty: "1", value: "2" },
+  { label: "Invoices awaiting approval", qty: "1", value: "2" },
+  { label: "Awaiting approval value", qty: "1", value: "2" },
+  {
+    label: "Invoices due this month",
+    qty: "1",
+    value: "2",
+  },
+  { label: "Invoices paid", qty: "1", value: "2" },
 ]
 
-const supplierRows: SupplierInvoiceRow[] = [
+const initialRows: SupplierInvoiceRow[] = [
   {
     no: "001",
     invoiceNumber: "INV-88-2024-089",
@@ -67,7 +86,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£145,000.00",
     paymentDueDate: "31 Oct 2024",
     approvedBy: "Sarah Jenkins",
-    approved: "✓ Approved",
+    approved: "Approved",
     financeComments: "Matched to PO",
     procurementComments: "Rates verified",
     commercialComments: "Approved for payment",
@@ -88,7 +107,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£89,450.00",
     paymentDueDate: "31 Oct 2024",
     approvedBy: "Marcus Thorne",
-    approved: "✓ Approved",
+    approved: "Approved",
     financeComments: "Clear",
     procurementComments: "All good",
     commercialComments: null,
@@ -109,7 +128,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£205,000.00",
     paymentDueDate: "20 Nov 2024",
     approvedBy: "Pending",
-    approved: "⊙ Pending",
+    approved: "Pending",
     financeComments: "Awaiting commercial review",
     procurementComments: "Checking variation",
     commercialComments: "Reviewing EBR variance",
@@ -130,7 +149,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£78,500.00",
     paymentDueDate: "30 Sep 2024",
     approvedBy: "David Chen",
-    approved: "✗ Rejected",
+    approved: "Rejected",
     financeComments: "Overdue - On hold",
     procurementComments: "Disputed hours",
     commercialComments: "Awaiting revised timesheet",
@@ -151,7 +170,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£45,200.00",
     paymentDueDate: "30 Nov 2024",
     approvedBy: "Sarah Jenkins",
-    approved: "✓ Approved",
+    approved: "Approved",
     financeComments: "Processed",
     procurementComments: "Processed",
     commercialComments: "Approved",
@@ -172,7 +191,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£112,000.00",
     paymentDueDate: "30 Nov 2024",
     approvedBy: "Pending",
-    approved: "⊙ Pending",
+    approved: "Pending",
     financeComments: "In queue",
     procurementComments: "Reviewing",
     commercialComments: null,
@@ -193,7 +212,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£125,400.00",
     paymentDueDate: "31 Oct 2024",
     approvedBy: "Marcus Thorne",
-    approved: "✓ Approved",
+    approved: "Approved",
     financeComments: "Paid Due - Processing today",
     procurementComments: "Approved",
     commercialComments: "Approved",
@@ -214,7 +233,7 @@ const supplierRows: SupplierInvoiceRow[] = [
     expectedCost: "£97,800.00",
     paymentDueDate: "30 Nov 2024",
     approvedBy: "Pending",
-    approved: "⊙ Pending",
+    approved: "Pending",
     financeComments: null,
     procurementComments: null,
     commercialComments: null,
@@ -222,7 +241,35 @@ const supplierRows: SupplierInvoiceRow[] = [
 ]
 
 export default function Page() {
-  const [rows, setRows] = useState(supplierRows)
+  const [rows, setRows] = useState(initialRows)
+  const [pending, setPending] = useState<PendingToggle | null>(null)
+
+  // Stage the toggle — opens confirmation dialog
+  const requestToggle = useCallback(
+    (no: string, invoiceNumber: string, nextApproved: boolean) => {
+      setPending({ no, invoiceNumber, nextApproved })
+    },
+    []
+  )
+
+  // Confirmed — commit the change
+  const confirmToggle = useCallback(() => {
+    if (!pending) return
+    setRows((prev) =>
+      prev.map((r) =>
+        r.no === pending.no
+          ? {
+              ...r,
+              approved: pending.nextApproved ? "Approved" : "Pending",
+              approvedBy: pending.nextApproved
+                ? "Finance Department"
+                : "Pending",
+            }
+          : r
+      )
+    )
+    setPending(null)
+  }, [pending])
 
   function CommentCellRenderer(
     params: ICellRendererParams<SupplierInvoiceRow, string> & {
@@ -234,96 +281,74 @@ export default function Page() {
         value={params.value ?? ""}
         placeholder="add comment"
         className="h-7 border-[#253046] bg-[#101012] text-xs text-slate-200 placeholder:text-slate-500"
-        onChange={(event) =>
-          params.node.setDataValue(params.fieldName, event.target.value)
+        onChange={(e) =>
+          params.node.setDataValue(params.fieldName, e.target.value)
         }
       />
     )
   }
 
   const columnDefs: ColDef<SupplierInvoiceRow>[] = [
-    {
-      field: "no",
-      headerName: "No",
-      editable: false,
-      minWidth: 70,
-      filter: false,
-    },
+    { field: "no", headerName: "No", minWidth: 70, filter: false },
     {
       field: "invoiceNumber",
       headerName: "Invoice Number",
-      editable: true,
       minWidth: 160,
+      cellRenderer: (params: { data?: SupplierInvoiceRow; value: string }) => (
+        <a
+          className={`${params.data?.approved === "Approved" ? "text-green-400" : "text-red-500"} text-sm font-medium hover:underline`}
+        >
+          {params.value}
+        </a>
+      ),
     },
-   //  { field: "date", headerName: "DATE", editable: true },
-    { field: "poDate", headerName: "PO Date", editable: true },
-    { field: "poRef", headerName: "PO Ref", editable: true },
-    {
-      field: "callOffDate",
-      headerName: "Call Off Date",
-      editable: true,
-    },
-    {
-      field: "callOffRef",
-      headerName: "Call Off Ref",
-      editable: true,
-    },
-    {
-      field: "variationRef",
-      headerName: "Variation Ref",
-      editable: true,
-    },
-   //  {
-   //    field: "otherRef",
-   //    headerName: "Other Ref",
-   //    editable: true,
-   //  },
-    { field: "project", headerName: "Project", editable: true, minWidth: 140 },
-    {
-      field: "supplierName",
-      headerName: "Supplier Name",
-      editable: true,
-    },
-    {
-      field: "invoiceTotal",
-      headerName: "Invoice Total",
-      editable: true,
-    },
-    {
-      field: "expectedCost",
-      headerName: "Expected Cost",
-      editable: true,
-    },
-    {
-      field: "paymentDueDate",
-      headerName: "Payment Due Date",
-      editable: true,
-      minWidth: 180,
-    },
-    {
-      field: "approvedBy",
-      headerName: "Approved By",
-      editable: true,
-    },
+    { field: "poDate", headerName: "PO Date" },
+    { field: "poRef", headerName: "PO Ref" },
+    { field: "callOffDate", headerName: "Call Off Date" },
+    { field: "callOffRef", headerName: "Call Off Ref" },
+    { field: "variationRef", headerName: "Variation Ref" },
+    { field: "project", headerName: "Project", minWidth: 140 },
+    { field: "supplierName", headerName: "Supplier Name" },
+    { field: "invoiceTotal", headerName: "Invoice Total" },
+    { field: "expectedCost", headerName: "Expected Cost" },
+    { field: "paymentDueDate", headerName: "Payment Due Date", minWidth: 180 },
+    { field: "approvedBy", headerName: "Approved By" },
+    // ── Approved toggle column ────────────────────────────────────────────
     {
       field: "approved",
       headerName: "Approved",
-      editable: true,
-      cellStyle: (params) => {
-        // always include color and fontWeight to satisfy CellStyle index signature
-        const base = {
-          color: "inherit",
-          fontWeight: "normal",
-          textAlign: "center",
-        } as const
-        if (params.value === "✓ Approved") {
-          return { ...base, color: "green", fontWeight: "bold" }
-        } else if (params.value === "✗ Rejected") {
-          return { ...base, color: "red", fontWeight: "bold" }
-        } else if (params.value === "⊙ Pending") {
-          return { ...base, color: "orange", fontWeight: "bold" }
-        }
-        return base
+      minWidth: 160,
+      sortable: true,
+      filter: true,
+      cellRenderer: (params: { data?: SupplierInvoiceRow }) => {
+        const row = params.data
+        if (!row) return null
+        const isApproved = row.approved === "Approved"
+        const isRejected = row.approved === "Rejected"
+
+        return (
+          <div className="flex items-center justify-center gap-2 py-2">
+            <Switch
+              checked={isApproved}
+              // Rejected rows are locked — can't re-toggle
+              disabled={isRejected}
+              onCheckedChange={(checked) =>
+                requestToggle(row.no, row.invoiceNumber, checked)
+              }
+            />
+            <span
+              className={
+                isApproved
+                  ? "text-xs font-medium text-emerald-400"
+                  : isRejected
+                    ? "text-xs font-medium text-red-400"
+                    : "text-xs font-medium text-amber-400"
+              }
+            >
+              {row.approved}
+            </span>
+          </div>
+        )
       },
     },
     {
@@ -353,33 +378,59 @@ export default function Page() {
 
   const handleCellValueChanged = useCallback(
     (params: CellValueChangedEvent<SupplierInvoiceRow>) => {
-      const updatedRows = rows.map((row) =>
-        row.no === params.data.no ? params.data : row
+      setRows((prev) =>
+        prev.map((r) => (r.no === params.data.no ? params.data : r))
       )
-      setRows(updatedRows)
     },
-    [rows]
+    []
   )
 
   return (
     <div className="w-full min-w-0 space-y-8 p-4">
       <h2 className="text-xl font-semibold">Supplier Invoices</h2>
-      <div className="flex justify-between">
-        <div className="flex-1">
-          <TableStat summaryRows={summaryRows} />
-        </div>
-        {/* <div className="ml-4 flex items-end gap-4">
-          <Filters />
-        </div> */}
+
+      <div className="flex-1">
+        <TableStat summaryRows={summaryRows} />
       </div>
 
       <AgTable
         rowData={rows}
         columnDefs={columnDefs}
+        suppressCellClickAction
         onCellValueChanged={handleCellValueChanged}
         height={500}
         pageSize={50}
+        gridOptions={{ rowHeight: 48 }}
       />
+
+      {/* Confirmation dialog */}
+      <AlertDialog
+        open={!!pending}
+        onOpenChange={(open) => !open && setPending(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pending?.nextApproved
+                ? "Approve this invoice?"
+                : "Revoke approval?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.nextApproved
+                ? `This will approve invoice ${pending.invoiceNumber}. Are you sure?`
+                : `This will revoke approval for invoice ${pending?.invoiceNumber} and set it back to Pending.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPending(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmToggle}>
+              {pending?.nextApproved ? "Approve" : "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
