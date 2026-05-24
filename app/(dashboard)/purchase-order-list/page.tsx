@@ -28,9 +28,9 @@ type PurchaseOrderRow = {
 }
 
 const summaryMetrics = [
-  { label: "Approved Quotes", value: "£2,550,000" },
+//   { label: "Approved Quotes", value: "£2,550,000" },
   { label: "Created PO", value: "£845,200" },
-  { label: "Approved Quote Value", value: "£1,854,800" },
+//   { label: "Approved Quote Value", value: "£1,854,800" },
   { label: "PO", value: "164" },
   { label: "Chased PO", value: "158" },
 ]
@@ -153,8 +153,8 @@ const data: PurchaseOrderRow[] = [
 ]
 
 const columns: ColDef<PurchaseOrderRow>[] = [
-  { headerName: "No.", field: "no" },
-  { headerName: "Quotation Ref", field: "quotationRef" },
+  { headerName: "No.", field: "no", maxWidth: 60, filter: false },
+  { headerName: "PO Ref", field: "quotationRef" },
   { headerName: "Project", field: "project" },
   { headerName: "Main Folder", field: "mainFolder" },
   { headerName: "Sub Folder", field: "subFolder" },
@@ -162,19 +162,6 @@ const columns: ColDef<PurchaseOrderRow>[] = [
   { headerName: "Supplier Name", field: "supplierName" },
   { headerName: "Supplier Email address", field: "supplierEmail" },
   { headerName: "Date of Quote Approved", field: "dateOfQuoteApproved" },
-  { headerName: "Quote Total", field: "quoteTotal" },
-  {
-    headerName: "Create PO",
-    field: "createPo",
-    cellRenderer: (params: { data?: PurchaseOrderRow }) => (
-      <Button
-        size="sm"
-        variant={params.data?.createPo === "PO Created" ? "default" : "outline"}
-      >
-        {params.data?.createPo}
-      </Button>
-    ),
-  },
   { headerName: "Date PO was Created", field: "datePOCreated" },
   {
     headerName: "Send Reminder",
@@ -186,31 +173,6 @@ const columns: ColDef<PurchaseOrderRow>[] = [
     ),
   },
   { headerName: "Procurement Comments", field: "procurementComments" },
-  {
-    headerName: "Request to Re-quote",
-    field: "requestToReQuote",
-    cellRenderer: (params: { data?: PurchaseOrderRow }) => (
-      <Button size="sm" variant="outline">
-        {params.data?.requestToReQuote}
-      </Button>
-    ),
-  },
-  {
-    headerName: "Approval Quotation",
-    field: "approvalQuotation",
-    cellRenderer: (params: { data?: PurchaseOrderRow }) => {
-      const status = params.data?.approvalQuotation
-      return (
-        <Badge variant={status === "Approved" ? "default" : "secondary"}>
-          {status}
-        </Badge>
-      )
-    },
-  },
-  {
-    headerName: "Quote Approval Related Requests",
-    field: "approvalRelatedRequests",
-  },
 ]
 
 export default function Page() {

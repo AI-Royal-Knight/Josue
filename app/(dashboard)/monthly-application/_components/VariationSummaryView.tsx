@@ -134,8 +134,6 @@ export default function VariationSummaryView() {
         field: "variationSheetNumber",
         minWidth: 160,
       },
-      { headerName: "Work area", field: "workArea", minWidth: 140 },
-      { headerName: "Work section", field: "workSection", minWidth: 140 },
       {
         headerName: "Description of Works",
         field: "descriptionOfWorks",

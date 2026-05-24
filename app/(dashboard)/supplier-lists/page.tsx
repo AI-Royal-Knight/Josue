@@ -167,7 +167,7 @@ function InviteSupplierDialog() {
             <Label className="text-sm text-slate-300">Supplier Email</Label>
             <Input type="email" className="border-white/10 bg-[#182742]" />
           </div>
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label className="text-sm text-slate-300">Credit Limit</Label>
             <Input className="border-white/10 bg-[#182742]" />
           </div>
@@ -182,7 +182,7 @@ function InviteSupplierDialog() {
           <div className="space-y-2">
             <Label className="text-sm text-slate-300">Confirm Password</Label>
             <Input type="password" className="border-white/10 bg-[#182742]" />
-          </div>
+          </div> */}
 
           <div className="pt-2">
             <Button className="w-full">Send Invite</Button>
