@@ -3,6 +3,7 @@ import type { ColDef } from "ag-grid-community"
 
 type StatRow = {
   label: string
+  qty?: number | string
   value: string
   alert?: boolean
   valueColor?: "red" | "green" | undefined
@@ -22,6 +23,13 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
       filter: false,
       resizable: false,
       cellClass: "px-3 text-xs font-semibold text-slate-100",
+    },
+    {
+      field: "qty",
+      headerName: "",
+      flex: 0.5,
+      sortable: false,
+      filter: false,
     },
     {
       field: "value",
@@ -67,7 +75,7 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
   return (
     <div className="w-full max-w-[400px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
       <AgTable
-        rowData={[{ label: "", value: "Value" }, ...summaryRows]}
+        rowData={[{ label: "", qty: "QTY", value: "Value" }, ...summaryRows]}
         columnDefs={columnDefs}
         height="auto"
         suppressCellClickAction
