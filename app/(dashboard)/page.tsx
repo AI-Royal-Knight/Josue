@@ -1,3 +1,5 @@
+"use client"
+
 import type { ColDef } from "ag-grid-community"
 
 import { AgTable } from "@/components/common/AgTable"

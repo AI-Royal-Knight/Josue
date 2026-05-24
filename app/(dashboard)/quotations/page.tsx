@@ -1,3 +1,5 @@
+"use client"
+
 import { AgTable } from "@/components/common/AgTable"
 import SupplierForm from "@/app/supplier/_components/SupplierForm"
 import type { ColDef } from "ag-grid-community"

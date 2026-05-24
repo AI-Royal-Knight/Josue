@@ -19,6 +19,7 @@ skills*
 /.next/
 /out/
 .puku
+.vscode
 
 # production
 /build
