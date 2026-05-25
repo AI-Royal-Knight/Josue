@@ -1,152 +1,160 @@
 "use client"
 
-import { useMemo } from "react"
-import type { ColDef, RowSpanParams, ColSpanParams } from "ag-grid-community"
-import { AgTable } from "@/components/common/AgTable"
+import Box from "@mui/material/Box"
+import { DataGrid, type GridColDef } from "@mui/x-data-grid"
+import { colors } from "@/constants/colors"
+import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 
-type WhiteRow = {
-  id: string
-  section?: string
-  r0?: string
-  r1?: string
-  r2?: string
-  r3?: string
-  r4?: string
-  r5?: string
-  r6?: string
-}
+const DATA_ROWS = 5
 
-// Build rows to closely mirror the original table structure.
-const whiteCardRows: WhiteRow[] = [
-  // Header row with grouped headings
-  {
-    id: "h1",
+const rows = [
+  ...Array.from({ length: DATA_ROWS }, (_, i) => ({
+    id: i + 1,
     section: "APARTMENTS",
-    r0: "electrical",
-    r1: "",
-    r2: "Project Value",
-    r3: "Electrical First Fix",
-    r4: "",
-    r5: "Project Value",
-    r6: "Project Value",
-  },
-  // Subheader row
-  {
-    id: "h2",
-    r0: "Work section",
-    r1: "Work area",
-    r3: "Work section",
-    r4: "Work area",
-    r5: "Work section",
-    r6: "Work area",
-  },
-  // Data rows (7 rows)
-  ...Array.from({ length: 7 }).map((_, i) => ({
-    id: `d${i}`,
-    r0: "",
-    r1: "",
-    r2: "",
-    r3: "",
-    r4: "",
-    r5: "",
-    r6: "",
+    el_ws: "",
+    el_wa: "",
+    el_pv: "",
+    eff_ws: "",
+    eff_wa: "",
+    eff_pv: "",
+    pl_ws: "",
+    pl_wa: "",
+    pl_pv: "",
   })),
-  // Next group header for CORRIDORS
-  {
-    id: "h3",
+  ...Array.from({ length: DATA_ROWS }, (_, i) => ({
+    id: i + DATA_ROWS + 1,
     section: "CORRIDORS",
-    r0: "electrical",
-    r1: "",
-    r2: "Project Value",
-    r3: "Electrical First Fix",
-    r4: "",
-    r5: "Project Value",
-    r6: "",
-  },
-  {
-    id: "h4",
-    r0: "Work section",
-    r1: "Work area",
-    r3: "Work section",
-    r4: "Work area",
-  },
-  ...Array.from({ length: 7 }).map((_, i) => ({
-    id: `c${i}`,
-    r0: "",
-    r1: "",
-    r2: "",
-    r3: "",
-    r4: "",
-    r5: "",
-    r6: "",
+    el_ws: "",
+    el_wa: "",
+    el_pv: "",
+    eff_ws: "",
+    eff_wa: "",
+    eff_pv: "",
+    pl_ws: "",
+    pl_wa: "",
+    pl_pv: "", // empty — no Plumbing for Corridors
   })),
 ]
 
-export default function WhiteCardView() {
-  const columns = useMemo<ColDef<WhiteRow>[]>(
-    () => [
-      {
-        headerName: "Section",
-        field: "section",
-        minWidth: 130,
-        rowSpan: (params: RowSpanParams<WhiteRow>) => {
-          // Span the section cell for the block header (APARTMENTS and CORRIDORS)
-          const idx = params.node?.rowIndex ?? (params as any).rowIndex ?? 0
-          if (idx === 0) return 9 // APARTMENTS block (header + subheader + 7 rows)
-          if (idx === 9) return 9 // CORRIDORS block
-          return 1
-        },
-        cellClass: "bg-yellow-400 font-bold text-black text-center",
-      },
-      {
-        headerName: "C1",
-        field: "r0",
-        minWidth: 140,
-        colSpan: (params: ColSpanParams<WhiteRow>) => {
-          // On first header row, span this cell across two columns to match original
-          if (params.data?.id === "h1" || params.data?.id === "h3") return 2
-          return 1
-        },
-      },
-      { headerName: "C2", field: "r1", minWidth: 140 },
-      {
-        headerName: "C3",
-        field: "r2",
-        minWidth: 140,
-        rowSpan: (params: RowSpanParams<WhiteRow>) => {
-          // Project Value cells in header span two rows
-          const idx = params.node?.rowIndex ?? (params as any).rowIndex ?? 0
-          if (
-            params.data?.id === "h1" ||
-            params.data?.id === "h3" ||
-            idx === 0 ||
-            idx === 9
-          )
-            return 2
-          return 1
-        },
-      },
-      {
-        headerName: "C4",
-        field: "r3",
-        minWidth: 140,
-        colSpan: (params: ColSpanParams<WhiteRow>) => {
-          if (params.data?.id === "h1" || params.data?.id === "h3") return 2
-          return 1
-        },
-      },
-      { headerName: "C5", field: "r4", minWidth: 140 },
-      { headerName: "C6", field: "r5", minWidth: 140 },
-      { headerName: "C7", field: "r6", minWidth: 140 },
-    ],
-    []
-  )
+const columns: GridColDef[] = [
+  {
+    field: "section",
+    headerName: "",
+    width: 130,
+    cellClassName: "cell-section",
+    renderCell: ({ value }) => (
+      <Box
+        sx={{
+          writingMode: "vertical-lr",
+          transform: "rotate(180deg)",
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 700,
+          fontSize: 13,
+          letterSpacing: "0.1em",
+          color: colors.headerText,
+        }}
+      >
+        {value}
+      </Box>
+    ),
+  },
 
+  // electrical group
+  { field: "el_ws", headerName: "Work section", flex: 1, minWidth: 130 },
+  { field: "el_wa", headerName: "Work area", flex: 1, minWidth: 130 },
+  // standalone → spans both header rows automatically
+  {
+    field: "el_pv",
+    headerName: "Project Value",
+    flex: 1,
+    minWidth: 120,
+    cellClassName: "cell-pv",
+  },
+
+  // Electrical First Fix group
+  { field: "eff_ws", headerName: "Work section", flex: 1, minWidth: 130 },
+  { field: "eff_wa", headerName: "Work area", flex: 1, minWidth: 130 },
+  {
+    field: "eff_pv",
+    headerName: "Project Value",
+    flex: 1,
+    minWidth: 120,
+    cellClassName: "cell-pv",
+  },
+
+  // Plumbing group
+  { field: "pl_ws", headerName: "Work section", flex: 1, minWidth: 130 },
+  { field: "pl_wa", headerName: "Work area", flex: 1, minWidth: 130 },
+  {
+    field: "pl_pv",
+    headerName: "Project Value",
+    flex: 1,
+    minWidth: 120,
+    cellClassName: "cell-pv",
+  },
+]
+
+const columnGroupingModel = [
+  {
+    groupId: "electrical",
+    headerName: "electrical",
+    children: [{ field: "el_ws" }, { field: "el_wa" }],
+  },
+  {
+    groupId: "eff",
+    headerName: "Electrical First Fix",
+    children: [{ field: "eff_ws" }, { field: "eff_wa" }],
+  },
+  {
+    groupId: "plumbing",
+    headerName: "Plumbing",
+    children: [{ field: "pl_ws" }, { field: "pl_wa" }],
+  },
+]
+
+export default function WhiteCardView() {
   return (
-    <div className="overflow-x-auto border border-white/10">
-      <div className="min-w-[1200px]">
-        <AgTable rowData={whiteCardRows} columnDefs={columns} height="auto" />
-      </div>
-    </div>
+    <Box sx={{ width: "100%", overflowX: "auto" }}>
+      <Box sx={{ minWidth: 1200 }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          columnGroupingModel={columnGroupingModel}
+          rowSpanning // auto-merges consecutive equal values per column
+          showCellVerticalBorder
+          showColumnVerticalBorder
+          disableRowSelectionOnClick
+          hideFooter
+          rowHeight={40}
+          sx={{
+            ...agTableDataGridSx,
+
+            // Center all column header titles (normal + group headers)
+            "& .MuiDataGrid-columnHeaderTitleContainer": {
+              justifyContent: "center",
+            },
+            "& .MuiDataGrid-columnHeaderTitle": {
+              textAlign: "center",
+              width: "100%",
+            },
+
+            // Section column header is blank; match grid background.
+            '& .MuiDataGrid-columnHeader[data-field="section"]': {
+              backgroundColor: colors.background.trim(),
+            },
+
+            // Section cells: keep consistent with AG Grid header tone.
+            "& .cell-section": {
+              backgroundColor: `${colors.oddRowBackground} !important`,
+              padding: "0 !important",
+            },
+          }}
+        />
+      </Box>
+    </Box>
   )
 }

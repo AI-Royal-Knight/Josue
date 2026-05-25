@@ -14,11 +14,12 @@ import TableStat from "@/components/common/table-stat"
 import VariationSummaryView from "./_components/VariationSummaryView"
 import WhiteCardView from "./_components/WhiteCardView"
 import ApplicationView from "./_components/ApplicationView"
+import SelectProject from "@/components/shared/select-project"
 
 type MonthlyTab = "variation-summary" | "white-card" | "application"
 
 const variationTotals = {
-   qty: "10000",
+  qty: "10000",
   labourCost: "£4,920.00",
   materialCost: "£5,610.00",
   valuationAmount: "£10,530.00",
@@ -47,69 +48,54 @@ export default function Page() {
     <div className="w-full space-y-6 p-6">
       <h2 className="text-2xl font-semibold">Monthly Application</h2>
 
-      <div className="max-w-[430px] space-y-3">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-300">
-            Select Project
-          </label>
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="border-white/10 bg-slate-900">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="border-white/10 bg-slate-900">
-              <SelectItem value="project-a">Project A</SelectItem>
-              <SelectItem value="project-b">Project B</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="flex items-start justify-between">
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={
+                activeTab === "variation-summary" ? "default" : "secondary"
+              }
+              onClick={() => setActiveTab("variation-summary")}
+              className={
+                activeTab === "variation-summary"
+                  ? "bg-[#2a61d8]"
+                  : "bg-[#1d2c46] text-slate-300"
+              }
+            >
+              Variation Summary
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeTab === "white-card" ? "default" : "secondary"}
+              onClick={() => setActiveTab("white-card")}
+              className={
+                activeTab === "white-card"
+                  ? "bg-[#2a61d8]"
+                  : "bg-[#1d2c46] text-slate-300"
+              }
+            >
+              White Card
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeTab === "application" ? "default" : "secondary"}
+              onClick={() => setActiveTab("application")}
+              className={
+                activeTab === "application"
+                  ? "bg-[#2a61d8]"
+                  : "bg-[#1d2c46] text-slate-300"
+              }
+            >
+              Application
+            </Button>
+          </div>
+          <TableStat summaryRows={summaryRows} />
         </div>
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={
-              activeTab === "variation-summary" ? "default" : "secondary"
-            }
-            onClick={() => setActiveTab("variation-summary")}
-            className={
-              activeTab === "variation-summary"
-                ? "bg-[#2a61d8]"
-                : "bg-[#1d2c46] text-slate-300"
-            }
-          >
-            Variation Summary
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={activeTab === "white-card" ? "default" : "secondary"}
-            onClick={() => setActiveTab("white-card")}
-            className={
-              activeTab === "white-card"
-                ? "bg-[#2a61d8]"
-                : "bg-[#1d2c46] text-slate-300"
-            }
-          >
-            White Card
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={activeTab === "application" ? "default" : "secondary"}
-            onClick={() => setActiveTab("application")}
-            className={
-              activeTab === "application"
-                ? "bg-[#2a61d8]"
-                : "bg-[#1d2c46] text-slate-300"
-            }
-          >
-            Application
-          </Button>
-        </div>
-      </div>
-
-      <div className="max-w-[430px]">
-        <TableStat summaryRows={summaryRows} />
+        <SelectProject />
       </div>
 
       {content}
