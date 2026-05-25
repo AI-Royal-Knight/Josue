@@ -40,15 +40,14 @@ export const DASHBOARD_NAV = {
   ],
   managing_director: [
     { title: "Projects Overview", url: "/project-overview" },
-    { title: "Variation List", url: "/variation-list" },
+    { title: "Variations", url: "/variations" },
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Daily Register", url: "/daily-register" },
     { title: "Profile", url: "/profile" },
   ],
   project_director: [
     { title: "Project Overview", url: "/project-overview" },
-    //  { title: "Create Variation", url: "/create-variation" },
-    { title: "Variation List", url: "/variation-list" },
+    { title: "Variations", url: "/variations" },
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Daily Register", url: "/daily-register" },
     { title: "Profile", url: "/profile" },
@@ -62,7 +61,7 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   commercial_department: [
-    { title: "Variation List", url: "/variation-list" },
+    { title: "Variations", url: "/variations" },
     { title: "Variation Summary", url: "/variation-summary" },
     { title: "Monthly Application", url: "/monthly-application" },
     //  { title: "Create Variation", url: "/create-variation" },
@@ -71,7 +70,7 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   document_controller: [
-    { title: "Invite Users", url: "/invite-users" },
+    { title: "Users", url: "/users" },
     { title: "Profile", url: "/profile" },
   ],
   finance_department: [
@@ -80,9 +79,8 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   contracts_manager: [
-    { title: "Invite Users", url: "/invite-users" },
     { title: "Users", url: "/users" },
-    { title: "Assign Management", url: "/assign-management" },
+   //  { title: "Assign Management", url: "/assign-management" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
@@ -94,11 +92,9 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
-    { title: "Variations List", url: "/variations-list" },
     { title: "Profile", url: "/profile" },
   ],
   managers: [
-    { title: "Invite Users", url: "/invite-users" },
     { title: "Users", url: "/users" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
@@ -110,11 +106,9 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
-    { title: "Variation List", url: "/variations-list" },
     { title: "Profile", url: "/profile" },
   ],
   supervisor: [
-    { title: "Invite Users", url: "/invite-users" },
     { title: "Users", url: "/users" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
@@ -126,7 +120,6 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
-    { title: "Variation List", url: "/variation-list" },
     { title: "Profile", url: "/profile" },
   ],
 }

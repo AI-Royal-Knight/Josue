@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import type { ColDef, RowClassParams } from "ag-grid-community"
+import { useMemo, useState, useCallback } from "react"
+import type { ColDef } from "ag-grid-community"
 import {
   Select,
   SelectContent,
@@ -11,6 +11,17 @@ import {
 } from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
 import { AgTable } from "@/components/common/AgTable"
+import { Switch } from "@/components/ui/switch"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 type InvoiceRow = {
   no: string
@@ -24,72 +35,23 @@ type InvoiceRow = {
   description: string
   createdBy: string
   approvedBy: string
-  approved: string
+  approved: boolean
   total: string
-  paid: string
   datePaid: string
   paidBy: string
   financeComments: string
   commercialComments: string
-  highlight?: boolean
 }
 
-const summaryRows = [
-  { label: "Invoices QTY", value: "1000", alert: false },
-  { label: "Invoices Value", value: "400", alert: false },
-  { label: "Approved Invoices", value: "200", alert: false },
-  { label: "Approved Invoices Value", value: "200", alert: false },
-  { label: "Invoices Awaiting Approval", value: "200", alert: true },
-  { label: "Awaiting Approval Value", value: "200", alert: true },
-  { label: "Invoices Due this Week", value: "200", alert: false },
-  { label: "Invoices Due this Week", value: "200", alert: false },
-  { label: "Invoices Paid QTY", value: "200", alert: false },
-  { label: "Invoices Paid Value", value: "200", alert: false },
-]
+type PendingToggle = {
+  no: string
+  invoiceNumber: string
+  nextValue: boolean
+}
 
-const rows: InvoiceRow[] = [
+const initialRows: InvoiceRow[] = [
   {
     no: "1",
-    invoiceNumber: "",
-    date: "",
-    variationSheetNo: "",
-    nfiProformaNo: "",
-    project: "",
-    workArea: "",
-    workSection: "",
-    description: "",
-    createdBy: "",
-    approvedBy: "",
-    approved: "",
-    total: "",
-    paid: "",
-    datePaid: "",
-    paidBy: "",
-    financeComments: "",
-    commercialComments: "",
-  },
-  {
-    no: "2",
-    invoiceNumber: "",
-    date: "",
-    variationSheetNo: "",
-    nfiProformaNo: "",
-    project: "",
-    workArea: "",
-    workSection: "",
-    description: "",
-    createdBy: "",
-    approvedBy: "",
-    approved: "",
-    total: "",
-    paid: "",
-    datePaid: "",
-    paidBy: "",
-    financeComments: "",
-    commercialComments: "",
-  },
-  {
-    no: "3",
     invoiceNumber: "INV-2024-003",
     date: "15/03/2024",
     variationSheetNo: "VS-012",
@@ -100,37 +62,34 @@ const rows: InvoiceRow[] = [
     description: "Concrete pouring for Level 5",
     createdBy: "Ahmed K.",
     approvedBy: "Mohammad R.",
-    approved: "Yes",
-    total: "145,000.00",
-    paid: "145,000.00",
+    approved: true,
+    total: "£145,000.00",
     datePaid: "22/03/2024",
     paidBy: "Sarah L.",
     financeComments: "Cleared",
     commercialComments: "Approved",
-    highlight: true,
   },
   {
-    no: "4",
-    invoiceNumber: "",
-    date: "",
-    variationSheetNo: "",
-    nfiProformaNo: "",
-    project: "",
-    workArea: "",
+    no: "2",
+    invoiceNumber: "INV-2024-004",
+    date: "20/03/2024",
+    variationSheetNo: "VS-015",
+    nfiProformaNo: "NFI-048",
+    project: "Dubai Marina Plaza",
+    workArea: "Zone C",
     workSection: "",
     description: "",
     createdBy: "",
     approvedBy: "",
-    approved: "",
+    approved: false,
     total: "",
-    paid: "",
     datePaid: "",
     paidBy: "",
     financeComments: "",
     commercialComments: "",
   },
   {
-    no: "5",
+    no: "3",
     invoiceNumber: "INV-2024-005",
     date: "28/03/2024",
     variationSheetNo: "VS-018",
@@ -141,50 +100,46 @@ const rows: InvoiceRow[] = [
     description: "HVAC installation Phase 2",
     createdBy: "Omar S.",
     approvedBy: "Fatima H.",
-    approved: "Yes",
-    total: "89,500.00",
-    paid: "89,500.00",
+    approved: true,
+    total: "£89,500.00",
     datePaid: "05/04/2024",
     paidBy: "Sarah L.",
     financeComments: "Processed",
     commercialComments: "Verified",
-    highlight: true,
   },
   {
-    no: "6",
-    invoiceNumber: "",
-    date: "",
-    variationSheetNo: "",
-    nfiProformaNo: "",
-    project: "",
-    workArea: "",
-    workSection: "",
-    description: "",
-    createdBy: "",
+    no: "4",
+    invoiceNumber: "INV-2024-006",
+    date: "01/04/2024",
+    variationSheetNo: "VS-020",
+    nfiProformaNo: "NFI-058",
+    project: "Al Barsha Tower",
+    workArea: "Zone C",
+    workSection: "Electrical",
+    description: "Main distribution board installation",
+    createdBy: "Khalid M.",
     approvedBy: "",
-    approved: "",
-    total: "",
-    paid: "",
+    approved: false,
+    total: "£62,000.00",
     datePaid: "",
     paidBy: "",
     financeComments: "",
     commercialComments: "",
   },
   {
-    no: "7",
-    invoiceNumber: "",
-    date: "",
-    variationSheetNo: "",
-    nfiProformaNo: "",
-    project: "",
-    workArea: "",
-    workSection: "",
-    description: "",
-    createdBy: "",
+    no: "5",
+    invoiceNumber: "INV-2024-007",
+    date: "05/04/2024",
+    variationSheetNo: "VS-022",
+    nfiProformaNo: "NFI-061",
+    project: "Dubai Marina Plaza",
+    workArea: "Zone B",
+    workSection: "Civil",
+    description: "Foundation works Block D",
+    createdBy: "Yusuf A.",
     approvedBy: "",
-    approved: "",
-    total: "",
-    paid: "",
+    approved: false,
+    total: "£110,000.00",
     datePaid: "",
     paidBy: "",
     financeComments: "",
@@ -194,65 +149,146 @@ const rows: InvoiceRow[] = [
 
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
-  const columns = useMemo<ColDef<InvoiceRow>[]>(
-    () => [
-      { headerName: "No.", field: "no", minWidth: 70, filter: false },
-      { headerName: "Invoice Number", field: "invoiceNumber", minWidth: 160 },
-      { headerName: "Date", field: "date", minWidth: 120 },
-      {
-        headerName: "Variation sheet no.",
-        field: "variationSheetNo",
-        minWidth: 140,
-      },
-      { headerName: "NFI Proforma no.", field: "nfiProformaNo", minWidth: 140 },
-      { headerName: "Project", field: "project", minWidth: 160 },
-      { headerName: "Work area", field: "workArea", minWidth: 120 },
-      { headerName: "Work section", field: "workSection", minWidth: 140 },
-      {
-        headerName: "Description of Work",
-        field: "description",
-        minWidth: 200,
-      },
-      { headerName: "Created by", field: "createdBy", minWidth: 140 },
-      { headerName: "Approved by", field: "approvedBy", minWidth: 140 },
-      { headerName: "Approved", field: "approved", minWidth: 100 },
-      {
-        headerName: "TOTAL",
-        field: "total",
-        minWidth: 120,
-        cellStyle: { textAlign: "right" },
-      },
-      {
-        headerName: "Paid",
-        field: "paid",
-        minWidth: 120,
-        cellStyle: { textAlign: "right" },
-      },
-      { headerName: "Date paid", field: "datePaid", minWidth: 120 },
-      { headerName: "Paid by", field: "paidBy", minWidth: 140 },
-      {
-        headerName: "Finance team comments",
-        field: "financeComments",
-        minWidth: 200,
-      },
-      {
-        headerName: "Commercial team comments",
-        field: "commercialComments",
-        minWidth: 200,
-      },
-    ],
+  const [rows, setRows] = useState<InvoiceRow[]>(initialRows)
+  const [pending, setPending] = useState<PendingToggle | null>(null)
+
+  // Stage toggle — opens confirmation dialog
+  const requestToggle = useCallback(
+    (no: string, invoiceNumber: string, nextValue: boolean) => {
+      setPending({ no, invoiceNumber, nextValue })
+    },
     []
   )
 
-//   const gridOptions = useMemo(
-//     () => ({
-//       getRowStyle: (params: RowClassParams) =>
-//         params.data?.highlight
-//           ? { background: "#1ea84d", color: "#ffffff" }
-//           : undefined,
-//     }),
-//     []
-//   )
+  // Confirmed — commit
+  const confirmToggle = useCallback(() => {
+    if (!pending) return
+    const today = new Date().toLocaleDateString("en-GB")
+    setRows((prev) =>
+      prev.map((r) =>
+        r.no === pending.no
+          ? {
+              ...r,
+              approved: pending.nextValue,
+              approvedBy: pending.nextValue ? "Finance Department" : "",
+              datePaid: pending.nextValue ? today : "",
+              paidBy: pending.nextValue ? "Finance Department" : "",
+            }
+          : r
+      )
+    )
+    setPending(null)
+  }, [pending])
+
+  const approvedCount = rows.filter((r) => r.approved && r.invoiceNumber).length
+  const pendingCount = rows.filter((r) => !r.approved && r.invoiceNumber).length
+
+  const columns = useMemo<ColDef<InvoiceRow>[]>(
+    () => [
+      { headerName: "No.", field: "no", minWidth: 70, maxWidth: 80, filter: false },
+
+      // ── Invoice Number — green if approved, red if not (when populated) ──
+      {
+        headerName: "Invoice Number",
+        field: "invoiceNumber",
+        minWidth: 160,
+        cellRenderer: (params: { data?: InvoiceRow; value: string }) => {
+          if (!params.value) return null
+          const approved = params.data?.approved
+          return (
+            <span
+              className={
+                approved
+                  ? "font-medium text-emerald-400"
+                  : "font-medium text-red-400"
+              }
+            >
+              {params.value}
+            </span>
+          )
+        },
+      },
+
+      { headerName: "Date", field: "date", minWidth: 120 },
+      { headerName: "Variation Sheet No.", field: "variationSheetNo", minWidth: 160 },
+      { headerName: "NFI Proforma No.", field: "nfiProformaNo", minWidth: 150 },
+      { headerName: "Project", field: "project", minWidth: 160 },
+      { headerName: "Description of Work", field: "description", minWidth: 220 },
+      { headerName: "Created By", field: "createdBy", minWidth: 140 },
+      { headerName: "Approved By", field: "approvedBy", minWidth: 140 },
+
+      // ── Approved — toggle switch ──────────────────────────────────────────
+      {
+        headerName: "Approved",
+        field: "approved",
+        minWidth: 140,
+        cellRenderer: (params: { data?: InvoiceRow }) => {
+          const row = params.data
+          if (!row) return null
+          const approved = row.approved
+          return (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={approved}
+                onCheckedChange={(checked) =>
+                  requestToggle(
+                    row.no,
+                    row.invoiceNumber || `Row ${row.no}`,
+                    checked
+                  )
+                }
+              />
+              <span
+                className={
+                  approved
+                    ? "text-xs font-medium text-emerald-400"
+                    : "text-xs font-medium text-slate-400"
+                }
+              >
+                {approved ? "Yes" : "No"}
+              </span>
+            </div>
+          )
+        },
+      },
+
+      {
+        headerName: "Total",
+        field: "total",
+        minWidth: 130,
+        cellStyle: { textAlign: "right" },
+      },
+
+      // ── Paid — derived from approved ──────────────────────────────────────
+      {
+        headerName: "Paid",
+        field: "approved",
+        colId: "paid",
+        minWidth: 90,
+        cellRenderer: (params: { data?: InvoiceRow }) => {
+          const approved = params.data?.approved
+          if (!params.data?.invoiceNumber) return null
+          return (
+            <span
+              className={
+                approved
+                  ? "font-medium text-emerald-400"
+                  : "font-medium text-slate-400"
+              }
+            >
+              {approved ? "Yes" : "No"}
+            </span>
+          )
+        },
+      },
+
+      { headerName: "Date Paid", field: "datePaid", minWidth: 120 },
+      { headerName: "Paid By", field: "paidBy", minWidth: 140 },
+      { headerName: "Finance Comments", field: "financeComments", minWidth: 200 },
+      { headerName: "Commercial Comments", field: "commercialComments", minWidth: 200 },
+    ],
+    [requestToggle]
+  )
 
   return (
     <div className="w-full space-y-6 p-6">
@@ -274,19 +310,54 @@ export default function Page() {
           </Select>
         </div>
 
-        <TableStat summaryRows={summaryRows} />
+        <TableStat
+          summaryRows={[
+            { label: "Invoices", value: String(rows.filter((r) => r.invoiceNumber).length) },
+            { label: "Approved Invoices", value: String(approvedCount), valueColor: "green" },
+            { label: "Awaiting Approval", value: String(pendingCount), valueColor: pendingCount > 0 ? "red" : undefined },
+            { label: "Invoices Paid", value: String(approvedCount) },
+          ]}
+        />
       </div>
 
       <div className="overflow-x-auto border border-white/10">
-        <div className="min-w-[1200px]">
+        <div className="min-w-[1400px]">
           <AgTable
             rowData={rows}
             columnDefs={columns}
+            suppressCellClickAction
             height="auto"
-            // gridOptions={gridOptions}
+            gridOptions={{ rowHeight: 48 }}
           />
         </div>
       </div>
+
+      {/* Confirmation dialog */}
+      <AlertDialog
+        open={!!pending}
+        onOpenChange={(open) => !open && setPending(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pending?.nextValue ? "Approve invoice?" : "Revoke approval?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.nextValue
+                ? `Approving ${pending.invoiceNumber} will mark it as paid. Are you sure?`
+                : `Revoking approval for ${pending?.invoiceNumber} will mark it as unpaid.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPending(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmToggle}>
+              {pending?.nextValue ? "Approve" : "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
