@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import SelectProject from "@/components/shared/select-project"
 
 type InvoiceRow = {
   no: string
@@ -185,9 +186,6 @@ export default function Page() {
 
   const columns = useMemo<ColDef<InvoiceRow>[]>(
     () => [
-      { headerName: "No.", field: "no", minWidth: 70, maxWidth: 80, filter: false },
-
-      // ── Invoice Number — green if approved, red if not (when populated) ──
       {
         headerName: "Invoice Number",
         field: "invoiceNumber",
@@ -210,14 +208,20 @@ export default function Page() {
       },
 
       { headerName: "Date", field: "date", minWidth: 120 },
-      { headerName: "Variation Sheet No.", field: "variationSheetNo", minWidth: 160 },
+      {
+        headerName: "Variation Sheet No.",
+        field: "variationSheetNo",
+        minWidth: 160,
+      },
       { headerName: "NFI Proforma No.", field: "nfiProformaNo", minWidth: 150 },
       { headerName: "Project", field: "project", minWidth: 160 },
-      { headerName: "Description of Work", field: "description", minWidth: 220 },
+      {
+        headerName: "Description of Work",
+        field: "description",
+        minWidth: 220,
+      },
       { headerName: "Created By", field: "createdBy", minWidth: 140 },
-      { headerName: "Approved By", field: "approvedBy", minWidth: 140 },
 
-      // ── Approved — toggle switch ──────────────────────────────────────────
       {
         headerName: "Approved",
         field: "approved",
@@ -227,7 +231,7 @@ export default function Page() {
           if (!row) return null
           const approved = row.approved
           return (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 py-2">
               <Switch
                 checked={approved}
                 onCheckedChange={(checked) =>
@@ -252,14 +256,13 @@ export default function Page() {
         },
       },
 
+      { headerName: "Approved By", field: "approvedBy", minWidth: 140 },
       {
         headerName: "Total",
         field: "total",
         minWidth: 130,
         cellStyle: { textAlign: "right" },
       },
-
-      // ── Paid — derived from approved ──────────────────────────────────────
       {
         headerName: "Paid",
         field: "approved",
@@ -284,8 +287,16 @@ export default function Page() {
 
       { headerName: "Date Paid", field: "datePaid", minWidth: 120 },
       { headerName: "Paid By", field: "paidBy", minWidth: 140 },
-      { headerName: "Finance Comments", field: "financeComments", minWidth: 200 },
-      { headerName: "Commercial Comments", field: "commercialComments", minWidth: 200 },
+      {
+        headerName: "Finance Comments",
+        field: "financeComments",
+        minWidth: 200,
+      },
+      {
+        headerName: "Commercial Comments",
+        field: "commercialComments",
+        minWidth: 200,
+      },
     ],
     [requestToggle]
   )
@@ -294,30 +305,27 @@ export default function Page() {
     <div className="w-full space-y-6 p-6">
       <h2 className="text-2xl font-semibold">User Invoices</h2>
 
-      <div className="max-w-[440px] space-y-3">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-300">
-            Select Project
-          </label>
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="border-white/10 bg-slate-900">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="border-white/10 bg-slate-900">
-              <SelectItem value="project-a">Project A</SelectItem>
-              <SelectItem value="project-b">Project B</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
+      <div className="flex items-start justify-between">
         <TableStat
           summaryRows={[
-            { label: "Invoices", value: String(rows.filter((r) => r.invoiceNumber).length) },
-            { label: "Approved Invoices", value: String(approvedCount), valueColor: "green" },
-            { label: "Awaiting Approval", value: String(pendingCount), valueColor: pendingCount > 0 ? "red" : undefined },
+            {
+              label: "Invoices",
+              value: String(rows.filter((r) => r.invoiceNumber).length),
+            },
+            {
+              label: "Approved Invoices",
+              value: String(approvedCount),
+              valueColor: "green",
+            },
+            {
+              label: "Awaiting Approval",
+              value: String(pendingCount),
+              valueColor: pendingCount > 0 ? "red" : undefined,
+            },
             { label: "Invoices Paid", value: String(approvedCount) },
           ]}
         />
+        <SelectProject />
       </div>
 
       <div className="overflow-x-auto border border-white/10">

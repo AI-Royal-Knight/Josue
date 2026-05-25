@@ -73,10 +73,11 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
   ]
 
   return (
-    <div className="w-full max-w-[400px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
+    <div className="w-full max-w-[550px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
       <AgTable
         rowData={[{ label: "", qty: "QTY", value: "Value" }, ...summaryRows]}
         columnDefs={columnDefs}
+        showRowNumberColumn={false}
         height="auto"
         suppressCellClickAction
         defaultColDef={{

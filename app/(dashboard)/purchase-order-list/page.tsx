@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import TableStat from "@/components/common/table-stat"
+import SelectProject from "@/components/shared/select-project"
 
 type PurchaseOrderRow = {
   no: string
@@ -28,11 +29,11 @@ type PurchaseOrderRow = {
 }
 
 const summaryMetrics = [
-//   { label: "Approved Quotes", value: "£2,550,000" },
+    { label: "Approved Quotes", value: "£2,550,000" },
   { label: "Created PO", value: "£845,200" },
-//   { label: "Approved Quote Value", value: "£1,854,800" },
+  //   { label: "Approved Quote Value", value: "£1,854,800" },
   { label: "PO", value: "164" },
-  { label: "Chased PO", value: "158" },
+//   { label: "Chased PO", value: "158" },
 ]
 
 const data: PurchaseOrderRow[] = [
@@ -178,14 +179,19 @@ const columns: ColDef<PurchaseOrderRow>[] = [
 export default function Page() {
   return (
     <div className="w-full space-y-6 p-6">
-      <div>
-        <h2 className="text-2xl font-semibold">Purchase Order List</h2>
+      <h2 className="text-2xl font-semibold">Purchase Order List</h2>
+      <div className="flex items-start justify-between">
+        <TableStat summaryRows={summaryMetrics} />
+        <SelectProject />
       </div>
 
-      <TableStat summaryRows={summaryMetrics} />
-
       <div className="mt-8 overflow-x-auto">
-        <AgTable rowData={data} columnDefs={columns} height="auto" defaultColDef={{ flex: 1, minWidth: 150 }} />
+        <AgTable
+          rowData={data}
+          columnDefs={columns}
+          height="auto"
+          defaultColDef={{ flex: 1, minWidth: 150 }}
+        />
       </div>
     </div>
   )

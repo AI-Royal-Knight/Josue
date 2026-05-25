@@ -2,13 +2,6 @@
 
 import { useState, useMemo } from "react"
 import type { ColDef } from "ag-grid-community"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
@@ -31,8 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Send, PackageCheck, Download, History } from "lucide-react"
-
-// ── types ─────────────────────────────────────────────────────────────────────
+import SelectProject from "@/components/shared/select-project"
 
 type CallOffHistoryEntry = {
   callOffRef: string
@@ -98,8 +90,6 @@ type HistoryDialogState = {
   history: CallOffHistoryEntry[]
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
 function formatGBP(n: number) {
   return n.toLocaleString("en-GB", { style: "currency", currency: "GBP" })
 }
@@ -149,8 +139,6 @@ function downloadCSV(
   a.click()
   URL.revokeObjectURL(url)
 }
-
-// ── seed data ─────────────────────────────────────────────────────────────────
 
 const initialData: CallOffRow[] = [
   {
@@ -444,28 +432,28 @@ const initialData: CallOffRow[] = [
 ]
 
 const summaryMetrics = [
-  { label: "PO Value", value: "£000,000" },
-  { label: "Call Off Value", value: "£000,000" },
-  { label: "PO Remaining", value: "£000,000" },
+  { label: "PO", value: "" },
+  { label: "Call Off", value: "" },
+  { label: "PO Remaining", value: "" },
 ]
 
-// ── main component ────────────────────────────────────────────────────────────
-
 export default function Page() {
-  const [selectedProject, setSelectedProject] = useState("project-a")
   const [data] = useState<CallOffRow[]>(initialData)
+
+  const isApprovedRow = (row?: CallOffRow) => {
+    const approveBy = row?.approveBy?.trim()
+    if (!approveBy || approveBy === "-") return false
+    return approveBy.toLowerCase() !== "pending"
+  }
 
   // PO order dialog
   const [poDialog, setPoDialog] = useState<PODialogState | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sentPO, setSentPO] = useState<string | null>(null)
 
-  // History / view dialog
   const [historyDialog, setHistoryDialog] = useState<HistoryDialogState | null>(
     null
   )
-
-  // ── PO order dialog helpers ─────────────────────────────────────────────────
 
   const openPODialog = (poRef: string, focusRef?: string) => {
     const poRows = data.filter((r) => r.poRef === poRef)
@@ -516,8 +504,6 @@ export default function Page() {
     setPoDialog(null)
   }
 
-  // ── History dialog helper ───────────────────────────────────────────────────
-
   const openHistoryDialog = (row: CallOffRow) => {
     setHistoryDialog({
       poRef: row.poRef,
@@ -530,8 +516,6 @@ export default function Page() {
     })
   }
 
-  // ── Clickable cell renderer for history columns ─────────────────────────────
-
   const HistoryCell = (field: keyof CallOffRow) => {
     function HistoryCellRenderer(params: {
       value: unknown
@@ -541,7 +525,7 @@ export default function Page() {
       const row = params.data
       return (
         <button
-          className="flex w-full items-center justify-between gap-1 text-left hover:text-blue-300"
+          className="flex w-full items-center justify-between gap-1 text-left underline-offset-2 hover:underline"
           onClick={() => openHistoryDialog(row)}
           title="Click to view call-off history"
         >
@@ -556,8 +540,6 @@ export default function Page() {
     return HistoryCellRenderer
   }
 
-  // ── Column defs ─────────────────────────────────────────────────────────────
-
   const columns: ColDef<CallOffRow>[] = [
     {
       headerName: "PO Ref",
@@ -565,7 +547,7 @@ export default function Page() {
       minWidth: 140,
       cellRenderer: (params: { value: string; data?: CallOffRow }) => (
         <button
-          className="font-medium text-blue-400 underline-offset-2 hover:underline"
+          className="font-medium underline-offset-2 hover:underline"
           onClick={() => openPODialog(params.value)}
         >
           {params.value}
@@ -578,7 +560,7 @@ export default function Page() {
       minWidth: 140,
       cellRenderer: (params: { value: string; data?: CallOffRow }) => (
         <button
-          className="font-medium text-blue-400 underline-offset-2 hover:underline"
+          className="font-medium underline-offset-2 hover:underline"
           onClick={() =>
             params.data && openPODialog(params.data.poRef, params.value)
           }
@@ -593,8 +575,6 @@ export default function Page() {
     { headerName: "Variation Ref.", field: "variationRef" },
     { headerName: "Supplier Name", field: "supplierName" },
     { headerName: "Supplier Email", field: "supplierEmail" },
-    { headerName: "No.", field: "no", maxWidth: 70 },
-    // ── History-enabled columns ──────────────────────────────────────────────
     {
       headerName: "Product Description",
       field: "productDescription",
@@ -626,8 +606,16 @@ export default function Page() {
       field: "callOffQty",
       cellRenderer: HistoryCell("callOffQty"),
     },
-    { headerName: "Call Off Price", field: "callOffPrice" },
-    { headerName: "Call Off Date", field: "callOffDate" },
+    {
+      headerName: "Call Off Price",
+      field: "callOffPrice",
+      cellRenderer: HistoryCell("callOffPrice"),
+    },
+    {
+      headerName: "Call Off Date",
+      field: "callOffDate",
+      cellRenderer: HistoryCell("callOffDate"),
+    },
     {
       headerName: "Expected Delivery",
       field: "expectedDeliveryDate",
@@ -637,30 +625,14 @@ export default function Page() {
     { headerName: "Approve By", field: "approveBy" },
   ]
 
-  // ── render ──────────────────────────────────────────────────────────────────
-
   return (
     <div className="w-full space-y-6 p-6">
-      <div>
-        <h2 className="mb-4 text-2xl font-semibold">Call Off List</h2>
-        <div className="max-w-xs">
-          <label className="mb-2 block text-sm font-medium text-slate-300">
-            Select Project
-          </label>
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="border-white/10 bg-slate-900">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="border-white/10 bg-slate-900">
-              <SelectItem value="project-a">Project A</SelectItem>
-              <SelectItem value="project-b">Project B</SelectItem>
-              <SelectItem value="project-c">Project C</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <h2 className="mb-4 text-2xl font-semibold">Call Off List</h2>
 
-      <TableStat summaryRows={summaryMetrics} />
+      <div className="flex items-start justify-between gap-4">
+        <TableStat summaryRows={summaryMetrics} />
+        <SelectProject />
+      </div>
 
       {sentPO && (
         <div className="flex items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
@@ -674,11 +646,18 @@ export default function Page() {
         columnDefs={columns}
         suppressCellClickAction
         height="auto"
-        defaultColDef={{ flex: 1, minWidth: 140 }}
+        defaultColDef={{
+          flex: 1,
+          minWidth: 140,
+          cellClassRules: {
+            "text-green-400": (params) => isApprovedRow(params.data),
+            "text-red-400": (params) => !isApprovedRow(params.data),
+          },
+        }}
         gridOptions={{ rowHeight: 44 }}
       />
 
-      {/* ── Call-Off History Dialog ──────────────────────────────────── */}
+      {/* Call-Off History Dialog  */}
       <Dialog
         open={!!historyDialog}
         onOpenChange={(o) => !o && setHistoryDialog(null)}
@@ -837,7 +816,7 @@ export default function Page() {
         </DialogContent>
       </Dialog>
 
-      {/* ── PO Order Dialog ──────────────────────────────────────────── */}
+      {/* PO Order Dialog */}
       <Dialog open={!!poDialog} onOpenChange={(o) => !o && setPoDialog(null)}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
@@ -957,7 +936,7 @@ export default function Page() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Send confirmation ─────────────────────────────────────────── */}
+      {/* Send confirmation */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

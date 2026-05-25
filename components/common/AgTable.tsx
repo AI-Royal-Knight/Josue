@@ -58,6 +58,7 @@ const modules = [AllCommunityModule]
 export function AgTable<TData extends object>({
   rowData,
   columnDefs,
+  showRowNumberColumn = true,
   defaultColDef,
   components,
   height = "70vh",
@@ -80,6 +81,51 @@ export function AgTable<TData extends object>({
   const [dateField, setDateField] = useState("")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [exportMessage, setExportMessage] = useState<string | null>(null)
+
+  const hasExplicitNoColumn = useMemo(() => {
+    const isNoHeader = (value: unknown) => {
+      const text = typeof value === "string" ? value.trim().toLowerCase() : ""
+      return text === "no" || text === "no." || text === "#"
+    }
+
+    return columnDefs.some((column) => {
+      const field = typeof column.field === "string" ? column.field : ""
+      const colId = typeof column.colId === "string" ? column.colId : ""
+      const normalizedField = field.trim().toLowerCase()
+      const normalizedColId = colId.trim().toLowerCase()
+
+      return (
+        normalizedField === "no" ||
+        normalizedColId === "no" ||
+        isNoHeader(column.headerName)
+      )
+    })
+  }, [columnDefs])
+
+  const rowNumberColumnDef = useMemo<ColDef<TData>>(
+    () => ({
+      headerName: "No.",
+      colId: "__rowNumber",
+      flex: 0,
+      minWidth: 60,
+      width: 60,
+      maxWidth: 70,
+      sortable: false,
+      filter: false,
+      resizable: false,
+      // pinned: "left",
+      suppressMovable: true,
+      cellClass: "text-center",
+      headerClass: "text-center",
+      valueGetter: (params) => (params.node ? params.node.rowIndex + 1 : ""),
+    }),
+    []
+  )
+
+  const resolvedColumnDefs = useMemo(() => {
+    if (!showRowNumberColumn || hasExplicitNoColumn) return columnDefs
+    return [rowNumberColumnDef, ...columnDefs]
+  }, [columnDefs, hasExplicitNoColumn, rowNumberColumnDef, showRowNumberColumn])
 
   // Stable theme reference
   const resolvedTheme = useMemo(() => theme ?? baseTheme, [theme])
@@ -262,7 +308,7 @@ export function AgTable<TData extends object>({
         <AgGridReact<TData>
           // Data
           rowData={rowData}
-          columnDefs={columnDefs}
+          columnDefs={resolvedColumnDefs}
           defaultColDef={mergedDefaultColDef}
           // Appearance
           theme={resolvedTheme}

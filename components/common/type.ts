@@ -14,6 +14,12 @@ export type AgTableProps<TData extends object> = {
   /** Column definitions — typed against your row shape */
   columnDefs: ColDef<TData>[]
 
+  /**
+   * Adds an automatic row-number column ("No.") as the first column.
+   * Defaults to true, and is skipped if you already define a "No."/"no" column.
+   */
+  showRowNumberColumn?: boolean
+
   /** Override any default column def */
   defaultColDef?: ColDef<TData>
 

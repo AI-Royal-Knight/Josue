@@ -3,14 +3,8 @@
 import type { ColDef } from "ag-grid-community"
 
 import { AgTable } from "@/components/common/AgTable"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
+import SelectProject from "@/components/shared/select-project"
 
 type ProformaRow = {
   no: number
@@ -31,25 +25,12 @@ type ProformaRow = {
 }
 
 const summaryRows = [
-  { label: "Proforma NR Invoice QTY", value: "1000", alert: false },
-  { label: "Proforma NR Invoices Value", value: "400", alert: false },
-  { label: "Approved Proforma NR Invoice", value: "200", alert: false },
-  { label: "Approved Proforma NR Invoice Value", value: "200", alert: false },
-  { label: "Proforma NR Invoice Awaiting approved", value: "200", alert: true },
-  { label: "Awaiting approval proforma NR value", value: "200", alert: true },
-  { label: "Proforma NR invoices due this week", value: "200", alert: false },
-  {
-    label: "Proforma NR invoices due value this week",
-    value: "200",
-    alert: false,
-  },
-  {
-    label: "Proforma NR invoices value due this week",
-    value: "200",
-    alert: false,
-  },
-  { label: "Proforma NR invoices paid QTY", value: "200", alert: false },
-  { label: "Proforma NR invoices paid value", value: "200", alert: false },
+  { label: "Proforma NR Invoice", qty: 50, value: "1000", alert: false },
+  { label: "Approved Proforma NR Invoice", qty: 200, value: "200", alert: false },
+  { label: "Proforma NR Invoice Awaiting approved", qty: 200, value: "200", alert: true },
+  { label: "Awaiting approval proforma NR", qty: 200, value: "200", alert: true },
+  { label: "Proforma NR invoices due this week", qty: 200, value: "200", alert: false },
+  { label: "Proforma NR invoices paid", qty: 200, value: "200", alert: false },
 ]
 
 const rows: ProformaRow[] = [
@@ -124,7 +105,7 @@ const rows: ProformaRow[] = [
 ]
 
 const columns: ColDef<ProformaRow>[] = [
-  { headerName: "No.", field: "no" },
+//   { headerName: "No.", field: "no" },
   { headerName: "Invoice Number", field: "invoiceNumber" },
   { headerName: "Date", field: "date" },
   { headerName: "NR Proforma no.", field: "nrProformaNo" },
@@ -146,20 +127,10 @@ export default function Page() {
     <div className="w-full min-w-0 space-y-6 p-6">
       <h1 className="text-2xl font-semibold">Proforma NR List</h1>
 
-      <div className="max-w-[420px] space-y-2">
-        <p className="text-sm font-medium">Select Project</p>
-        <Select defaultValue="project-a">
-          <SelectTrigger className="bg-[#1a2842]">
-            <SelectValue placeholder="Select project" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="project-a">Project A</SelectItem>
-            <SelectItem value="project-b">Project B</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex items-start justify-between">
+        <TableStat summaryRows={summaryRows} />
+        <SelectProject />
       </div>
-
-      <TableStat summaryRows={summaryRows} />
 
       <AgTable rowData={rows} columnDefs={columns} height="auto" />
     </div>
