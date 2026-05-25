@@ -117,7 +117,11 @@ export function AgTable<TData extends object>({
       suppressMovable: true,
       cellClass: "text-center",
       headerClass: "text-center",
-      valueGetter: (params) => (params.node ? params.node.rowIndex + 1 : ""),
+      valueGetter: (params) => {
+        const rowIndex = params.node?.rowIndex
+        if (rowIndex === null || rowIndex === undefined) return ""
+        return rowIndex + 1
+      },
     }),
     []
   )
