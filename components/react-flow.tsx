@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Controls,
   Handle,
@@ -19,6 +19,15 @@ import {
 import "@xyflow/react/dist/style.css"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { InlineCreate } from "@/app/(dashboard)/labour-target/inline-create"
 import { SubfolderModal } from "@/app/(dashboard)/labour-target/subfolder-modal"
 import { SubfolderCard } from "@/app/(dashboard)/labour-target/subfolder-card"
@@ -121,7 +130,11 @@ function ReactFlowComponentInner() {
   const [folders, setFolders] = useState<FolderType[]>(INITIAL_FOLDERS)
   const [modal, setModal] = useState<ModalState>(null)
   const [copiedValue, setCopiedValue] = useState("")
-  const [creatingFolder, setCreatingFolder] = useState(false)
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [createStep, setCreateStep] = useState<"folder" | "subfolder">("folder")
+  const [newFolderName, setNewFolderName] = useState("")
+  const [newSubfolderName, setNewSubfolderName] = useState("")
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges] = useEdgesState<Edge>([])
@@ -129,6 +142,13 @@ function ReactFlowComponentInner() {
   const focusFolderIndexRef = useRef<number | null>(null)
   const flowReadyRef = useRef(false)
   const reactFlow = useReactFlow()
+
+  const resetCreateDialog = useCallback(() => {
+    setCreateDialogOpen(false)
+    setCreateStep("folder")
+    setNewFolderName("")
+    setNewSubfolderName("")
+  }, [])
 
   const fitToContent = useCallback(() => {
     if (!flowReadyRef.current) return
@@ -147,21 +167,34 @@ function ReactFlowComponentInner() {
     fitToContent()
   }, [fitToContent])
 
-  const addFolder = useCallback(
-    (name: string) => {
+  const createFolderWithSubfolder = useCallback(
+    (folderName: string, subfolderName: string) => {
+      const folderId = uid()
+      const subfolderId = uid()
+
       focusFolderIndexRef.current = folders.length
+
       setFolders((prev) => [
         ...prev,
-        { id: uid(), name: name.toUpperCase(), subfolders: [] },
+        {
+          id: folderId,
+          name: folderName.toUpperCase(),
+          subfolders: [
+            { id: subfolderId, name: subfolderName, rows: defaultRows() },
+          ],
+        },
       ])
-      setCreatingFolder(false)
+
+      setModal({ folderId, subfolderId })
+      resetCreateDialog()
       fitToContent()
     },
-    [fitToContent, folders.length]
+    [fitToContent, folders.length, resetCreateDialog]
   )
 
   const addSubfolder = useCallback(
     (folderId: string, name: string) => {
+      const subfolderId = uid()
       setFolders((prev) =>
         prev.map((folder) =>
           folder.id === folderId
@@ -169,12 +202,14 @@ function ReactFlowComponentInner() {
                 ...folder,
                 subfolders: [
                   ...folder.subfolders,
-                  { id: uid(), name, rows: defaultRows() },
+                  { id: subfolderId, name, rows: defaultRows() },
                 ],
               }
             : folder
         )
       )
+
+      setModal({ folderId, subfolderId })
       fitToContent()
     },
     [fitToContent]
@@ -211,6 +246,16 @@ function ReactFlowComponentInner() {
   const activeSubfolder = activeFolder?.subfolders.find(
     (subfolder) => subfolder.id === modal?.subfolderId
   )
+
+  const createDialogTitle = useMemo(() => {
+    if (createStep === "folder") return "Create folder"
+    return "Create subfolder"
+  }, [createStep])
+
+  const createDialogDescription = useMemo(() => {
+    if (createStep === "folder") return "Enter a folder name"
+    return `Enter a subfolder name for ${newFolderName.toUpperCase()}`
+  }, [createStep, newFolderName])
 
   useEffect(() => {
     const folderY = 40
@@ -290,10 +335,10 @@ function ReactFlowComponentInner() {
             animated: true,
             markerEnd: {
               type: MarkerType.ArrowClosed,
-            //   color: "hsl(var(--primary))",
+              //   color: "hsl(var(--primary))",
             },
             style: {
-            //   stroke: "hsl(var(--primary))",
+              //   stroke: "hsl(var(--primary))",
               strokeWidth: 2.25,
             },
           })
@@ -364,23 +409,12 @@ function ReactFlowComponentInner() {
           </Panel>
 
           <Panel position="top-right" className="nopan nodrag m-4">
-            {creatingFolder ? (
-              <InlineCreate
-                placeholder="Folder name…"
-                onConfirm={addFolder}
-                onCancel={() => setCreatingFolder(false)}
-                confirmClass="bg-amber-400 text-[#111] hover:bg-amber-300"
-              />
-            ) : (
-              <Button type="button" onClick={() => setCreatingFolder(true)}>
-                Create Folder
-              </Button>
-            )}
+            <Button type="button" onClick={() => setCreateDialogOpen(true)}>
+              Create Folder
+            </Button>
           </Panel>
 
-          <Controls
-            className="!border-border !bg-popover !text-popover-foreground [&>button]:!bg-transparent [&>button]:!text-popover-foreground [&>button]:!border-b [&>button]:!border-border [&>button:last-child]:!border-b-0 [&>button:hover]:!bg-muted"
-          />
+          <Controls className="!border-border !bg-popover !text-popover-foreground [&>button]:!border-b [&>button]:!border-border [&>button]:!bg-transparent [&>button]:!text-popover-foreground [&>button:hover]:!bg-muted [&>button:last-child]:!border-b-0" />
         </ReactFlow>
       </div>
 
@@ -396,6 +430,87 @@ function ReactFlowComponentInner() {
           onClose={() => setModal(null)}
         />
       )}
+
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={(open) =>
+          open ? setCreateDialogOpen(true) : resetCreateDialog()
+        }
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{createDialogTitle}</DialogTitle>
+            <DialogDescription>{createDialogDescription}</DialogDescription>
+          </DialogHeader>
+
+          {createStep === "folder" ? (
+            <Input
+              autoFocus
+              value={newFolderName}
+              placeholder="e.g. Apartments"
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") resetCreateDialog()
+                if (e.key === "Enter") {
+                  const trimmed = newFolderName.trim()
+                  if (!trimmed) return
+                  setNewFolderName(trimmed)
+                  setCreateStep("subfolder")
+                }
+              }}
+            />
+          ) : (
+            <Input
+              autoFocus
+              value={newSubfolderName}
+              placeholder="e.g. Electrical"
+              onChange={(e) => setNewSubfolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") resetCreateDialog()
+                if (e.key === "Enter") {
+                  const folderTrimmed = newFolderName.trim()
+                  const subTrimmed = newSubfolderName.trim()
+                  if (!folderTrimmed || !subTrimmed) return
+                  createFolderWithSubfolder(folderTrimmed, subTrimmed)
+                }
+              }}
+            />
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={resetCreateDialog}>
+              Cancel
+            </Button>
+            {createStep === "folder" ? (
+              <Button
+                type="button"
+                className="bg-amber-400 text-[#111] hover:bg-amber-300"
+                onClick={() => {
+                  const trimmed = newFolderName.trim()
+                  if (!trimmed) return
+                  setNewFolderName(trimmed)
+                  setCreateStep("subfolder")
+                }}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="bg-amber-400 text-[#111] hover:bg-amber-300"
+                onClick={() => {
+                  const folderTrimmed = newFolderName.trim()
+                  const subTrimmed = newSubfolderName.trim()
+                  if (!folderTrimmed || !subTrimmed) return
+                  createFolderWithSubfolder(folderTrimmed, subTrimmed)
+                }}
+              >
+                Create
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
