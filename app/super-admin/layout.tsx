@@ -50,7 +50,7 @@ export default function SuperAdminLayout({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/super-admin">Overview Dashboard</Link>
+                  <Link href="/super-admin">Overview</Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

@@ -13,6 +13,7 @@ import {
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
+import { useRoleStore } from "@/lib/role-store"
 
 type BreakdownRow = {
   period: string
@@ -124,12 +125,12 @@ const columns: ColDef<BreakdownRow>[] = [
   {
     headerName: "Application Value",
     field: "applicationValue",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-500",
   },
   {
     headerName: "Total Spent",
     field: "totalSpent",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-500",
     valueGetter: (params) => {
       const data = params.data as BreakdownRow
       return (
@@ -144,7 +145,7 @@ const columns: ColDef<BreakdownRow>[] = [
     cellRenderer: (params: { value: number }) => {
       const value = params.value as number
       return (
-        <span className="text-green-500">
+        <span className="text-green-400">
           {value.toLocaleString("en-GB", {
             style: "currency",
             currency: "GBP",
@@ -156,17 +157,17 @@ const columns: ColDef<BreakdownRow>[] = [
   {
     headerName: "Project Value",
     field: "projectValue",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-400",
   },
   {
     headerName: "Labour Target",
     field: "labourTarget",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-400",
   },
   {
     headerName: "Overspend",
     field: "overspend",
-    headerClass: "bg-red-600 text-white",
+    headerClass: "text-red-500",
     cellRenderer: (params: { value: number }) => {
       const value = params.value as number
       return (
@@ -182,11 +183,11 @@ const columns: ColDef<BreakdownRow>[] = [
   {
     headerName: "Unclaimed",
     field: "unclaimed",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-400",
     cellRenderer: (params: { value: number }) => {
       const value = params.value as number
       return (
-        <span className="text-green-500">
+        <span className="text-green-400">
           {value.toLocaleString("en-GB", {
             style: "currency",
             currency: "GBP",
@@ -198,7 +199,7 @@ const columns: ColDef<BreakdownRow>[] = [
   {
     headerName: "Money on Hold",
     field: "moneyOnHold",
-    headerClass: "bg-red-600 text-white",
+    headerClass: "text-red-500",
     cellRenderer: (params: { value: number }) => {
       const value = params.value as number
       return (
@@ -214,27 +215,27 @@ const columns: ColDef<BreakdownRow>[] = [
   {
     headerName: "PO Called off",
     field: "poCalledOff",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-500",
   },
   {
     headerName: "Loading and clearing",
     field: "loadingAndClearing",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-500",
   },
   {
     headerName: "Management prelims",
     field: "managementPrelims",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-500",
   },
   {
     headerName: "Plant Hire",
     field: "plantHire",
-    headerClass: "bg-green-700 text-white",
+    headerClass: "text-green-500",
   },
   {
     headerName: "Proforma NR",
     field: "proformaNR",
-    headerClass: "bg-red-600 text-white",
+    headerClass: "text-red-500",
     cellRenderer: (params: { value: number }) => {
       const value = params.value as number
       return (
@@ -250,7 +251,7 @@ const columns: ColDef<BreakdownRow>[] = [
   {
     headerName: "Proforma NR Material Estimate",
     field: "proformaNRMaterialEstimate",
-    headerClass: "bg-red-600 text-white",
+    headerClass: "text-red-500",
     cellRenderer: (params: { value: number }) => {
       const value = params.value as number
       return (
@@ -266,33 +267,33 @@ const columns: ColDef<BreakdownRow>[] = [
   {
     headerName: "Variation Value",
     field: "variationValue",
-    headerClass: "bg-orange-600 text-white",
+    headerClass: "text-orange-400",
   },
   {
     headerName: "Variation Labour Value",
     field: "variationLabourValue",
-    headerClass: "bg-orange-600 text-white",
+    headerClass: "text-orange-400",
   },
   {
     headerName: "Variation Labour Target",
     field: "variationLabourTarget",
-    headerClass: "bg-orange-600 text-white",
+    headerClass: "text-orange-400",
   },
   {
     headerName: "Variation PO Called Off",
     field: "variationPoCalledOff",
-    headerClass: "bg-orange-600 text-white",
+    headerClass: "text-orange-400",
   },
   {
     headerName: "Variation Claimed",
     field: "variationClaimed",
-    headerClass: "bg-orange-600 text-white",
+    headerClass: "text-orange-400",
   },
 ]
 
 export default function Page() {
   const gridApiRef = useRef<GridApi<BreakdownRow> | null>(null)
-
+  const role = useRoleStore((s) => s.role)
   const handleDownload = useCallback(() => {
     if (!gridApiRef.current) return
     const rows: BreakdownRow[] = []
@@ -401,6 +402,18 @@ export default function Page() {
             },
           ]}
         />
+        {role === "project_admin" && (
+          <TableStat
+            summaryRows={[
+              { label: "Variations Value", value: "£250,000" },
+              { label: "Variation Labour value", value: "£150,000" },
+              { label: "Variation Labour target", value: "£150,000" },
+              { label: "Variations Total PO", value: "£150,000" },
+              { label: "Variations PO Call off", value: "£150,000" },
+              { label: "Variations Claimed", value: "£320", valueColor: "red" },
+            ]}
+          />
+        )}
       </div>
 
       <div className="mt-8">

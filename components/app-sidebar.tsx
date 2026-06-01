@@ -19,10 +19,10 @@ import { DASHBOARD_NAV } from "@/constants/dashboards"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "./ui/button"
 import Link from "next/link"
-
-const storageKey = "tresta:selectedRole"
+import { useRoleStore } from "@/lib/role-store"
 
 const roleLabels: Record<string, string> = {
+  admin: "Admin",
   project_admin: "Project Admin",
   managing_director: "Managing Director",
   project_director: "Project Director",
@@ -38,22 +38,11 @@ const roleLabels: Record<string, string> = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const router = useRouter()
-  const [selectedRole, setSelectedRole] = React.useState<string | null>(null)
+  const selectedRole = useRoleStore((s) => s.role)
 
   const handleLogout = React.useCallback(() => {
     router.push("/sign-in")
   }, [router])
-
-  React.useEffect(() => {
-    setSelectedRole(window.localStorage.getItem(storageKey))
-
-    const handleStorage = () => {
-      setSelectedRole(window.localStorage.getItem(storageKey))
-    }
-
-    window.addEventListener("storage", handleStorage)
-    return () => window.removeEventListener("storage", handleStorage)
-  }, [])
 
   const navItems =
     selectedRole && DASHBOARD_NAV[selectedRole as keyof typeof DASHBOARD_NAV]

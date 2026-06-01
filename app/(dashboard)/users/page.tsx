@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import type { ColDef } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { UserProfileDialog } from "@/components/user-profile-dialog"
 import { Switch } from "@/components/ui/switch"
 import InviteUserDialog from "@/app/(dashboard)/invite-users/invite-modal"
+import { useRoleStore } from "@/lib/role-store"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,8 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
-const storageKey = "tresta:selectedRole"
 
 type UserRow = {
   id: string
@@ -230,15 +229,8 @@ const initialUsers: UserRow[] = [
 
 export default function Page() {
   const [users, setUsers] = useState<UserRow[]>(initialUsers)
-  const [role, setRole] = useState<string | null>(null)
+  const role = useRoleStore((s) => s.role)
   const [pending, setPending] = useState<PendingToggle | null>(null)
-
-  useEffect(() => {
-    setRole(window.localStorage.getItem(storageKey))
-    const handleStorage = () => setRole(window.localStorage.getItem(storageKey))
-    window.addEventListener("storage", handleStorage)
-    return () => window.removeEventListener("storage", handleStorage)
-  }, [])
 
   const isDocumentController = role === "document_controller"
 

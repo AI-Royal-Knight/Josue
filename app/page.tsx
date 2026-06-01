@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DASHBOARD_NAV as ACTIVE_DASHBOARD_NAV } from "@/constants/dashboards"
 import { DASHBOARD_NAV as LEGACY_DASHBOARD_NAV } from "@/config/nav"
+import { useRoleStore } from "@/lib/role-store"
 
 const roleLabels: Record<string, string> = {
+  admin: "Admin",
   project_admin: "Project Admin",
   managing_director: "Managing Director",
   project_director: "Project Director",
@@ -19,8 +21,6 @@ const roleLabels: Record<string, string> = {
   managers: "Managers",
   supervisor: "Supervisor",
 }
-
-const storageKey = "tresta:selectedRole"
 
 type RoleKey =
   | keyof typeof ACTIVE_DASHBOARD_NAV
@@ -35,6 +35,7 @@ const roleKeys = [
 
 export default function Page() {
   const router = useRouter()
+  const setRole = useRoleStore((s) => s.setRole)
 
   const roles = useMemo(
     () =>
@@ -46,7 +47,7 @@ export default function Page() {
   )
 
   const handleSelectRole = (role: RoleKey) => {
-    window.localStorage.setItem(storageKey, role)
+    setRole(role)
     // Redirect to the top/first page the role has access to.
     const navForRole =
       (

@@ -1,21 +1,7 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import TableStat from "@/components/common/table-stat"
 
-const data = [
-  {
-    title: "Total Users",
-    value: "1,234",
-  },
-  {
-    title: "Active Projects",
-    value: "56",
-  },
-  {
-    title: "Pending Invites",
-    value: "12",
-  },
-]
 export default function page() {
   return (
     <div className="w-2/3 space-y-6 p-6">
@@ -27,14 +13,10 @@ export default function page() {
       </p>
 
       <div className="flex gap-6">
-        {data.map((item) => (
-          <Card key={item.title} className="w-full">
-            <CardContent>
-              <h2>{item.title}</h2>
-              <p>{item.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+         <TableStat summaryRows={[
+         { label: "Total Users", value: "1,234" },
+         { label: "Active Projects", value: "56" },
+      ]} />
       </div>
     </div>
   )

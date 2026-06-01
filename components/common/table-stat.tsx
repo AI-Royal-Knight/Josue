@@ -66,7 +66,7 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
                 textAlign: "center",
                 ...(color
                   ? {
-                      backgroundColor: color === "red" ? "#dc2626" : "#15803d",
+                      color: color === "red" ? "#ef4444" : "#22c55e",
                     }
                   : {}),
               }
