@@ -2,7 +2,7 @@ export type Item = {
   name: string
   surname: string
   emailAddress: string
-  projects: string
+  projects: string[] | string
   dateProjectCreated: string
   projectValue: string
 }
@@ -12,7 +12,7 @@ export const projectAmins: Item[] = [
     name: "Sarah",
     surname: "Jenkins",
     emailAddress: "s.jenkins@example.com",
-    projects: "Alpha, Omega",
+    projects: ["Alpha", "Omega", "Sigma"],
     dateProjectCreated: "2023-01-15",
     projectValue: "£1.2M",
   },
@@ -20,7 +20,7 @@ export const projectAmins: Item[] = [
     name: "Michael",
     surname: "Chen",
     emailAddress: "m.chen@example.com",
-    projects: "Beta",
+    projects: ["Beta"],
     dateProjectCreated: "2023-03-22",
     projectValue: "£850K",
   },
@@ -28,7 +28,7 @@ export const projectAmins: Item[] = [
     name: "Emma",
     surname: "Watson",
     emailAddress: "e.watson@example.com",
-    projects: "Gamma, Delta",
+    projects: ["Gamma", "Delta"],
     dateProjectCreated: "2023-06-10",
     projectValue: "£2.4M",
   },
@@ -36,7 +36,7 @@ export const projectAmins: Item[] = [
     name: "David",
     surname: "Miller",
     emailAddress: "d.miller@example.com",
-    projects: "Epsilon",
+    projects: ["Epsilon"],
     dateProjectCreated: "2023-08-05",
     projectValue: "£420K",
   },
@@ -44,7 +44,7 @@ export const projectAmins: Item[] = [
     name: "James",
     surname: "Wilson",
     emailAddress: "j.wilson@example.com",
-    projects: "Zeta, Eta, Theta",
+    projects: ["Zeta", "Eta", "Theta"],
     dateProjectCreated: "2023-11-18",
     projectValue: "£3.1M",
   },

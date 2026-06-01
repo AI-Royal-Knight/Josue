@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Building2, Landmark, FileText, Upload, ImageIcon } from "lucide-react"
+import FileUpload from "@/components/ui/file-uploader"
 
 type CompanyDetails = {
   companyName: string
@@ -233,23 +234,7 @@ export default function AdminProfilePage() {
               Every user invited to the app must read and agree to these terms
               before they can access the platform.
             </p>
-            <div className="space-y-1">
-              <Label
-                htmlFor="termsAndConditions"
-                className="text-xs text-slate-400"
-              >
-                Terms & Conditions Text
-              </Label>
-              <textarea
-                id="termsAndConditions"
-                name="termsAndConditions"
-                value={details.termsAndConditions}
-                onChange={handleChange}
-                rows={10}
-                placeholder="Enter your company's terms and conditions here…"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-white/20"
-              />
-            </div>
+            <FileUpload />
           </CardContent>
         </Card>
 

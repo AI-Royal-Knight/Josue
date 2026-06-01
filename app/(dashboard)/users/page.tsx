@@ -18,12 +18,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { BellRing } from "lucide-react"
 
 type UserRow = {
   id: string
   name: string
   surname: string
   email: string
+  phone: string
   profession: string
   cscsCardNo: string
   cscsExpiryDate: string
@@ -50,6 +52,7 @@ const initialUsers: UserRow[] = [
     name: "John",
     surname: "Smith",
     email: "j.smith@buildco.com",
+    phone: "01234 567890",
     profession: "Site Manager",
     cscsCardNo: "01234567",
     cscsExpiryDate: "2025-10-15",
@@ -68,6 +71,7 @@ const initialUsers: UserRow[] = [
     name: "Sarah",
     surname: "Jones",
     email: "s.jones@electrical.co.uk",
+    phone: "01234 567890",
     profession: "Electrician",
     cscsCardNo: "98765432",
     cscsExpiryDate: "2023-11-05",
@@ -86,6 +90,7 @@ const initialUsers: UserRow[] = [
     name: "Michael",
     surname: "Brown",
     email: "m.brown@groundworks.com",
+    phone: "01234 567890",
     profession: "Groundworker",
     cscsCardNo: "45678912",
     cscsExpiryDate: "2027-02-28",
@@ -104,6 +109,7 @@ const initialUsers: UserRow[] = [
     name: "Emma",
     surname: "Davis",
     email: "e.davis@cranes.com",
+    phone: "01234 567890",
     profession: "Crane Operator",
     cscsCardNo: "34567890",
     cscsExpiryDate: "2026-09-10",
@@ -122,6 +128,7 @@ const initialUsers: UserRow[] = [
     name: "John",
     surname: "Doe",
     email: "john.doe@buildco.com",
+    phone: "01234 567890",
     profession: "Electrician",
     cscsCardNo: "12345678",
     cscsExpiryDate: "2025-10-12",
@@ -140,6 +147,7 @@ const initialUsers: UserRow[] = [
     name: "Jane",
     surname: "Smith",
     email: "j.smith@construct.net",
+    phone: "01234 567890",
     profession: "Plumber",
     cscsCardNo: "87654321",
     cscsExpiryDate: "2026-02-15",
@@ -158,6 +166,7 @@ const initialUsers: UserRow[] = [
     name: "Robert",
     surname: "Johnson",
     email: "r.johnson@siteops.co.uk",
+    phone: "01234 567890",
     profession: "Site Manager",
     cscsCardNo: "11223344",
     cscsExpiryDate: "2024-11-30",
@@ -176,6 +185,7 @@ const initialUsers: UserRow[] = [
     name: "Emily",
     surname: "Davis",
     email: "edavis@example.com",
+    phone: "01234 567890",
     profession: "Carpenter",
     cscsCardNo: "44332211",
     cscsExpiryDate: "2027-01-05",
@@ -194,6 +204,7 @@ const initialUsers: UserRow[] = [
     name: "William",
     surname: "Brown",
     email: "w.brown@steelcorp.com",
+    phone: "01234 567890",
     profession: "Steel Fixer",
     cscsCardNo: "99887766",
     cscsExpiryDate: "2025-06-22",
@@ -212,6 +223,7 @@ const initialUsers: UserRow[] = [
     name: "Olivia",
     surname: "Taylor",
     email: "otaylor@example.com",
+    phone: "01234 567890",
     profession: "Painter",
     cscsCardNo: "55667788",
     cscsExpiryDate: "2024-09-18",
@@ -231,8 +243,10 @@ export default function Page() {
   const [users, setUsers] = useState<UserRow[]>(initialUsers)
   const role = useRoleStore((s) => s.role)
   const [pending, setPending] = useState<PendingToggle | null>(null)
+  const [reminderUser, setReminderUser] = useState<UserRow | null>(null)
 
   const isDocumentController = role === "document_controller"
+  const isAdmin = role === "admin"
 
   const requestToggle = useCallback(
     (userId: string, userName: string, nextValue: boolean) => {
@@ -279,34 +293,42 @@ export default function Page() {
   ).length
 
   const columnDefs: ColDef<UserRow>[] = [
-    {
-      headerName: "ID",
-      field: "id",
-      checkboxSelection: isDocumentController,
-      headerCheckboxSelection: isDocumentController,
-      maxWidth: 60,
-      // pinned: "left",
-      filter: false,
-    },
+   //  {
+   //    headerName: "ID",
+   //    field: "id",
+   //    checkboxSelection: isDocumentController,
+   //    headerCheckboxSelection: isDocumentController,
+   //    maxWidth: 60,
+   //    pinned: "left",
+   //    filter: false,
+   //  },
     { headerName: "Name", field: "name" },
     { headerName: "Surname", field: "surname" },
+    { headerName: "Phone", field: "phone" },
     { headerName: "Email", field: "email", minWidth: 200 },
     { headerName: "Profession", field: "profession" },
     { headerName: "CSCS Card No", field: "cscsCardNo" },
     {
       headerName: "CSCS Expiry",
       field: "cscsExpiryDate",
-      cellRenderer: (params: { data?: UserRow; value: string }) => (
-        <span
-          className={
-            params.data?.cscsExpiryTone === "red"
-              ? "text-red-400"
-              : "text-emerald-400"
-          }
-        >
-          {params.value}
-        </span>
-      ),
+      cellRenderer: (params: { data?: UserRow; value: string }) => {
+        if (!params.data) return null;
+        const isExpired = params.data.cscsExpiryTone === "red"
+        return (
+          <div className="flex items-center gap-2 group">
+            <span className={isExpired ? "text-red-400" : "text-emerald-400"}>
+              {params.value}
+            </span>
+            <button
+              onClick={() => setReminderUser(params.data!)}
+              className="text-slate-500 opacity-0 group-hover:opacity-100 hover:text-white transition-all"
+              title="Send Reminder"
+            >
+              <BellRing className="size-3.5" />
+            </button>
+          </div>
+        )
+      },
     },
     { headerName: "IPAF", field: "ipaf" },
     { headerName: "PASMA", field: "pasma" },
@@ -347,36 +369,42 @@ export default function Page() {
       headerName: "Approved",
       field: "approvedUser",
       minWidth: 150,
+      cellClass: "justify-center pt-2",
       cellRenderer: (params: { data?: UserRow }) => {
         if (!params.data) return null
         const u = params.data
-        const approved = u.approvedUser
+        const isExpired = u.cscsExpiryTone === "red"
+        const approved = u.approvedUser && !isExpired
 
-        if (isDocumentController) {
+        if (isDocumentController || isAdmin) {
           return (
             <div className="flex items-center gap-2">
               <Switch
                 checked={approved}
-                onCheckedChange={(checked) =>
+                aria-invalid={isExpired}
+                onCheckedChange={(checked) => {
+                  if (isExpired) return
                   requestToggle(u.id, `${u.name} ${u.surname}`, checked)
-                }
+                }}
               />
               <span
                 className={
-                  approved
+                  isExpired
+                    ? "text-xs text-red-400"
+                    : approved
                     ? "text-xs text-emerald-400"
                     : "text-xs text-slate-400"
                 }
               >
-                {approved ? "Yes" : "No"}
+                {isExpired ? "Expired" : approved ? "Yes" : "No"}
               </span>
             </div>
           )
         }
 
         return (
-          <span className={approved ? "text-emerald-400" : "text-slate-400"}>
-            {approved ? "Yes" : "No"}
+          <span className={isExpired ? "text-red-400" : approved ? "text-emerald-400" : "text-slate-400"}>
+            {isExpired ? "Expired" : approved ? "Yes" : "No"}
           </span>
         )
       },
@@ -441,6 +469,29 @@ export default function Page() {
             <AlertDialogCancel onClick={cancelToggle}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmToggle}>
               {pending?.nextValue ? "Approve" : "Revoke"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!reminderUser}
+        onOpenChange={(open) => !open && setReminderUser(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Reminder</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to send a reminder to {reminderUser?.name} {reminderUser?.surname} to update their CSCS details? If the CSCS card expires, the user cannot send invoices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setReminderUser(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              // Note: actual send logic would go here
+              setReminderUser(null)
+            }}>
+              Send Reminder
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
