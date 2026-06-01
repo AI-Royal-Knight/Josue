@@ -4,7 +4,7 @@ import type { ColDef } from "ag-grid-community"
 type StatRow = {
   label: string
   qty?: number | string
-  value: string
+  value?: string
   alert?: boolean
   valueColor?: "red" | "green" | undefined
 }
@@ -14,6 +14,22 @@ type TableStatProps = {
 }
 
 export default function TableStat({ summaryRows = [] }: TableStatProps) {
+  const hasMeaningfulValue = (value: unknown) => {
+    if (value === null || value === undefined) return false
+    if (typeof value === "number") return true
+    if (typeof value === "string") return value.trim().length > 0
+    return true
+  }
+
+  const showQty =
+    summaryRows.length === 0 ||
+    summaryRows.some((row) => hasMeaningfulValue(row.qty))
+  const showValue =
+    summaryRows.length === 0 ||
+    summaryRows.some((row) => hasMeaningfulValue(row.value))
+
+  const metricFlex = showQty && showValue ? 0.5 : 1
+
   const columnDefs: ColDef<StatRow>[] = [
     {
       field: "label",
@@ -24,58 +40,55 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
       resizable: false,
       cellClass: "px-3 text-xs font-semibold text-slate-100",
     },
-    {
-      field: "qty",
-      headerName: "",
-      flex: 0.5,
-      sortable: false,
-      filter: false,
-    },
-    {
-      field: "value",
-      headerName: "",
-      flex: 0.5,
-      sortable: false,
-      filter: false,
-      resizable: false,
-      cellStyle: (params: { data?: StatRow | undefined }) => {
-        const color = params.data?.valueColor
-        return {
-          textAlign: "center",
-          ...(color
-            ? { backgroundColor: color === "red" ? "#dc2626" : "#15803d" }
-            : {}),
-        }
-      },
-      // cellRenderer: (params: { value: string; data: StatRow }) => {
-      //   const color = params.data?.valueColor
-      //   if (color === "red") {
-      //     return (
-      //       <span className="text-xs font-semibold text-red-500">
-      //         {params.value}
-      //       </span>
-      //     )
-      //   }
-      //   if (color === "green") {
-      //     return (
-      //       <span className="text-xs font-semibold text-green-500">
-      //         {params.value}
-      //       </span>
-      //     )
-      //   }
-      //   return (
-      //     <span className="text-xs font-semibold text-slate-100">
-      //       {params.value}
-      //     </span>
-      //   )
-      // },
-    },
+    ...(showQty
+      ? ([
+          {
+            field: "qty",
+            headerName: "",
+            flex: metricFlex,
+            sortable: false,
+            filter: false,
+          },
+        ] satisfies ColDef<StatRow>[])
+      : []),
+    ...(showValue
+      ? ([
+          {
+            field: "value",
+            headerName: "",
+            flex: metricFlex,
+            sortable: false,
+            filter: false,
+            resizable: false,
+            cellStyle: (params: { data?: StatRow | undefined }) => {
+              const color = params.data?.valueColor
+              return {
+                textAlign: "center",
+                ...(color
+                  ? {
+                      backgroundColor: color === "red" ? "#dc2626" : "#15803d",
+                    }
+                  : {}),
+              }
+            },
+          },
+        ] satisfies ColDef<StatRow>[])
+      : []),
   ]
+
+  const headerRow: StatRow = {
+    label: "",
+    ...(showQty ? { qty: "QTY" } : {}),
+    ...(showValue ? { value: "Value" } : {}),
+  }
+
+  const rowData: StatRow[] =
+    showQty || showValue ? [headerRow, ...summaryRows] : summaryRows
 
   return (
     <div className="w-full max-w-[550px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">
       <AgTable
-        rowData={[{ label: "", qty: "QTY", value: "Value" }, ...summaryRows]}
+        rowData={rowData}
         columnDefs={columnDefs}
         showRowNumberColumn={false}
         height="auto"
