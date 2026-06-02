@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
+import SelectProject from "@/components/shared/select-project"
 
 type DailyRegisterRow = {
   no: number
@@ -27,10 +28,10 @@ type DailyRegisterRow = {
 }
 
 const summaryRows = [
-  { label: "Todays Clock In Users", value: "1000" },
-  { label: "Todays Clock out Users", value: "400" },
-  { label: "This Weeks Users", value: "200" },
-  { label: "This Months Users", value: "200" },
+  { label: "Todays Clock In Users", qty: "1000" },
+  { label: "Todays Clock out Users", qty: "400" },
+  { label: "This Weeks Users", qty: "200" },
+  { label: "This Months Users", qty: "200" },
 ]
 
 const rows: DailyRegisterRow[] = [
@@ -106,19 +107,7 @@ export default function Page() {
   return (
     <div className="w-full min-w-0 space-y-6 p-6">
       <h1 className="text-2xl font-semibold">Daily Register</h1>
-
-      <div className="max-w-[420px] space-y-2">
-        <p className="text-sm font-medium">Select Project</p>
-        <Select defaultValue="project-a">
-          <SelectTrigger className="bg-[#1a2842]">
-            <SelectValue placeholder="Select project" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="project-a">Project A</SelectItem>
-            <SelectItem value="project-b">Project B</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <SelectProject />
 
       <TableStat summaryRows={summaryRows} />
 

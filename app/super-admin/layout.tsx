@@ -67,7 +67,12 @@ export default function SuperAdminLayout({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/super-admin/users">Users</Link>
+                  <Link href="/super-admin/invoice-list">Invoice List</Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/super-admin/profile">Profile</Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

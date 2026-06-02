@@ -50,6 +50,7 @@ export const DASHBOARD_NAV = {
     { title: "Variations", url: "/variations" },
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
     { title: "Profile", url: "/profile" },
   ],
   procurement_department: [
