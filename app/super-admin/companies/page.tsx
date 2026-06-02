@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef, ICellRendererParams } from "ag-grid-community"
 import { Button } from "@/components/ui/button"
-import BreadcrumbWithBack from "@/components/ui/breadcrumb-with-back"
+import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
@@ -17,83 +17,73 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import StatCards from "@/components/shared/stat-cards"
-
-const data = [
-  {
-    title: "Total Companies",
-    value: 128,
-  },
-  {
-    title: "Active Projects",
-    value: 342,
-  },
-  {
-    title: "Total Users",
-    value: 1567,
-  },
-  {
-    title: "Active Admins",
-    value: 27,
-  },
-]
+import TableStat from "@/components/common/table-stat"
+import { Badge } from "@/components/ui/badge"
+import { getStatusVariant } from "@/lib/utils"
+import {
+  getCompanies,
+  subscribeCompanies,
+  updateCompany,
+  type CompanyRecord,
+} from "@/lib/company-store"
 
 type CompanyRow = {
   id: string
   name: string
-  admin: string
-  contact: string
+  adminFirstName: string
+  adminSurname: string
+  email: string
+  phoneNumber: string
   projects: number
   users: number
-  status: string
+  activated: boolean
+  monthlySubscriptionGbp: number | null
+  perUserRateGbp: number | null
+  automaticMonthlyInvoices: boolean
+  status: CompanyRecord["status"]
 }
 
-const SAMPLE_COMPANIES: CompanyRow[] = [
-  {
-    id: "buildco",
-    name: "BuildCo Ltd",
-    admin: "John Matthews",
-    contact: "john@buildco.com",
-    projects: 12,
-    users: 156,
-    status: "Active",
-  },
-  {
-    id: "urbandev",
-    name: "UrbanDev Inc",
-    admin: "Sarah Johnson",
-    contact: "sarah@urbandev.com",
-    projects: 8,
-    users: 92,
-    status: "Active",
-  },
-  {
-    id: "skyconstruct",
-    name: "SkyConstruct",
-    admin: "Michael Chen",
-    contact: "michael@skyconstruct.com",
-    projects: 15,
-    users: 234,
-    status: "Active",
-  },
-  {
-    id: "metrobuild",
-    name: "MetroBuild",
-    admin: "Emily Rodriguez",
-    contact: "emily@metrobuild.com",
-    projects: 6,
-    users: 78,
-    status: "Suspended",
-  },
-]
+function CurrencyInputCell({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: number | null
+  disabled?: boolean
+  onCommit: (next: number | null) => void
+}) {
+  const initialValue =
+    value === null || value === undefined ? "" : String(value)
+  const inputKey = initialValue
+
+  return (
+    <div className="relative w-full">
+      <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-slate-400">
+        £
+      </span>
+      <Input
+        className="h-8 pl-6"
+        inputMode="decimal"
+        disabled={disabled}
+        key={inputKey}
+        defaultValue={initialValue}
+        onBlur={(e) => {
+          const trimmed = e.currentTarget.value.trim()
+          if (!trimmed) return onCommit(null)
+          const n = Number(trimmed)
+          if (Number.isFinite(n)) onCommit(n)
+          else onCommit(value ?? null)
+        }}
+      />
+    </div>
+  )
+}
 
 function InviteAdminDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button >
-          Invite Admin
-        </Button>
+        <Button>Invite Admin</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
@@ -113,31 +103,32 @@ function InviteAdminDialog() {
               />
             </FieldContent>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="adminName">Admin Name</FieldLabel>
-            <FieldContent>
-              <Input
-                id="adminName"
-                name="adminName"
-                placeholder="Enter admin name"
-              />
-            </FieldContent>
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="adminFirstName">Name</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="adminFirstName"
+                  name="adminFirstName"
+                  placeholder="Enter name"
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="adminSurname">Surname</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="adminSurname"
+                  name="adminSurname"
+                  placeholder="Enter surname"
+                />
+              </FieldContent>
+            </Field>
+          </div>
           <Field>
             <FieldLabel htmlFor="email">Email Address</FieldLabel>
             <FieldContent>
               <Input id="email" name="email" placeholder="Enter email" />
-            </FieldContent>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <FieldContent>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Enter password"
-              />
             </FieldContent>
           </Field>
           <Field>
@@ -155,9 +146,7 @@ function InviteAdminDialog() {
           <Button variant="outline" type="button">
             Cancel
           </Button>
-          <Button>
-            Send Invite
-          </Button>
+          <Button>Send Invite</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -165,7 +154,11 @@ function InviteAdminDialog() {
 }
 
 export default function CompaniesPage() {
-  const [rows] = useState<CompanyRow[]>(SAMPLE_COMPANIES)
+  const [rows, setRows] = useState<CompanyRow[]>(() => getCompanies())
+
+  useEffect(() => {
+    return subscribeCompanies(() => setRows(getCompanies()))
+  }, [])
 
   function ActionsCell(params: ICellRendererParams<CompanyRow>) {
     const id = params.data?.id || ""
@@ -181,14 +174,113 @@ export default function CompaniesPage() {
   }
 
   const columnDefs: ColDef<CompanyRow>[] = [
-    { field: "name", headerName: "Company", minWidth: 220 },
-    { field: "admin", headerName: "Admin", minWidth: 180 },
-    { field: "contact", headerName: "Contact", minWidth: 220 },
-    { field: "projects", headerName: "Projects", minWidth: 110 },
+    { field: "name", headerName: "Company" },
+    { field: "adminFirstName", headerName: "name" },
+    { field: "adminSurname", headerName: "Surname" },
+    { field: "email", headerName: "Email", minWidth: 220 },
+    { field: "phoneNumber", headerName: "Phone", minWidth: 160 },
     { field: "users", headerName: "Users", minWidth: 110 },
-    { field: "status", headerName: "Status", minWidth: 120 },
+    { field: "projects", headerName: "Projects", minWidth: 110 },
+    {
+      headerName: "Activate",
+      colId: "activated",
+      minWidth: 140,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <div className="flex items-center gap-2 py-1">
+            <Switch
+              checked={row.activated}
+              onCheckedChange={(checked) =>
+                updateCompany(row.id, { activated: checked })
+              }
+            />
+            <span className="text-xs text-slate-400">
+              {row.activated ? "On" : "Off"}
+            </span>
+          </div>
+        )
+      },
+    },
+    {
+      headerName: "Monthly Subscription",
+      colId: "monthlySubscriptionGbp",
+      minWidth: 170,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <CurrencyInputCell
+            value={row.monthlySubscriptionGbp}
+            onCommit={(next) =>
+              updateCompany(row.id, { monthlySubscriptionGbp: next })
+            }
+          />
+        )
+      },
+    },
+    {
+      headerName: "Per user rate",
+      colId: "perUserRateGbp",
+      minWidth: 150,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <CurrencyInputCell
+            value={row.perUserRateGbp}
+            onCommit={(next) => updateCompany(row.id, { perUserRateGbp: next })}
+          />
+        )
+      },
+    },
+    {
+      headerName: "Automatic monthly invoices",
+      colId: "automaticMonthlyInvoices",
+      minWidth: 210,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <div className="flex items-center gap-2 py-1">
+            <Switch
+              checked={row.automaticMonthlyInvoices}
+              onCheckedChange={(checked) =>
+                updateCompany(row.id, { automaticMonthlyInvoices: checked })
+              }
+            />
+            <span className="text-xs text-slate-400">
+              {row.automaticMonthlyInvoices ? "Yes" : "No"}
+            </span>
+          </div>
+        )
+      },
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      minWidth: 120,
+      cellRenderer: (params: { value?: CompanyRow["status"] }) => {
+        const status = (params.value ?? "Suspended") as CompanyRow["status"]
+        return <Badge variant={getStatusVariant(status)}>{status}</Badge>
+      },
+    },
     { headerName: "Actions", cellRenderer: ActionsCell, minWidth: 120 },
   ]
+
+  const defaultColDef = useMemo(
+    () => ({ flex: 1, minWidth: 140, resizable: true }),
+    []
+  )
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)] flex-col gap-6">
@@ -204,7 +296,16 @@ export default function CompaniesPage() {
         </div>
       </header>
 
-      <StatCards stats={data} />
+      {/* <StatCards stats={data} /> */}
+      <TableStat
+        summaryRows={[
+          { label: "Admin users", value: "123" },
+          { label: "Users", value: "456" },
+          { label: "Projects", value: "789" },
+          { label: "Active", value: "12" },
+          { label: "Suspended", value: "3" },
+        ]}
+      />
 
       <div className="flex flex-1 flex-col rounded-lg bg-card">
         <AgTable
@@ -213,6 +314,7 @@ export default function CompaniesPage() {
           height="100%"
           pagination
           pageSize={10}
+          defaultColDef={defaultColDef}
         />
       </div>
     </div>

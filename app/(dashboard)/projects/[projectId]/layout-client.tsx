@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { FolderOpen, Users, User } from "lucide-react"
+import { FolderOpen, Users, CheckSquare, MessageSquareWarning } from "lucide-react"
 
 const navItems = [
   {
@@ -15,7 +15,12 @@ const navItems = [
     label: "Labour Target",
     href: "labour-target",
     icon: Users,
-  }
+  },
+  {
+    label: "Actions",
+    href: "actions",
+    icon: CheckSquare,
+  },
 ]
 
 export function ProjectLayoutClient({ projectId }: { projectId: string }) {
