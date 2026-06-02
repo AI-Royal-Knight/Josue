@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import type { ColDef } from "ag-grid-community"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -18,8 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { CheckCircle2, Plus, Search, XCircle } from "lucide-react"
-
-// ── types ─────────────────────────────────────────────────────────────────────
+import { useRoleStore } from "@/lib/role-store"
 
 type ApprovalStatus = "Pending" | "Approved" | "Rejected"
 
@@ -64,8 +63,6 @@ type VariationFormData = {
   comments: string
 }
 
-// ── constants ─────────────────────────────────────────────────────────────────
-
 const ALL_USERS = [
   { id: "sm", name: "Site Manager", initials: "SM", color: "bg-emerald-600 text-white" },
   { id: "jw", name: "John Watson", initials: "JW", color: "bg-indigo-600 text-white" },
@@ -88,8 +85,6 @@ const defaultForm = (): VariationFormData => ({
   project: "", siteInstructionNo: "", attentionOf: "",
   descriptionOfWorks: "", lines: [emptyLine()], comments: "",
 })
-
-// ── seed data ─────────────────────────────────────────────────────────────────
 
 let _nextId = 5
 const initialRows: VariationRow[] = [
@@ -140,8 +135,6 @@ const summaryMetrics = [
   { label: "Signed by Client", value: "1" },
 ]
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
 function lineTotal(l: VariationLine) {
   return (l.labour + l.material) * l.qty
 }
@@ -150,11 +143,11 @@ function formatGBP(n: number) {
   return n.toLocaleString("en-GB", { style: "currency", currency: "GBP" })
 }
 
-// ── component ─────────────────────────────────────────────────────────────────
-
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("all")
   const [rows, setRows] = useState<VariationRow[]>(initialRows)
+
+  const role = useRoleStore((state) => state.role)
 
   // Create variation dialog
   const [formOpen, setFormOpen] = useState(false)
@@ -170,8 +163,6 @@ export default function Page() {
   const [pendingApproval, setPendingApproval] = useState<{
     id: string; voNo: string; action: "approve" | "reject"
   } | null>(null)
-
-  // ── form helpers ────────────────────────────────────────────────────────────
 
   const formTotal = useMemo(
     () => form.lines.reduce((s, l) => s + lineTotal(l), 0),
@@ -217,8 +208,6 @@ export default function Page() {
     setForm(defaultForm())
   }
 
-  // ── approval helpers ────────────────────────────────────────────────────────
-
   const confirmApproval = () => {
     if (!pendingApproval) return
     setRows((prev) =>
@@ -235,14 +224,12 @@ export default function Page() {
     setPendingApproval(null)
   }
 
-  // ── assign users helpers ────────────────────────────────────────────────────
-
-  const openAssign = (rowId: string, currentIds: string[]) => {
+  const openAssign = useCallback((rowId: string, currentIds: string[]) => {
     setAssignRowId(rowId)
     setAssignSelected(currentIds)
     setUserSearch("")
     setAssignOpen(true)
-  }
+  }, [])
 
   const confirmAssign = () => {
     if (!assignRowId) return
@@ -258,134 +245,172 @@ export default function Page() {
     u.name.toLowerCase().includes(userSearch.toLowerCase())
   )
 
-  // ── column defs ─────────────────────────────────────────────────────────────
+  const columns = useMemo<ColDef<VariationRow>[]>(() => {
+    const base: ColDef<VariationRow>[] = [
+      { headerName: "VO No.", field: "voNo" },
+      { headerName: "Date", field: "date", minWidth: 120 },
+      { headerName: "Sheet No.", field: "variationSheetNumber" },
+      { headerName: "Project", field: "project" },
+      {
+        headerName: "Site Instruction No.",
+        field: "siteInstructionNo",
+        minWidth: 180,
+      },
+      {
+        headerName: "Description of Works",
+        field: "descriptionOfWorks",
+        minWidth: 220,
+      },
+      {
+        headerName: "Total Amount",
+        field: "totalAmount",
+        minWidth: 140,
+        cellRenderer: (params: { value: number }) => (
+          <span className="font-medium text-slate-100">
+            {formatGBP(params.value)}
+          </span>
+        ),
+      },
+      {
+        headerName: "Labour Target",
+        field: "lines",
+        colId: "labourTarget",
+        minWidth: 140,
+        cellRenderer: (params: { data?: VariationRow }) => {
+          const lines = params.data?.lines ?? []
+          const total = lines.reduce((s, l) => s + (l.labourTarget ?? 0), 0)
+          if (total === 0) return <span className="text-slate-500">—</span>
+          return (
+            <span className="font-medium text-amber-300">
+              {formatGBP(total)}
+            </span>
+          )
+        },
+      },
+      { headerName: "Created By", field: "createdBy" },
+    ]
 
-  const columns = useMemo<ColDef<VariationRow>[]>(() => [
-    { headerName: "VO No.", field: "voNo", maxWidth: 100 },
-    { headerName: "Date", field: "date", minWidth: 120 },
-    { headerName: "Sheet No.", field: "variationSheetNumber", maxWidth: 100 },
-    { headerName: "Project", field: "project" },
-    { headerName: "Site Instruction No.", field: "siteInstructionNo", minWidth: 180 },
-    { headerName: "Description of Works", field: "descriptionOfWorks", minWidth: 220 },
-    {
-      headerName: "Total Amount",
-      field: "totalAmount",
-      minWidth: 140,
-      cellRenderer: (params: { value: number }) => (
-        <span className="font-medium text-slate-100">{formatGBP(params.value)}</span>
-      ),
-    },
-    {
-      headerName: "Labour Target",
-      field: "lines",
-      colId: "labourTarget",
-      minWidth: 140,
-      cellRenderer: (params: { data?: VariationRow }) => {
-        const lines = params.data?.lines ?? []
-        const total = lines.reduce((s, l) => s + (l.labourTarget ?? 0), 0)
-        if (total === 0) return <span className="text-slate-500">—</span>
-        return (
-          <span className="font-medium text-amber-300">{formatGBP(total)}</span>
-        )
-      },
-    },
-    { headerName: "Created By", field: "createdBy" },
-    // ── Approval ──────────────────────────────────────────────────────────────
-    {
-      headerName: "Approval",
-      field: "approvalStatus",
-      minWidth: 200,
-      cellRenderer: (params: { data?: VariationRow }) => {
-        const row = params.data
-        if (!row) return null
-        const s = row.approvalStatus
-        if (s === "Approved") return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
-            <CheckCircle2 className="size-3" /> Approved
-          </span>
-        )
-        if (s === "Rejected") return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-300">
-            <XCircle className="size-3" /> Rejected
-          </span>
-        )
-        return (
-          <div className="flex gap-1">
-            <Button
-              className="h-7 rounded-none bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-500"
-              onClick={() => setPendingApproval({ id: row.id, voNo: row.voNo, action: "approve" })}
-            >Approve</Button>
-            <Button
-              className="h-7 rounded-none bg-red-600 px-2 text-xs text-white hover:bg-red-500"
-              onClick={() => setPendingApproval({ id: row.id, voNo: row.voNo, action: "reject" })}
-            >Reject</Button>
-          </div>
-        )
-      },
-    },
-    { headerName: "Approved By", field: "approvedBy" },
-    {
-      headerName: "Submitted to Client",
-      field: "submittedToClient",
-      cellRenderer: (params: { value: boolean }) => (
-        <span className={params.value ? "text-emerald-400" : "text-slate-500"}>
-          {params.value ? "Yes" : "No"}
-        </span>
-      ),
-    },
-    {
-      headerName: "Signed by Client",
-      field: "signedByClient",
-      cellRenderer: (params: { value: boolean }) => (
-        <span className={params.value ? "text-emerald-400" : "text-slate-500"}>
-          {params.value ? "Yes" : "No"}
-        </span>
-      ),
-    },
-    // ── Assign users ──────────────────────────────────────────────────────────
-    {
-      headerName: "Assigned Users",
-      field: "assignedUserIds",
-      maxWidth: 160,
-      cellRenderer: (params: { data?: VariationRow }) => {
-        const row = params.data
-        if (!row) return null
-        const ids = row.assignedUserIds
-        const shown = ids.slice(0, 3)
-        return (
-          <button
-            data-cell-click-ignore="true"
-            className="flex h-full items-center -space-x-1.5 hover:opacity-80"
-            onClick={() => openAssign(row.id, ids)}
+    if (role === "commercial_department") {
+      base.push({
+        headerName: "Approval",
+        field: "approvalStatus",
+        minWidth: 200,
+        cellRenderer: (params: { data?: VariationRow }) => {
+          const row = params.data
+          if (!row) return null
+          const s = row.approvalStatus
+          if (s === "Approved")
+            return (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
+                <CheckCircle2 className="size-3" /> Approved
+              </span>
+            )
+          if (s === "Rejected")
+            return (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-300">
+                <XCircle className="size-3" /> Rejected
+              </span>
+            )
+          return (
+            <div className="flex gap-1">
+              <Button
+                className="h-7 rounded-none bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-500"
+                onClick={() =>
+                  setPendingApproval({
+                    id: row.id,
+                    voNo: row.voNo,
+                    action: "approve",
+                  })
+                }
+              >
+                Approve
+              </Button>
+              <Button
+                className="h-7 rounded-none bg-red-600 px-2 text-xs text-white hover:bg-red-500"
+                onClick={() =>
+                  setPendingApproval({
+                    id: row.id,
+                    voNo: row.voNo,
+                    action: "reject",
+                  })
+                }
+              >
+                Reject
+              </Button>
+            </div>
+          )
+        },
+      })
+    }
+
+    base.push(
+      { headerName: "Approved By", field: "approvedBy" },
+      {
+        headerName: "Submitted to Client",
+        field: "submittedToClient",
+        cellRenderer: (params: { value: boolean }) => (
+          <span
+            className={params.value ? "text-emerald-400" : "text-slate-500"}
           >
-            {shown.map((id, i) => {
-              const u = ALL_USERS.find((x) => x.id === id)
-              return (
-                <div
-                  key={id}
-                  className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#10183a] text-[10px] font-bold ${u?.color ?? "bg-slate-600 text-white"}`}
-                  style={{ zIndex: 10 - i }}
-                >
-                  {u?.initials ?? id.slice(0, 2).toUpperCase()}
-                </div>
-              )
-            })}
-            {ids.length > 3 && (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#10183a] bg-slate-700 text-[10px] font-bold text-slate-300">
-                +{ids.length - 3}
-              </div>
-            )}
-            {ids.length === 0 && (
-              <span className="text-xs text-slate-500">Assign</span>
-            )}
-          </button>
-        )
+            {params.value ? "Yes" : "No"}
+          </span>
+        ),
       },
-    },
-    { headerName: "Comments", field: "comments", minWidth: 180 },
-  ], [])
+      {
+        headerName: "Signed by Client",
+        field: "signedByClient",
+        cellRenderer: (params: { value: boolean }) => (
+          <span
+            className={params.value ? "text-emerald-400" : "text-slate-500"}
+          >
+            {params.value ? "Yes" : "No"}
+          </span>
+        ),
+      },
+      {
+        headerName: "Assigned Users",
+        field: "assignedUserIds",
+        maxWidth: 160,
+        cellRenderer: (params: { data?: VariationRow }) => {
+          const row = params.data
+          if (!row) return null
+          const ids = row.assignedUserIds
+          const shown = ids.slice(0, 3)
+          return (
+            <button
+              data-cell-click-ignore="true"
+              className="flex h-full items-center -space-x-1.5 hover:opacity-80"
+              onClick={() => openAssign(row.id, ids)}
+            >
+              {shown.map((id, i) => {
+                const u = ALL_USERS.find((x) => x.id === id)
+                return (
+                  <div
+                    key={id}
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#10183a] text-[10px] font-bold ${u?.color ?? "bg-slate-600 text-white"}`}
+                    style={{ zIndex: 10 - i }}
+                  >
+                    {u?.initials ?? id.slice(0, 2).toUpperCase()}
+                  </div>
+                )
+              })}
+              {ids.length > 3 && (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#10183a] bg-slate-700 text-[10px] font-bold text-slate-300">
+                  +{ids.length - 3}
+                </div>
+              )}
+              {ids.length === 0 && (
+                <span className="text-xs text-slate-500">Assign</span>
+              )}
+            </button>
+          )
+        },
+      },
+      { headerName: "Comments", field: "comments", minWidth: 180 }
+    )
 
-  // ── render ──────────────────────────────────────────────────────────────────
+    return base
+  }, [openAssign, role])
 
   return (
     <div className="w-full space-y-6 p-6">
@@ -421,7 +446,7 @@ export default function Page() {
         gridOptions={{ rowHeight: 48 }}
       />
 
-      {/* ── Create Variation Dialog ──────────────────────────────────── */}
+      {/* Create Variation Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
@@ -586,7 +611,7 @@ export default function Page() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Assign Users Dialog ──────────────────────────────────────── */}
+      {/* Assign Users Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Assign Users</DialogTitle></DialogHeader>
@@ -624,7 +649,7 @@ export default function Page() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Approval confirmation ────────────────────────────────────── */}
+      {/* Approval confirmation */}
       <AlertDialog open={!!pendingApproval} onOpenChange={(o) => !o && setPendingApproval(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
