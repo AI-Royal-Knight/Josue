@@ -49,7 +49,6 @@ const summaryRows = [
   { label: "Credit Used", value: "£845,200" },
   { label: "Available Credit", value: "£1,654,800" },
   { label: "Total Suppliers", value: "184" },
-  { label: "Active Suppliers", value: "156" },
 ]
 
 const initialData: SupplierRow[] = [
@@ -211,12 +210,12 @@ export default function Page() {
     <div className="w-full min-w-0 space-y-6 bg-white p-6">
       <h1 className="text-primary">Supplier List</h1>
 
-      <div className="flex justify-between">
+      {/* <div className="flex justify-between"> */}
+        <InviteSupplierDialog />
       <TableStat summaryRows={summaryRows} />
 
-        <InviteSupplierDialog />
         {/* <Filters /> */}
-      </div>
+      {/* </div> */}
 
       <AgTable
         columnDefs={columnDefs}

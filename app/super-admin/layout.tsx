@@ -60,7 +60,9 @@ export default function SuperAdminLayout({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <Link href="/super-admin/projects">Projects</Link>
+                  <Link href="/super-admin/accounts-overview">
+                    Accounts Overview
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -84,7 +86,7 @@ export default function SuperAdminLayout({
           <SidebarRail />
         </Sidebar>
 
-        <SidebarInset className="min-h-screen flex-1 bg-background flex-col">
+        <SidebarInset className="min-h-screen flex-1 flex-col bg-background">
           <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-[#0b1328]/90 px-4 backdrop-blur">
             <SidebarTrigger className="-ml-1" />
             <DashboardBreadcrumb />
@@ -92,7 +94,7 @@ export default function SuperAdminLayout({
             <UserAccountNav />
           </div> */}
           </header>
-          <div className="p-4 flex flex-1 flex-col min-h-0">{children}</div>
+          <div className="flex min-h-0 flex-1 flex-col p-4">{children}</div>
         </SidebarInset>
       </div>
     </SidebarProvider>

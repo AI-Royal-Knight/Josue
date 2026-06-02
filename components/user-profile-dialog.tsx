@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   ShieldX,
   User,
+  Phone,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -26,12 +27,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { Card } from "./ui/card"
 
 export type UserProfileDialogProps = {
   user: {
     name: string
     surname: string
+    phone: string
     email: string
     profession: string
     cscsCardNo: string
@@ -173,6 +174,11 @@ export function UserProfileDialog({ user, canApprove = false, onAction }: UserPr
                 icon={<Mail className="size-4" />}
                 label="Email Address"
                 value={user.email}
+              />
+              <DetailRow
+                icon={<Phone className="size-4" />}
+                label="Phone Number"
+                value={user.phone}
               />
               <DetailRow
                 icon={<Building2 className="size-4" />}

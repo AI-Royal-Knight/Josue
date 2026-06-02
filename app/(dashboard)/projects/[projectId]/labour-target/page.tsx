@@ -10,7 +10,7 @@ import {
   type GridColumnGroupingModel,
 } from "@mui/x-data-grid"
 
-import { Plus } from "lucide-react"
+import { Plus, Save, Lock, Unlock } from "lucide-react"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 import { colors } from "@/constants/colors"
 
@@ -36,38 +36,62 @@ import { defaultRows, uid } from "@/app/(dashboard)/labour-target/utils"
 const ROWS_PER_FOLDER = 5
 const SECTION_LABEL_ROW_INDEX = Math.floor(ROWS_PER_FOLDER / 2)
 
+const DEFAULT_FOLDERS: FolderType[] = [
+  {
+    id: "apartments",
+    name: "APARTMENTS",
+    subfolders: [
+      {
+        id: "electrical",
+        name: "Electrical",
+        rows: defaultRows(),
+      },
+      {
+        id: "plumbing",
+        name: "Plumbing",
+        rows: defaultRows(),
+      },
+    ],
+  },
+
+  {
+    id: "corridors",
+    name: "CORRIDORS",
+    subfolders: [
+      {
+        id: "electrical",
+        name: "Electrical",
+        rows: defaultRows(),
+      },
+    ],
+  },
+]
+
 export default function DynamicFolderTable() {
   // folders + subfolders
-  const [folders, setFolders] = useState<FolderType[]>([
-    {
-      id: "apartments",
-      name: "APARTMENTS",
-      subfolders: [
-        {
-          id: "electrical",
-          name: "Electrical",
-          rows: defaultRows(),
-        },
-        {
-          id: "plumbing",
-          name: "Plumbing",
-          rows: defaultRows(),
-        },
-      ],
-    },
+  const storageKey = "tresta:labour-target"
+  const lockKey = `${storageKey}:locked`
 
-    {
-      id: "corridors",
-      name: "CORRIDORS",
-      subfolders: [
-        {
-          id: "electrical",
-          name: "Electrical",
-          rows: defaultRows(),
-        },
-      ],
-    },
-  ])
+  const [folders, setFolders] = useState<FolderType[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_FOLDERS
+    try {
+      const raw = window.localStorage.getItem(storageKey)
+      if (!raw) return DEFAULT_FOLDERS
+      const parsed = JSON.parse(raw) as unknown
+      return Array.isArray(parsed) ? (parsed as FolderType[]) : DEFAULT_FOLDERS
+    } catch {
+      return DEFAULT_FOLDERS
+    }
+  })
+
+  const [isLocked, setIsLocked] = useState(() => {
+    if (typeof window === "undefined") return false
+    try {
+      return window.localStorage.getItem(lockKey) === "true"
+    } catch {
+      return false
+    }
+  })
 
   const [modal, setModal] = useState<ModalState>(null)
   const [copiedValue, setCopiedValue] = useState("")
@@ -83,6 +107,26 @@ export default function DynamicFolderTable() {
     setNewFolderName("")
     setNewSubfolderName("")
   }, [])
+
+  const handleSaveProgress = useCallback(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(folders))
+    } catch {
+      // ignore
+    }
+  }, [folders, storageKey])
+
+  const handleToggleLock = useCallback(() => {
+    setIsLocked((prev) => {
+      const next = !prev
+      try {
+        window.localStorage.setItem(lockKey, String(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }, [lockKey])
 
   const createFolderWithSubfolder = useCallback(
     (folderName: string, subfolderName: string) => {
@@ -274,9 +318,26 @@ export default function DynamicFolderTable() {
           p: 2,
         }}
       >
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+        <Box
+          sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1 }}
+        >
+          <Button
+            variant="outlined"
+            onClick={handleSaveProgress}
+            startIcon={<Save size={16} />}
+          >
+            Save progress
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={handleToggleLock}
+            startIcon={isLocked ? <Unlock size={16} /> : <Lock size={16} />}
+          >
+            {isLocked ? "Unlock Project Folder" : "Lock Project Folder"}
+          </Button>
           <Button
             variant="contained"
+            disabled={isLocked}
             onClick={() => setCreateDialogOpen(true)}
             startIcon={<Plus size={16} />}
           >
@@ -298,6 +359,7 @@ export default function DynamicFolderTable() {
             showCellVerticalBorder
             showColumnVerticalBorder
             rowHeight={42}
+            isCellEditable={() => !isLocked}
             sx={{
               ...agTableDataGridSx,
 
@@ -353,7 +415,7 @@ export default function DynamicFolderTable() {
       <Dialog
         open={createDialogOpen}
         onOpenChange={(open) =>
-          open ? setCreateDialogOpen(true) : resetCreateDialog()
+          open && !isLocked ? setCreateDialogOpen(true) : resetCreateDialog()
         }
       >
         <DialogContent className="max-w-md">

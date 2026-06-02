@@ -2,13 +2,7 @@
 
 import { useState } from "react"
 import type { ColDef } from "ag-grid-community"
-import {
-  BellRing,
-  CheckCircle2,
-  FileText,
-  Plus,
-  RotateCcw,
-} from "lucide-react"
+import { BellRing, CheckCircle2, FileText, Plus, RotateCcw } from "lucide-react"
 import { AgTable } from "@/components/common/AgTable"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,8 +23,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import SupplierForm from "@/app/supplier/_components/SupplierForm"
 import { addOrder } from "@/lib/po-store"
-
-// ── types ─────────────────────────────────────────────────────────────────────
+import TableStat from "@/components/common/table-stat"
+import SelectProject from "@/components/shared/select-project"
 
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
@@ -55,8 +49,6 @@ type QuotationRow = {
 type PendingAction =
   | { type: "approve" | "reject"; row: QuotationRow }
   | { type: "createPO"; row: QuotationRow }
-
-// ── seed data ─────────────────────────────────────────────────────────────────
 
 const initialRows: QuotationRow[] = [
   {
@@ -146,8 +138,6 @@ const initialRows: QuotationRow[] = [
   },
 ]
 
-// ── component ─────────────────────────────────────────────────────────────────
-
 export default function Page() {
   const [rows, setRows] = useState<QuotationRow[]>(initialRows)
   const [newQuoteOpen, setNewQuoteOpen] = useState(false)
@@ -162,7 +152,11 @@ export default function Page() {
       setRows((prev) =>
         prev.map((r) =>
           r.no === pending.row.no
-            ? { ...r, approveQuotesStatus: "Approved", dateOfQuoteApproved: today }
+            ? {
+                ...r,
+                approveQuotesStatus: "Approved",
+                dateOfQuoteApproved: today,
+              }
             : r
         )
       )
@@ -204,7 +198,6 @@ export default function Page() {
     setPending(null)
   }
 
-  // Column defs — defined inside component to close over state setters
   const columns: ColDef<QuotationRow>[] = [
     { headerName: "No.", field: "no", maxWidth: 60, filter: false },
     { headerName: "Quotes Ref", field: "quotesRef", minWidth: 140 },
@@ -213,8 +206,16 @@ export default function Page() {
     { headerName: "Sub Folder", field: "subFolder" },
     { headerName: "Variation Ref", field: "variationRef" },
     { headerName: "Supplier Name", field: "supplierName" },
-    { headerName: "Supplier Email", field: "supplierEmailAddress", minWidth: 200 },
-    { headerName: "Date Quote Approved", field: "dateOfQuoteApproved", minWidth: 200 },
+    {
+      headerName: "Supplier Email",
+      field: "supplierEmailAddress",
+      minWidth: 200,
+    },
+    {
+      headerName: "Date Quote Approved",
+      field: "dateOfQuoteApproved",
+      minWidth: 200,
+    },
     {
       headerName: "Quote Total",
       field: "quoteTotal",
@@ -290,7 +291,11 @@ export default function Page() {
         return (
           <Button
             disabled={!canCreate}
-            title={canCreate ? "Create a PO from this quote" : "Quote must be approved first"}
+            title={
+              canCreate
+                ? "Create a PO from this quote"
+                : "Quote must be approved first"
+            }
             className="h-7 rounded-none bg-[#3467df] px-3 text-xs text-white hover:bg-[#2d59c2] disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() => canCreate && setPending({ type: "createPO", row })}
           >
@@ -315,7 +320,11 @@ export default function Page() {
         </Button>
       ),
     },
-    { headerName: "Procurement Comments", field: "procurementComments", minWidth: 200 },
+    {
+      headerName: "Procurement Comments",
+      field: "procurementComments",
+      minWidth: 200,
+    },
     {
       headerName: "Request Re-quote",
       sortable: false,
@@ -358,8 +367,18 @@ export default function Page() {
 
   return (
     <div className="w-full min-w-0 space-y-4 px-6 py-4">
+      <h2>Quotations</h2>
+
+      <SelectProject />
+
       <div className="flex items-center justify-between">
-        <h2>Quotations</h2>
+        <TableStat
+          summaryRows={[
+            { label: "Quotes Requested", qty: "128" },
+            { label: "Approved Quotes", qty: "87" },
+            { label: "Awaiting Quotes", qty: "23" },
+          ]}
+        />
         <Button onClick={() => setNewQuoteOpen(true)}>
           <Plus className="size-4" />
           Create New Quotation
@@ -386,14 +405,21 @@ export default function Page() {
       </Dialog>
 
       {/* Confirmation dialog for approve / reject / create PO */}
-      <AlertDialog open={!!pending} onOpenChange={(open) => !open && setPending(null)}>
+      <AlertDialog
+        open={!!pending}
+        onOpenChange={(open) => !open && setPending(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{dialogCopy?.title}</AlertDialogTitle>
-            <AlertDialogDescription>{dialogCopy?.description}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {dialogCopy?.description}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPending(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setPending(null)}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
               className={dialogCopy?.confirmClass}

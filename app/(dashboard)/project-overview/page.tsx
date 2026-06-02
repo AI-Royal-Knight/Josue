@@ -402,7 +402,7 @@ export default function Page() {
             },
           ]}
         />
-        {role === "project_admin" && (
+        {/* {role === "project_admin" && ( */}
           <TableStat
             summaryRows={[
               { label: "Variations Value", value: "£250,000" },
@@ -413,7 +413,7 @@ export default function Page() {
               { label: "Variations Claimed", value: "£320", valueColor: "red" },
             ]}
           />
-        )}
+        {/* )} */}
       </div>
 
       <div className="mt-8">
