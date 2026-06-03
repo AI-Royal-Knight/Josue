@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { AgTable } from "@/components/common/AgTable"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -20,6 +20,7 @@ import type {
   ICellRendererParams,
 } from "ag-grid-community"
 import TableStat from "@/components/common/table-stat"
+import { useRoleStore } from "@/lib/role-store"
 
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
@@ -60,7 +61,6 @@ const summaryRows = [
   { label: "Invoices", qty: "1", value: "2" },
   { label: "Approved invoices", qty: "1", value: "2" },
   { label: "Invoices awaiting approval", qty: "1", value: "2" },
-  { label: "Awaiting approval value", qty: "1", value: "2" },
   {
     label: "Invoices due this month",
     qty: "1",
@@ -244,6 +244,8 @@ export default function Page() {
   const [rows, setRows] = useState(initialRows)
   const [pending, setPending] = useState<PendingToggle | null>(null)
 
+  const role = useRoleStore((state) => state.role)
+
   // Stage the toggle — opens confirmation dialog
   const requestToggle = useCallback(
     (no: string, invoiceNumber: string, nextApproved: boolean) => {
@@ -288,93 +290,110 @@ export default function Page() {
     )
   }
 
-  const columnDefs: ColDef<SupplierInvoiceRow>[] = [
-    { field: "no", headerName: "No", minWidth: 70, filter: false },
-    {
-      field: "invoiceNumber",
-      headerName: "Invoice Number",
-      minWidth: 160,
-      cellRenderer: (params: { data?: SupplierInvoiceRow; value: string }) => (
-        <a
-          className={`${params.data?.approved === "Approved" ? "text-green-400" : "text-red-500"} text-sm font-medium hover:underline`}
-        >
-          {params.value}
-        </a>
-      ),
-    },
-    { field: "poDate", headerName: "PO Date" },
-    { field: "poRef", headerName: "PO Ref" },
-    { field: "callOffDate", headerName: "Call Off Date" },
-    { field: "callOffRef", headerName: "Call Off Ref" },
-    { field: "variationRef", headerName: "Variation Ref" },
-    { field: "project", headerName: "Project", minWidth: 140 },
-    { field: "supplierName", headerName: "Supplier Name" },
-    { field: "invoiceTotal", headerName: "Invoice Total" },
-    { field: "expectedCost", headerName: "Expected Cost" },
-    { field: "paymentDueDate", headerName: "Payment Due Date", minWidth: 180 },
-    { field: "approvedBy", headerName: "Approved By" },
-    // ── Approved toggle column ────────────────────────────────────────────
-    {
-      field: "approved",
-      headerName: "Approved",
-      minWidth: 160,
-      sortable: true,
-      filter: true,
-      cellRenderer: (params: { data?: SupplierInvoiceRow }) => {
-        const row = params.data
-        if (!row) return null
-        const isApproved = row.approved === "Approved"
-        const isRejected = row.approved === "Rejected"
-
-        return (
-          <div className="flex items-center justify-center gap-2 py-2">
-            <Switch
-              checked={isApproved}
-              // Rejected rows are locked — can't re-toggle
-              disabled={isRejected}
-              onCheckedChange={(checked) =>
-                requestToggle(row.no, row.invoiceNumber, checked)
-              }
-            />
-            <span
-              className={
-                isApproved
-                  ? "text-xs font-medium text-emerald-400"
-                  : isRejected
-                    ? "text-xs font-medium text-red-400"
-                    : "text-xs font-medium text-amber-400"
-              }
-            >
-              {row.approved}
-            </span>
-          </div>
-        )
+  const columnDefs = useMemo<ColDef<SupplierInvoiceRow>[]>(() => {
+    const base: ColDef<SupplierInvoiceRow>[] = [
+      { field: "no", headerName: "No", minWidth: 70, filter: false },
+      {
+        field: "invoiceNumber",
+        headerName: "Invoice Number",
+        minWidth: 160,
+        cellRenderer: (params: {
+          data?: SupplierInvoiceRow
+          value: string
+        }) => (
+          <a
+            className={`${params.data?.approved === "Approved" ? "text-green-400" : "text-red-500"} text-sm font-medium hover:underline`}
+          >
+            {params.value}
+          </a>
+        ),
       },
-    },
-    {
-      field: "financeComments",
-      headerName: "Finance Comments",
-      editable: true,
-      cellRenderer: CommentCellRenderer,
-      cellRendererParams: { fieldName: "financeComments" },
-    },
-    {
-      field: "procurementComments",
-      headerName: "Procurement Comments",
-      editable: true,
-      minWidth: 160,
-      cellRenderer: CommentCellRenderer,
-      cellRendererParams: { fieldName: "procurementComments" },
-    },
-    {
-      field: "commercialComments",
-      headerName: "Commercial Comments",
-      editable: true,
-      minWidth: 160,
-      cellRenderer: CommentCellRenderer,
-      cellRendererParams: { fieldName: "commercialComments" },
-    },
-  ]
+      { field: "poDate", headerName: "PO Date" },
+      { field: "poRef", headerName: "PO Ref" },
+      { field: "callOffDate", headerName: "Call Off Date" },
+      { field: "callOffRef", headerName: "Call Off Ref" },
+      { field: "variationRef", headerName: "Variation Ref" },
+      { field: "otherRef", headerName: "Other Ref" },
+      { field: "project", headerName: "Project", minWidth: 140 },
+      { field: "supplierName", headerName: "Supplier Name" },
+      { field: "invoiceTotal", headerName: "Invoice Total" },
+      { field: "expectedCost", headerName: "Expected Cost" },
+      {
+        field: "paymentDueDate",
+        headerName: "Payment Due Date",
+        minWidth: 180,
+      },
+    ]
+
+    if (role === "procurement_department") {
+      base.push({
+        field: "approved",
+        headerName: "Approved",
+        minWidth: 160,
+        sortable: true,
+        filter: true,
+        cellRenderer: (params: { data?: SupplierInvoiceRow }) => {
+          const row = params.data
+          if (!row) return null
+          const isApproved = row.approved === "Approved"
+          const isRejected = row.approved === "Rejected"
+
+          return (
+            <div className="flex items-center justify-center gap-2 py-2">
+              <Switch
+                checked={isApproved}
+                // Rejected rows are locked — can't re-toggle
+                disabled={isRejected}
+                onCheckedChange={(checked) =>
+                  requestToggle(row.no, row.invoiceNumber, checked)
+                }
+              />
+              <span
+                className={
+                  isApproved
+                    ? "text-xs font-medium text-emerald-400"
+                    : isRejected
+                      ? "text-xs font-medium text-red-400"
+                      : "text-xs font-medium text-amber-400"
+                }
+              >
+                {row.approved}
+              </span>
+            </div>
+          )
+        },
+      })
+    }
+
+    base.push(
+      { field: "approvedBy", headerName: "Approved By" },
+      {
+        field: "financeComments",
+        headerName: "Finance Comments",
+        editable: true,
+        cellRenderer: CommentCellRenderer,
+        cellRendererParams: { fieldName: "financeComments" },
+      },
+      {
+        field: "procurementComments",
+        headerName: "Procurement Comments",
+        editable: true,
+        minWidth: 160,
+        cellRenderer: CommentCellRenderer,
+        cellRendererParams: { fieldName: "procurementComments" },
+      },
+      {
+        field: "commercialComments",
+        headerName: "Commercial Comments",
+        editable: true,
+        minWidth: 160,
+        cellRenderer: CommentCellRenderer,
+        cellRendererParams: { fieldName: "commercialComments" },
+      }
+    )
+
+    return base
+  }, [role, requestToggle])
 
   const handleCellValueChanged = useCallback(
     (params: CellValueChangedEvent<SupplierInvoiceRow>) => {
