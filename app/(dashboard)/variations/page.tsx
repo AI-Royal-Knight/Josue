@@ -8,140 +8,18 @@ import {
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { CheckCircle2, Plus, Search, XCircle } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
 
-type ApprovalStatus = "Pending" | "Approved" | "Rejected"
-
-type VariationLine = {
-  no: string
-  siteInstruction: string
-  workArea: string
-  workSection: string
-  labour: number
-  /** Labour target — shown to assigned users when they view/invoice this variation */
-  labourTarget: number
-  material: number
-  qty: number
-}
-
-type VariationRow = {
-  id: string
-  voNo: string
-  date: string
-  variationSheetNumber: string
-  project: string
-  siteInstructionNo: string
-  descriptionOfWorks: string
-  createdBy: string
-  lines: VariationLine[]
-  totalAmount: number
-  evidence: string
-  comments: string
-  assignedUserIds: string[]
-  approvalStatus: ApprovalStatus
-  approvedBy: string
-  submittedToClient: boolean
-  signedByClient: boolean
-}
-
-type VariationFormData = {
-  project: string
-  siteInstructionNo: string
-  attentionOf: string
-  descriptionOfWorks: string
-  lines: VariationLine[]
-  comments: string
-}
-
-const ALL_USERS = [
-  { id: "sm", name: "Site Manager", initials: "SM", color: "bg-emerald-600 text-white" },
-  { id: "jw", name: "John Watson", initials: "JW", color: "bg-indigo-600 text-white" },
-  { id: "er", name: "Emily Rose", initials: "ER", color: "bg-rose-600 text-white" },
-  { id: "mj", name: "Mark Jones", initials: "MJ", color: "bg-amber-600 text-white" },
-  { id: "alison", name: "Alison Tylor", initials: "AT", color: "bg-blue-600 text-white" },
-  { id: "alex", name: "Alex Wanchis", initials: "AW", color: "bg-violet-600 text-white" },
-  { id: "chanu", name: "Chanu Clap", initials: "CC", color: "bg-teal-600 text-white" },
-  { id: "provin", name: "Provin Kumar", initials: "PK", color: "bg-orange-600 text-white" },
-]
-
-const PROJECTS = ["Project A", "Project B", "Project C"]
-
-const emptyLine = (): VariationLine => ({
-  no: "", siteInstruction: "", workArea: "", workSection: "",
-  labour: 0, labourTarget: 0, material: 0, qty: 1,
-})
-
-const defaultForm = (): VariationFormData => ({
-  project: "", siteInstructionNo: "", attentionOf: "",
-  descriptionOfWorks: "", lines: [emptyLine()], comments: "",
-})
+import { VariationRow, VariationFormData } from "./types"
+import { PROJECTS, formatGBP, ALL_USERS, buildVariationDocHtml, initialRows, summaryMetrics } from "./utils"
+import CreateVariationDialog from "./_components/CreateVariationDialog"
+import AssignUsersDialog from "./_components/AssignUsersDialog"
+import ApprovalDialog from "./_components/ApprovalDialog"
+import ViewVariationDialog from "./_components/ViewVariationDialog"
+import ReminderDialog from "./_components/ReminderDialog"
 
 let _nextId = 5
-const initialRows: VariationRow[] = [
-  {
-    id: "1", voNo: "VO-001", date: "2024-01-12", variationSheetNumber: "A",
-    project: "Project A", siteInstructionNo: "SI21654321012",
-    descriptionOfWorks: "Additional steelwork to level 3",
-    createdBy: "John Watson", lines: [], totalAmount: 4500,
-    evidence: "", comments: "Approved by site manager",
-    assignedUserIds: ["sm", "jw"], approvalStatus: "Approved",
-    approvedBy: "Commercial Manager", submittedToClient: true, signedByClient: true,
-  },
-  {
-    id: "2", voNo: "VO-002", date: "2024-01-12", variationSheetNumber: "B",
-    project: "Project B", siteInstructionNo: "SI24654321019",
-    descriptionOfWorks: "Revised drainage layout",
-    createdBy: "Emily Rose", lines: [], totalAmount: 2800,
-    evidence: "", comments: "",
-    assignedUserIds: ["er"], approvalStatus: "Pending",
-    approvedBy: "", submittedToClient: false, signedByClient: false,
-  },
-  {
-    id: "3", voNo: "VO-003", date: "2024-01-12", variationSheetNumber: "C",
-    project: "Project C", siteInstructionNo: "SI24654321070",
-    descriptionOfWorks: "Extra cabling runs to plant room",
-    createdBy: "Mark Jones", lines: [], totalAmount: 1200,
-    evidence: "", comments: "Awaiting client sign-off",
-    assignedUserIds: ["mj", "alison"], approvalStatus: "Approved",
-    approvedBy: "Commercial Manager", submittedToClient: true, signedByClient: false,
-  },
-  {
-    id: "4", voNo: "VO-004", date: "2024-01-12", variationSheetNumber: "D",
-    project: "Project A", siteInstructionNo: "SI24659091030",
-    descriptionOfWorks: "Temporary works for access platform",
-    createdBy: "Alex Wanchis", lines: [], totalAmount: 3600,
-    evidence: "", comments: "",
-    assignedUserIds: ["alex"], approvalStatus: "Rejected",
-    approvedBy: "Commercial Manager", submittedToClient: false, signedByClient: false,
-  },
-]
-
-const summaryMetrics = [
-  { label: "Variations QTY", value: "4" },
-  { label: "Variations Value", value: "£12,100" },
-  { label: "Approved", value: "2", valueColor: "green" as const },
-  { label: "Awaiting Approval", value: "1", valueColor: "red" as const },
-  { label: "Submitted to Client", value: "2" },
-  { label: "Signed by Client", value: "1" },
-]
-
-function lineTotal(l: VariationLine) {
-  return (l.labour + l.material) * l.qty
-}
-
-function formatGBP(n: number) {
-  return n.toLocaleString("en-GB", { style: "currency", currency: "GBP" })
-}
 
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("all")
@@ -151,37 +29,72 @@ export default function Page() {
 
   // Create variation dialog
   const [formOpen, setFormOpen] = useState(false)
-  const [form, setForm] = useState<VariationFormData>(defaultForm())
 
   // Assign users dialog
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignRowId, setAssignRowId] = useState<string | null>(null)
-  const [assignSelected, setAssignSelected] = useState<string[]>([])
-  const [userSearch, setUserSearch] = useState("")
+  const [assignInitial, setAssignInitial] = useState<string[]>([])
 
   // Approval confirmation
   const [pendingApproval, setPendingApproval] = useState<{
     id: string; voNo: string; action: "approve" | "reject"
   } | null>(null)
 
-  const formTotal = useMemo(
-    () => form.lines.reduce((s, l) => s + lineTotal(l), 0),
-    [form.lines]
-  )
+  // Variation View/Download/Submit
+  const [variationDialogOpen, setVariationDialogOpen] = useState(false)
+  const [selectedVariation, setSelectedVariation] = useState<VariationRow | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const updateLine = (i: number, patch: Partial<VariationLine>) =>
-    setForm((f) => ({
-      ...f,
-      lines: f.lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)),
-    }))
+  // Reminder Dialog
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false)
+  const [selectedReminder, setSelectedReminder] = useState<VariationRow | null>(null)
+  const [isSendingReminder, setIsSendingReminder] = useState(false)
 
-  const addLine = () =>
-    setForm((f) => ({ ...f, lines: [...f.lines, emptyLine()] }))
+  const openReminder = useCallback((row: VariationRow) => {
+    setSelectedReminder(row)
+    setReminderDialogOpen(true)
+  }, [])
 
-  const removeLine = (i: number) =>
-    setForm((f) => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))
+  const handleSendReminder = useCallback(() => {
+    if (!selectedReminder) return
+    setIsSendingReminder(true)
+    setTimeout(() => {
+      setIsSendingReminder(false)
+      setReminderDialogOpen(false)
+    }, 1000)
+  }, [selectedReminder])
 
-  const handleSubmitVariation = () => {
+  const openVariation = useCallback((row: VariationRow) => {
+    setSelectedVariation(row)
+    setVariationDialogOpen(true)
+  }, [])
+
+  const downloadVariationDoc = useCallback((row: VariationRow) => {
+    const html = buildVariationDocHtml(row)
+    const blob = new Blob([html], { type: "application/msword" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `${row.voNo}.doc`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const submitVariationToClient = useCallback((name: string, email: string) => {
+    if (!selectedVariation || !name || !email) return
+    setIsSubmitting(true)
+    setTimeout(() => {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === selectedVariation.id ? { ...r, submittedToClient: true } : r
+        )
+      )
+      setIsSubmitting(false)
+      setVariationDialogOpen(false)
+    }, 1000)
+  }, [selectedVariation])
+
+  const handleSubmitVariation = useCallback((form: VariationFormData, formTotal: number) => {
     const today = new Date().toISOString().slice(0, 10)
     _nextId++
     const newRow: VariationRow = {
@@ -205,8 +118,7 @@ export default function Page() {
     }
     setRows((prev) => [...prev, newRow])
     setFormOpen(false)
-    setForm(defaultForm())
-  }
+  }, [])
 
   const confirmApproval = () => {
     if (!pendingApproval) return
@@ -226,28 +138,39 @@ export default function Page() {
 
   const openAssign = useCallback((rowId: string, currentIds: string[]) => {
     setAssignRowId(rowId)
-    setAssignSelected(currentIds)
-    setUserSearch("")
+    setAssignInitial(currentIds)
     setAssignOpen(true)
   }, [])
 
-  const confirmAssign = () => {
+  const confirmAssign = (selectedIds: string[]) => {
     if (!assignRowId) return
     setRows((prev) =>
       prev.map((r) =>
-        r.id === assignRowId ? { ...r, assignedUserIds: assignSelected } : r
+        r.id === assignRowId ? { ...r, assignedUserIds: selectedIds } : r
       )
     )
     setAssignOpen(false)
   }
 
-  const filteredUsers = ALL_USERS.filter((u) =>
-    u.name.toLowerCase().includes(userSearch.toLowerCase())
-  )
-
   const columns = useMemo<ColDef<VariationRow>[]>(() => {
     const base: ColDef<VariationRow>[] = [
-      { headerName: "VO No.", field: "voNo" },
+      {
+        headerName: "VO No.",
+        field: "voNo",
+        cellRenderer: (params: { data?: VariationRow; value: string }) => (
+          <button
+            type="button"
+            className="text-emerald-500 hover:underline"
+            onClick={(event) => {
+              event.stopPropagation()
+              if (!params.data) return
+              openVariation(params.data)
+            }}
+          >
+            {params.value}
+          </button>
+        )
+      },
       { headerName: "Date", field: "date", minWidth: 120 },
       { headerName: "Sheet No.", field: "variationSheetNumber" },
       { headerName: "Project", field: "project" },
@@ -359,13 +282,21 @@ export default function Page() {
       {
         headerName: "Signed by Client",
         field: "signedByClient",
-        cellRenderer: (params: { value: boolean }) => (
-          <span
-            className={params.value ? "text-emerald-400" : "text-slate-500"}
-          >
-            {params.value ? "Yes" : "No"}
-          </span>
-        ),
+        cellRenderer: (params: { data?: VariationRow; value: boolean }) => {
+          if (params.value) return <span className="text-emerald-400">Yes</span>
+          return (
+            <button
+              type="button"
+              className="text-amber-500 hover:underline"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (params.data) openReminder(params.data)
+              }}
+            >
+              No (Remind)
+            </button>
+          )
+        },
       },
       {
         headerName: "Assigned Users",
@@ -417,7 +348,7 @@ export default function Page() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Variations</h2>
-        <Button onClick={() => { setForm(defaultForm()); setFormOpen(true) }}>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="size-4" />
           Create Variation
         </Button>
@@ -446,233 +377,37 @@ export default function Page() {
         gridOptions={{ rowHeight: 48 }}
       />
 
-      {/* Create Variation Dialog */}
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Variation</DialogTitle>
-            <DialogDescription>
-              Fill in the variation details. Once submitted it will be sent to the Commercial Manager for approval.
-            </DialogDescription>
-          </DialogHeader>
+      <CreateVariationDialog open={formOpen} onOpenChange={setFormOpen} onSubmit={handleSubmitVariation} />
 
-          <div className="space-y-6 py-2">
-            {/* Top meta */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-xs text-slate-400">Project</label>
-                <Select value={form.project} onValueChange={(v) => setForm((f) => ({ ...f, project: v }))}>
-                  <SelectTrigger className="border-white/10 bg-slate-900"><SelectValue placeholder="Select project" /></SelectTrigger>
-                  <SelectContent className="border-white/10 bg-slate-900">
-                    {PROJECTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-slate-400">Site Instruction No.</label>
-                <Input
-                  placeholder="e.g. SI24654321019"
-                  value={form.siteInstructionNo}
-                  onChange={(e) => setForm((f) => ({ ...f, siteInstructionNo: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-slate-400">Attention of</label>
-                <Input
-                  placeholder="Name"
-                  value={form.attentionOf}
-                  onChange={(e) => setForm((f) => ({ ...f, attentionOf: e.target.value }))}
-                />
-              </div>
-            </div>
+      <AssignUsersDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        initialSelected={assignInitial}
+        onAssign={confirmAssign}
+      />
 
-            {/* Description */}
-            <div className="space-y-1">
-              <label className="text-xs text-slate-400">Reason for Variation / Description of Works</label>
-              <textarea
-                rows={3}
-                value={form.descriptionOfWorks}
-                onChange={(e) => setForm((f) => ({ ...f, descriptionOfWorks: e.target.value }))}
-                placeholder="Describe the variation works…"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-white/20"
-              />
-            </div>
+      <ApprovalDialog
+        pendingApproval={pendingApproval}
+        onOpenChange={(open) => !open && setPendingApproval(null)}
+        onConfirm={confirmApproval}
+      />
 
-            {/* Line items */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Line Items</label>
-                <Button type="button" variant="outline" size="sm" onClick={addLine}>
-                  <Plus className="size-3" /> Add Line
-                </Button>
-              </div>
-              <div className="overflow-x-auto rounded border border-white/10">
-                <table className="w-full border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-white/5 text-slate-400">
-                      {["No.", "Site Instruction", "Work Area", "Work Section", "Labour (£)", "Labour Target (£)", "Material (£)", "QTY", "Total", ""].map((h) => (
-                        <th key={h} className="border-r border-white/10 px-2 py-2 text-left last:border-r-0">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {form.lines.map((line, i) => (
-                      <tr key={i} className="border-b border-white/10 last:border-b-0">
-                        <td className="border-r border-white/10 px-2 py-1 text-slate-400">{i + 1}</td>
-                        {(["siteInstruction", "workArea", "workSection"] as const).map((f) => (
-                          <td key={f} className="border-r border-white/10 px-1 py-1">
-                            <Input
-                              value={line[f]}
-                              onChange={(e) => updateLine(i, { [f]: e.target.value })}
-                              className="h-7 border-white/10 bg-transparent text-xs"
-                            />
-                          </td>
-                        ))}
-                        {/* Labour */}
-                        <td className="border-r border-white/10 px-1 py-1">
-                          <Input
-                            type="number" min={0}
-                            value={line.labour === 0 ? "" : line.labour}
-                            onChange={(e) => updateLine(i, { labour: parseFloat(e.target.value) || 0 })}
-                            className="h-7 w-20 border-white/10 bg-transparent text-right text-xs"
-                          />
-                        </td>
-                        {/* Labour Target */}
-                        <td className="border-r border-white/10 px-1 py-1">
-                          <Input
-                            type="number" min={0}
-                            value={line.labourTarget === 0 ? "" : line.labourTarget}
-                            onChange={(e) => updateLine(i, { labourTarget: parseFloat(e.target.value) || 0 })}
-                            className="h-7 w-20 border-amber-500/30 bg-amber-500/5 text-right text-xs text-amber-300 placeholder:text-amber-700"
-                            placeholder="0"
-                            title="Labour target shown to users when invoicing this variation"
-                          />
-                        </td>
-                        {/* Material */}
-                        <td className="border-r border-white/10 px-1 py-1">
-                          <Input
-                            type="number" min={0}
-                            value={line.material === 0 ? "" : line.material}
-                            onChange={(e) => updateLine(i, { material: parseFloat(e.target.value) || 0 })}
-                            className="h-7 w-20 border-white/10 bg-transparent text-right text-xs"
-                          />
-                        </td>
-                        {/* QTY */}
-                        <td className="border-r border-white/10 px-1 py-1">
-                          <Input
-                            type="number" min={0}
-                            value={line.qty === 0 ? "" : line.qty}
-                            onChange={(e) => updateLine(i, { qty: parseFloat(e.target.value) || 0 })}
-                            className="h-7 w-20 border-white/10 bg-transparent text-right text-xs"
-                          />
-                        </td>
-                        <td className="border-r border-white/10 px-2 py-1 text-right font-medium text-slate-100">
-                          {formatGBP(lineTotal(line))}
-                        </td>
-                        <td className="px-2 py-1">
-                          <button onClick={() => removeLine(i)} className="text-slate-500 hover:text-red-400">✕</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-white/20 bg-white/5">
-                      <td colSpan={8} className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Total</td>
-                      <td className="px-2 py-2 text-right text-sm font-bold text-slate-100">{formatGBP(formTotal)}</td>
-                      <td />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
+      <ViewVariationDialog
+        open={variationDialogOpen}
+        onOpenChange={setVariationDialogOpen}
+        variation={selectedVariation}
+        onDownload={downloadVariationDoc}
+        onSubmitToClient={submitVariationToClient}
+        isSubmitting={isSubmitting}
+      />
 
-            {/* Comments */}
-            <div className="space-y-1">
-              <label className="text-xs text-slate-400">Qualifications &amp; Comments</label>
-              <textarea
-                rows={2}
-                value={form.comments}
-                onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))}
-                placeholder="Any additional notes…"
-                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-white/20"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-4">
-              <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
-              <Button
-                disabled={!form.project || !form.descriptionOfWorks}
-                onClick={handleSubmitVariation}
-              >
-                Submit for Approval
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Users Dialog */}
-      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Assign Users</DialogTitle></DialogHeader>
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
-            <Input
-              placeholder="Search users…"
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-              className="border-white/10 bg-slate-900 pl-9"
-            />
-          </div>
-          <div className="max-h-64 space-y-2 overflow-y-auto">
-            {filteredUsers.map((u) => (
-              <label key={u.id} className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 hover:bg-white/5">
-                <Checkbox
-                  checked={assignSelected.includes(u.id)}
-                  onCheckedChange={(checked) =>
-                    setAssignSelected((prev) =>
-                      checked ? [...prev, u.id] : prev.filter((id) => id !== u.id)
-                    )
-                  }
-                />
-                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${u.color}`}>
-                  {u.initials}
-                </div>
-                <span className="text-sm text-slate-200">{u.name}</span>
-              </label>
-            ))}
-          </div>
-          <div className="flex justify-end gap-3 border-t border-white/10 pt-4">
-            <Button variant="outline" onClick={() => setAssignOpen(false)}>Cancel</Button>
-            <Button onClick={confirmAssign}>Assign</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Approval confirmation */}
-      <AlertDialog open={!!pendingApproval} onOpenChange={(o) => !o && setPendingApproval(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingApproval?.action === "approve" ? "Approve variation?" : "Reject variation?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingApproval?.action === "approve"
-                ? `Approving ${pendingApproval.voNo} will mark it as approved by the Commercial Manager.`
-                : `Rejecting ${pendingApproval?.voNo} cannot be undone.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingApproval(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmApproval}
-              className={pendingApproval?.action === "reject" ? "bg-red-600 hover:bg-red-500" : ""}
-            >
-              {pendingApproval?.action === "approve" ? "Approve" : "Reject"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ReminderDialog
+        open={reminderDialogOpen}
+        onOpenChange={setReminderDialogOpen}
+        variation={selectedReminder}
+        onSendReminder={handleSendReminder}
+        isSending={isSendingReminder}
+      />
     </div>
   )
 }

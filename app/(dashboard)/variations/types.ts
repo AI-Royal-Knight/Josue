@@ -1,0 +1,42 @@
+export type ApprovalStatus = "Pending" | "Approved" | "Rejected"
+
+export type VariationLine = {
+  no: string
+  siteInstruction: string
+  workArea: string
+  workSection: string
+  labour: number
+  /** Labour target — shown to assigned users when they view/invoice this variation */
+  labourTarget: number
+  material: number
+  qty: number
+}
+
+export type VariationRow = {
+  id: string
+  voNo: string
+  date: string
+  variationSheetNumber: string
+  project: string
+  siteInstructionNo: string
+  descriptionOfWorks: string
+  createdBy: string
+  lines: VariationLine[]
+  totalAmount: number
+  evidence: string
+  comments: string
+  assignedUserIds: string[]
+  approvalStatus: ApprovalStatus
+  approvedBy: string
+  submittedToClient: boolean
+  signedByClient: boolean
+}
+
+export type VariationFormData = {
+  project: string
+  siteInstructionNo: string
+  attentionOf: string
+  descriptionOfWorks: string
+  lines: VariationLine[]
+  comments: string
+}
