@@ -13,6 +13,7 @@ import { Plus } from "lucide-react"
 
 import { VariationFormData, VariationLine } from "../types"
 import { PROJECTS, emptyLine, defaultForm, lineTotal, formatGBP } from "../utils"
+import FileUpload from "@/components/ui/file-uploader"
 
 type Props = {
   open: boolean
@@ -89,6 +90,10 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit }: 
                 onChange={(e) => setForm((f) => ({ ...f, attentionOf: e.target.value }))}
               />
             </div>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400">Evidence</label>
+              <FileUpload />
+            </div>
           </div>
 
           {/* Description */}
@@ -115,7 +120,7 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit }: 
               <table className="w-full border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-slate-400">
-                    {["No.", "Site Instruction", "Work Area", "Work Section", "Labour (£)", "Labour Target (£)", "Material (£)", "QTY", "Total", ""].map((h) => (
+                    {["No.", "Description", "Work Area", "Work Section", "Labour (£)", "Labour Target (£)", "Material (£)", "QTY", "Total", ""].map((h) => (
                       <th key={h} className="border-r border-white/10 px-2 py-2 text-left last:border-r-0">{h}</th>
                     ))}
                   </tr>
@@ -203,13 +208,13 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit }: 
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-4">
+          <div className="flex items-center justify-end gap-3">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button
               disabled={!form.project || !form.descriptionOfWorks}
               onClick={handleSubmit}
             >
-              Submit for Approval
+              Create
             </Button>
           </div>
         </div>

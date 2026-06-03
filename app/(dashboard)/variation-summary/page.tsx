@@ -11,6 +11,7 @@ import {
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import type { ColDef } from "ag-grid-community"
+import { Switch } from "@/components/ui/switch"
 
 type VariationSummaryRow = {
   no: string
@@ -26,6 +27,8 @@ type VariationSummaryRow = {
   variationAmount: string
   percentClaimed: string
   amountClaimed: string
+  addToApplication: boolean
+  signByClient?: string
   clientCertifiedAmount: string
   diffrenceAmount: string
   paymentStatusNr: string
@@ -34,9 +37,8 @@ type VariationSummaryRow = {
 }
 
 const summaryMetrics = [
-  { label: "Variation QTY", value: "0000" },
-  { label: "Variation Value", value: "000" },
-  { label: "Changed Value", value: "000" },
+  { label: "Variation", qty: "0000", value: "0000" },
+  { label: "Added to monthly application", qty: "000", value: "000" },
 ]
 
 const data: VariationSummaryRow[] = [
@@ -59,6 +61,8 @@ const data: VariationSummaryRow[] = [
     paymentStatusNr: "",
     claimGQComment: "",
     comments: "",
+    addToApplication: false,
+    signByClient: "No",
   },
   {
     no: "2",
@@ -79,106 +83,8 @@ const data: VariationSummaryRow[] = [
     paymentStatusNr: "",
     claimGQComment: "",
     comments: "",
-  },
-  {
-    no: "3",
-    siteInstructionNumber: "SI24654321070",
-    evidence: "📄",
-    date: "£",
-    variationSheetNumber: "£",
-    workArea: "£",
-    workSection: "£",
-    descriptionOfWorks: "£",
-    labourCost: "£850.00",
-    materialCost: "%",
-    variationAmount: "£750.00",
-    percentClaimed: "£",
-    amountClaimed: "£0.00",
-    clientCertifiedAmount: "£0.00",
-    diffrenceAmount: "£0.00",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
-  },
-  {
-    no: "4",
-    siteInstructionNumber: "SI24659091030",
-    evidence: "📄",
-    date: "£",
-    variationSheetNumber: "£",
-    workArea: "£",
-    workSection: "£",
-    descriptionOfWorks: "£",
-    labourCost: "£850.00",
-    materialCost: "%",
-    variationAmount: "£750.00",
-    percentClaimed: "£",
-    amountClaimed: "£0.00",
-    clientCertifiedAmount: "£0.00",
-    diffrenceAmount: "£0.00",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
-  },
-  {
-    no: "5",
-    siteInstructionNumber: "",
-    evidence: "",
-    date: "",
-    variationSheetNumber: "",
-    workArea: "",
-    workSection: "",
-    descriptionOfWorks: "",
-    labourCost: "",
-    materialCost: "",
-    variationAmount: "",
-    percentClaimed: "",
-    amountClaimed: "",
-    clientCertifiedAmount: "",
-    diffrenceAmount: "",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
-  },
-  {
-    no: "6",
-    siteInstructionNumber: "",
-    evidence: "",
-    date: "",
-    variationSheetNumber: "",
-    workArea: "",
-    workSection: "",
-    descriptionOfWorks: "",
-    labourCost: "",
-    materialCost: "",
-    variationAmount: "",
-    percentClaimed: "",
-    amountClaimed: "",
-    clientCertifiedAmount: "",
-    diffrenceAmount: "",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
-  },
-  {
-    no: "7",
-    siteInstructionNumber: "",
-    evidence: "",
-    date: "",
-    variationSheetNumber: "",
-    workArea: "",
-    workSection: "",
-    descriptionOfWorks: "",
-    labourCost: "",
-    materialCost: "",
-    variationAmount: "",
-    percentClaimed: "",
-    amountClaimed: "",
-    clientCertifiedAmount: "",
-    diffrenceAmount: "",
-    paymentStatusNr: "",
-    claimGQComment: "",
-    comments: "",
+    addToApplication: false,
+    signByClient: "No",
   },
   {
     no: "8",
@@ -199,12 +105,14 @@ const data: VariationSummaryRow[] = [
     paymentStatusNr: "",
     claimGQComment: "",
     comments: "",
+    addToApplication: false,
+    signByClient: "No",
   },
 ]
 
 const columns: ColDef<VariationSummaryRow>[] = [
   {
-     headerName: "No.",
+    headerName: "No.",
     field: "no",
     minWidth: 80,
   },
@@ -226,27 +134,11 @@ const columns: ColDef<VariationSummaryRow>[] = [
     field: "variationSheetNumber",
   },
   {
-    headerName: "Work Area",
-    field: "workArea",
-  },
-  {
-    headerName: "Work section",
-    field: "workSection",
-  },
-  {
     headerName: "Description of Works",
     field: "descriptionOfWorks",
   },
   {
-    headerName: "Labour cost",
-    field: "labourCost",
-  },
-  {
-    headerName: "Material Cost",
-    field: "materialCost",
-  },
-  {
-    headerName: "Variation Amount",
+    headerName: "Variation value",
     field: "variationAmount",
   },
   {
@@ -257,6 +149,22 @@ const columns: ColDef<VariationSummaryRow>[] = [
     headerName: "Amount Claimed",
     field: "amountClaimed",
   },
+  {
+    headerName: "Add to Application",
+    field: "addToApplication",
+    cellRenderer: (params: { value: string }) => (
+      <Switch
+        checked={params.value === "£0.00" ? false : true}
+        onCheckedChange={(checked) => {
+          // Handle toggle logic here, e.g., update the value in your data source
+          console.log(
+            `Toggle for row with value ${params.value} changed to ${checked}`
+          )
+        }}
+      />
+    ),
+  },
+  { headerName: "Signed by Client", field: "signByClient" },
   {
     headerName: "Client Certified Amount",
     field: "clientCertifiedAmount",
@@ -291,8 +199,7 @@ const totalRow: VariationSummaryRow = {
 
   labourCost: `£${data
     .reduce(
-      (sum, row) =>
-        sum + Number(row.labourCost.replace(/[^\d.-]/g, "") || 0),
+      (sum, row) => sum + Number(row.labourCost.replace(/[^\d.-]/g, "") || 0),
       0
     )
     .toFixed(2)}`,
@@ -317,11 +224,13 @@ const totalRow: VariationSummaryRow = {
     )
     .toFixed(2)}`,
 
+  addToApplication: false,
+  signByClient: "No",
+
   clientCertifiedAmount: `£${data
     .reduce(
       (sum, row) =>
-        sum +
-        Number(row.clientCertifiedAmount.replace(/[^\d.-]/g, "") || 0),
+        sum + Number(row.clientCertifiedAmount.replace(/[^\d.-]/g, "") || 0),
       0
     )
     .toFixed(2)}`,
@@ -373,21 +282,21 @@ export default function Page() {
           headerHeight: 40,
           suppressCellFocus: true,
           domLayout: "autoHeight",
-         //  grandTotalRow: "bottom"
-         pinnedBottomRowData: [totalRow],
-         getRowStyle: (params: any) => {
-           if (params.node.isRowPinned()) {
-             return { fontWeight: "bold", backgroundColor: "#1E3A8A80"} as any
-           }
-           return {}
-         },
-         getRowClass: (params) =>
-           params.node.isRowPinned() ? "pinned-row" : "",
+          //  grandTotalRow: "bottom"
+          pinnedBottomRowData: [totalRow],
+          getRowStyle: (params: any) => {
+            if (params.node.isRowPinned()) {
+              return { fontWeight: "bold", backgroundColor: "#1E3A8A80" } as any
+            }
+            return {}
+          },
+          getRowClass: (params) =>
+            params.node.isRowPinned() ? "pinned-row" : "",
         }}
         noRowsText="No variation data available"
         defaultColDef={{
-         flex: 1,
-         minWidth: 120
+          flex: 1,
+          minWidth: 160,
         }}
       />
     </div>

@@ -1,41 +1,18 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import TableStat from "@/components/common/table-stat"
 
 import VariationSummaryView from "./_components/VariationSummaryView"
 import WhiteCardView from "./_components/WhiteCardView"
 import ApplicationView from "./_components/ApplicationView"
 import SelectProject from "@/components/shared/select-project"
+import TableStat from "@/components/common/table-stat"
+import { ExportCsvButton } from "@/components/common/export-csv-button"
 
 type MonthlyTab = "variation-summary" | "white-card" | "application"
 
-const variationTotals = {
-  qty: "10000",
-  labourCost: "£4,920.00",
-  materialCost: "£5,610.00",
-  valuationAmount: "£10,530.00",
-  amountClaimed: "£9,525.00",
-  clientCertifiedAmount: "£9,130.00",
-  difference: "£395.00",
-}
-
-const summaryRows = [
-  { label: "Variation QTY", value: variationTotals.qty },
-  { label: "Variation Value", value: variationTotals.materialCost },
-  { label: "Claimed Value", value: variationTotals.amountClaimed },
-]
-
 export default function Page() {
-  const [selectedProject, setSelectedProject] = useState("project-a")
   const [activeTab, setActiveTab] = useState<MonthlyTab>("variation-summary")
 
   const content = useMemo(() => {
@@ -45,9 +22,10 @@ export default function Page() {
   }, [activeTab])
 
   return (
-    <div className="w-full space-y-6 p-6">
+    <div className="w-full space-y-4 p-6">
       <h2 className="text-2xl font-semibold">Monthly Application</h2>
 
+      <SelectProject />
       <div className="flex items-start justify-between">
         <div className="space-y-4">
           <div className="flex gap-2">
@@ -93,11 +71,44 @@ export default function Page() {
               Application
             </Button>
           </div>
-          <TableStat summaryRows={summaryRows} />
+          <TableStat
+            summaryRows={[
+              {
+                label: "Previous Month claim",
+                value: "£12,100",
+                valueColor: "yellow",
+              },
+              {
+                label: "This Months claim",
+                value: "£12,100",
+                valueColor: "green",
+              },
+            ]}
+          />
         </div>
-        <SelectProject />
       </div>
 
+      <div className="flex items-end justify-end">
+        <ExportCsvButton
+          columns={[
+            { headerName: "Metric", field: "label" },
+            { headerName: "Value", field: "value" },
+          ]}
+          rows={[
+            {
+              label: "Previous Month claim",
+              value: "£12,100",
+              valueColor: "yellow",
+            },
+            {
+              label: "This Months claim",
+              value: "£12,100",
+              valueColor: "green",
+            },
+          ]}
+          fileName="monthly-application-summary.csv"
+        />
+      </div>
       {content}
     </div>
   )

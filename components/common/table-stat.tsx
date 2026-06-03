@@ -6,7 +6,7 @@ type StatRow = {
   qty?: number | string
   value?: string
   alert?: boolean
-  valueColor?: "red" | "green" | undefined
+  valueColor?: "red" | "green" | "yellow" | undefined
 }
 
 type TableStatProps = {
@@ -61,14 +61,23 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
             filter: false,
             resizable: false,
             cellStyle: (params: { data?: StatRow | undefined }) => {
-              const color = params.data?.valueColor
+              let color: string | undefined
+
+              switch (params.data?.valueColor) {
+                case "red":
+                  color = "#ef4444"
+                  break
+                case "green":
+                  color = "#22c55e"
+                  break
+                case "yellow":
+                  color = "#f59e0b"
+                  break
+              }
+
               return {
                 textAlign: "center",
-                ...(color
-                  ? {
-                      color: color === "red" ? "#ef4444" : "#22c55e",
-                    }
-                  : {}),
+                ...(color && { color }),
               }
             },
           },

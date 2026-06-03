@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
+import { ExportCsvButton } from "@/components/common/export-csv-button"
 
 type DailyRegisterRow = {
   no: number
@@ -109,8 +110,15 @@ export default function Page() {
       <h1 className="text-2xl font-semibold">Daily Register</h1>
       <SelectProject />
 
-      <TableStat summaryRows={summaryRows} />
+      <div className="flex items-end justify-between">
+        <TableStat summaryRows={summaryRows} />
 
+        <ExportCsvButton
+          columns={columns}
+          rows={rows}
+          fileName="daily-register.csv"
+        />
+      </div>
       <AgTable rowData={rows} columnDefs={columns} height="auto" />
     </div>
   )
