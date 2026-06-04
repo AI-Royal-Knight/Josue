@@ -48,9 +48,7 @@ const DEFAULT_FOLDERS: FolderType[] = [
   {
     id: "corridors",
     name: "CORRIDORS",
-    subfolders: [
-      { id: "electrical", name: "Electrical", rows: defaultRows() },
-    ],
+    subfolders: [{ id: "electrical", name: "Electrical", rows: defaultRows() }],
   },
 ]
 
@@ -123,7 +121,9 @@ export default function DynamicFolderTable() {
         {
           id: folderId,
           name: folderName.toUpperCase(),
-          subfolders: [{ id: subfolderId, name: subfolderName, rows: defaultRows() }],
+          subfolders: [
+            { id: subfolderId, name: subfolderName, rows: defaultRows() },
+          ],
         },
       ])
       setModal({ folderId, subfolderId })
@@ -140,7 +140,9 @@ export default function DynamicFolderTable() {
             ? {
                 ...folder,
                 subfolders: folder.subfolders.map((subfolder) =>
-                  subfolder.id === subfolderId ? { ...subfolder, rows } : subfolder
+                  subfolder.id === subfolderId
+                    ? { ...subfolder, rows }
+                    : subfolder
                 ),
               }
             : folder
@@ -151,7 +153,9 @@ export default function DynamicFolderTable() {
     []
   )
 
-  const activeFolder = modal ? folders.find((f) => f.id === modal.folderId) : null
+  const activeFolder = modal
+    ? folders.find((f) => f.id === modal.folderId)
+    : null
   const activeSubfolder = activeFolder?.subfolders.find(
     (sf) => sf.id === modal?.subfolderId
   )
@@ -192,20 +196,27 @@ export default function DynamicFolderTable() {
         renderCell: (params) => {
           const i = (params.row as Record<string, unknown>).__sectionRowIndex
           const sectionRowIndex = typeof i === "number" ? i : -1
-          if (sectionRowIndex !== SECTION_LABEL_ROW_INDEX) return null
+          // Only render in the first row; use absolute positioning
+          // so the label visually spans all rows in the section.
+          if (sectionRowIndex !== 0) return null
           return (
             <Box
               sx={{
+                position: "absolute",
+                top: 0,
+                left: -2320,
+                right: 0,
+                height: `${ROWS_PER_FOLDER * 42}px`,
                 writingMode: "vertical-lr",
                 transform: "rotate(180deg)",
-                height: "100%",
-                width: "100%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontWeight: 700,
                 fontSize: 13,
                 letterSpacing: "0.1em",
+                pointerEvents: "none",
+                zIndex: 5,
               }}
             >
               {params.value}
@@ -216,9 +227,34 @@ export default function DynamicFolderTable() {
     ]
     const dynamicColumns = folders.flatMap((folder) =>
       folder.subfolders.flatMap((sub) => [
-        { field: `${folder.id}_${sub.id}_ws`, headerName: "Work Section", flex: 1, minWidth: 150, editable: true },
-        { field: `${folder.id}_${sub.id}_wa`, headerName: "Work Area", flex: 1, minWidth: 150, editable: true },
-        { field: `${folder.id}_${sub.id}_pv`, headerName: "Project Value", flex: 1, minWidth: 140, editable: true },
+        {
+          field: `${folder.id}_${sub.id}_ws`,
+          headerName: "Work Section",
+          flex: 1,
+          minWidth: 150,
+          editable: true,
+        },
+        {
+          field: `${folder.id}_${sub.id}_wa`,
+          headerName: "Work Area",
+          flex: 1,
+          minWidth: 150,
+          editable: true,
+        },
+        {
+          field: `${folder.id}_${sub.id}_pv`,
+          headerName: "Project Value",
+          flex: 1,
+          minWidth: 140,
+          editable: true,
+        },
+        {
+          field: `${folder.id}_${sub.id}_lt`,
+          headerName: "Labour Target",
+          flex: 1,
+          minWidth: 140,
+          editable: true,
+        },
       ])
     )
     return [...baseColumn, ...dynamicColumns]
@@ -233,6 +269,7 @@ export default function DynamicFolderTable() {
           { field: `${folder.id}_${sub.id}_ws` },
           { field: `${folder.id}_${sub.id}_wa` },
           { field: `${folder.id}_${sub.id}_pv` },
+          { field: `${folder.id}_${sub.id}_lt` },
         ],
       }))
     )
@@ -241,8 +278,14 @@ export default function DynamicFolderTable() {
   return (
     <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1 }}>
-          <Button variant="outlined" onClick={handleSaveProgress} startIcon={<Save size={16} />}>
+        <Box
+          sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1 }}
+        >
+          <Button
+            variant="outlined"
+            onClick={handleSaveProgress}
+            startIcon={<Save size={16} />}
+          >
             Save progress
           </Button>
           <Button
@@ -270,12 +313,22 @@ export default function DynamicFolderTable() {
             disableRowSelectionOnClick
             showCellVerticalBorder
             showColumnVerticalBorder
+            disableColumnResize
+            // disableColumnFilter
+            disableColumnSorting
+            disableColumnMenu
+
             rowHeight={42}
             isCellEditable={() => !isLocked}
             sx={{
               ...agTableDataGridSx,
-              "& .MuiDataGrid-columnHeaderTitleContainer": { justifyContent: "center" },
-              "& .MuiDataGrid-columnHeaderTitle": { textAlign: "center", width: "100%" },
+              "& .MuiDataGrid-columnHeaderTitleContainer": {
+                justifyContent: "center",
+              },
+              "& .MuiDataGrid-columnHeaderTitle": {
+                textAlign: "center",
+                width: "100%",
+              },
               '& .MuiDataGrid-columnHeader[data-field="section"]': {
                 backgroundColor: colors.background.trim(),
               },
@@ -283,9 +336,27 @@ export default function DynamicFolderTable() {
                 backgroundColor: `${colors.oddRowBackground} !important`,
                 padding: "0 !important",
               },
-              "& .cell-section-mid": { borderTop: "none !important", borderBottom: "none !important" },
+              "& .cell-section-mid": {
+                borderTop: "none !important",
+                borderBottom: "none !important",
+              },
               "& .cell-section-first": { borderBottom: "none !important" },
               "& .cell-section-last": { borderTop: "none !important" },
+              "& .MuiDataGrid-cell--editing": {
+                backgroundColor: "transparent !important",
+                boxShadow: "none",
+                padding: 0,
+              },
+              "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
+                backgroundColor: "transparent",
+                color: colors.foreground,
+                fontSize: "0.875rem",
+                padding: "0 8px",
+              },
+              "& .MuiDataGrid-cell--editing .MuiInputBase-input": {
+                color: colors.foreground,
+                padding: 0,
+              },
             }}
           />
         </Box>
@@ -297,18 +368,24 @@ export default function DynamicFolderTable() {
           folderName={activeFolder.name}
           copiedValue={copiedValue}
           onCopy={setCopiedValue}
-          onSave={(rows) => saveSubfolder(modal.folderId, modal.subfolderId, rows)}
+          onSave={(rows) =>
+            saveSubfolder(modal.folderId, modal.subfolderId, rows)
+          }
           onClose={() => setModal(null)}
         />
       )}
 
       <Dialog
         open={createDialogOpen}
-        onOpenChange={(open) => (open && !isLocked ? setCreateDialogOpen(true) : resetCreateDialog())}
+        onOpenChange={(open) =>
+          open && !isLocked ? setCreateDialogOpen(true) : resetCreateDialog()
+        }
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{createStep === "folder" ? "Create folder" : "Create subfolder"}</DialogTitle>
+            <DialogTitle>
+              {createStep === "folder" ? "Create folder" : "Create subfolder"}
+            </DialogTitle>
             <DialogDescription>
               {createStep === "folder"
                 ? "Enter a folder name"
@@ -349,7 +426,13 @@ export default function DynamicFolderTable() {
             />
           )}
           <DialogFooter>
-            <UiButton type="button" variant="outline" onClick={resetCreateDialog}>Cancel</UiButton>
+            <UiButton
+              type="button"
+              variant="outline"
+              onClick={resetCreateDialog}
+            >
+              Cancel
+            </UiButton>
             {createStep === "folder" ? (
               <UiButton
                 type="button"

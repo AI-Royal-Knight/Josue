@@ -1,7 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useForm, Controller } from "react-hook-form"
+import {
+  useMemo,
+  useState,
+} from "react"
+import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Send } from "lucide-react"
@@ -13,6 +16,7 @@ import Search from "@/components/ui/search"
 import DatePickr from "@/components/ui/date-picker"
 import ErrorMessage from "@/components/shared/form-error-message"
 import { Input } from "@/components/ui/input"
+import { LineItemTable } from "./LineItemTable"
 
 function generateQuoteRef() {
   const year = new Date().getFullYear()
@@ -20,9 +24,30 @@ function generateQuoteRef() {
   return `QR-${year}-${rand}`
 }
 
+export type LineItem = {
+  id: string
+  description: string
+  qty: string
+  discount: string
+  per: string
+  each: string
+  comments: string
+}
+
+export function makeRow(): LineItem {
+  return {
+    id: crypto.randomUUID(),
+    description: "",
+    qty: "",
+    discount: "",
+    per: "",
+    each: "",
+    comments: "",
+  }
+}
+
 const createQuotationSchema = z.object({
   project: z.string().min(1, "Select a project"),
-  // name is auto-filled; we still validate it's present
   name: z.string().min(1, "Name is required"),
   variationRef: z.string().optional(),
   supplierName: z.string().min(1, "Supplier name is required"),
@@ -46,14 +71,13 @@ interface CreateQuotationFormProps {
   onCancel?: () => void
 }
 
+// ─── Main form ─────────────────────────────────────────────────────────────────
+
 export default function CreateQuotationForm({
   onSuccess,
   onCancel,
 }: CreateQuotationFormProps) {
-  // Quote ref is auto-generated and never editable
   const quoteRef = useMemo(() => generateQuoteRef(), [])
-
-  // In a real app this would come from the auth session/store
   const loggedInUserName = "Current User"
 
   const {
@@ -69,15 +93,36 @@ export default function CreateQuotationForm({
     },
   })
 
+  const [lineItems, setLineItems] = useState<LineItem[]>(() => [
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+  ])
+
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const onSubmit = async (data: CreateQuotationFormOutput) => {
     try {
       setSubmitError(null)
-      const payload = { ...data, quoteRef }
+      const payload = { ...data, quoteRef, lineItems }
       console.log("Creating quotation:", payload)
       onSuccess?.(payload)
       reset()
+      setLineItems([
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+      ])
     } catch {
       setSubmitError("Failed to create quotation. Please try again.")
     }
@@ -85,13 +130,9 @@ export default function CreateQuotationForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* ── Quote Ref (auto-generated, read-only) ─────────────────────────── */}
+      {/* ── Quote Ref ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between rounded-md border border-input bg-muted/40 px-4 py-2">
-        <div>
-          <p className="text-xs text-muted-foreground">
-            Quote Ref : {quoteRef}
-          </p>
-        </div>
+        <p className="text-xs text-muted-foreground">Quote Ref : {quoteRef}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -153,7 +194,7 @@ export default function CreateQuotationForm({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field>
+        {/* <Field>
           <FieldLabel htmlFor="variationRef">Variation Ref</FieldLabel>
           <FieldContent>
             <Input
@@ -165,9 +206,9 @@ export default function CreateQuotationForm({
               <ErrorMessage message={errors.variationRef.message} />
             )}
           </FieldContent>
-        </Field>
+        </Field> */}
 
-        <Field>
+        {/* <Field>
           <FieldLabel htmlFor="quoteTotal">Quote Total</FieldLabel>
           <FieldContent>
             <Input
@@ -182,7 +223,7 @@ export default function CreateQuotationForm({
               <ErrorMessage message={errors.quoteTotal.message} />
             )}
           </FieldContent>
-        </Field>
+        </Field> */}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -193,11 +234,13 @@ export default function CreateQuotationForm({
             {errors.date && <ErrorMessage message={errors.date.message} />}
           </FieldContent>
         </Field>
-        {/* Empty column to keep layout balanced */}
         <div />
       </div>
 
-      <FileUpload />
+      {/* ── Line items table  */}
+      <LineItemTable items={lineItems} onChange={setLineItems} />
+
+      {/* <FileUpload /> */}
 
       {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 

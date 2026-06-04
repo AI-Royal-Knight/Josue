@@ -417,7 +417,7 @@ export default function Page() {
 
       {/* New quotation form */}
       <Dialog open={newQuoteOpen} onOpenChange={setNewQuoteOpen}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Quotation</DialogTitle>
           </DialogHeader>
