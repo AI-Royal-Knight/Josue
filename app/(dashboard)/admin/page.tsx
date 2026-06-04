@@ -12,7 +12,7 @@ type ProjectAdminRow = {
   name: string
   surname: string
   emailAddress: string
-  projects: string
+  projects: string[] | string
   dateProjectCreated: string
   projectValue: string
 }

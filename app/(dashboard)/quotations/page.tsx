@@ -21,10 +21,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import SupplierForm from "@/app/supplier/_components/SupplierForm"
+import CreateQuotationForm from "./_components/create-quotation-form"
 import { addOrder } from "@/lib/po-store"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
+import { useRoleStore } from "@/lib/role-store"
 
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
@@ -143,6 +144,9 @@ export default function Page() {
   const [newQuoteOpen, setNewQuoteOpen] = useState(false)
   const [pending, setPending] = useState<PendingAction | null>(null)
 
+  const role = useRoleStore((s) => s.role)
+  const isProcurement = role === "procurement_department"
+
   // Apply a confirmed action
   const handleConfirm = () => {
     if (!pending) return
@@ -246,6 +250,10 @@ export default function Page() {
             </span>
           )
         }
+        if (!isProcurement) {
+          return <span className="text-amber-400 font-medium text-sm">Pending</span>
+        }
+
         return (
           <div className="flex gap-1">
             <Button
@@ -284,6 +292,19 @@ export default function Page() {
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-medium text-white">
               <CheckCircle2 className="size-3" /> PO Created
             </span>
+          )
+        }
+
+        if (!isProcurement) {
+          return (
+            <Button
+              disabled
+              title="Only procurement department can create."
+              className="h-7 rounded-none bg-slate-800 px-3 text-xs text-slate-500 cursor-not-allowed"
+            >
+              <FileText className="size-3.5" />
+              Create PO
+            </Button>
           )
         }
 
@@ -396,11 +417,37 @@ export default function Page() {
 
       {/* New quotation form */}
       <Dialog open={newQuoteOpen} onOpenChange={setNewQuoteOpen}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Quotation</DialogTitle>
           </DialogHeader>
-          <SupplierForm />
+          <CreateQuotationForm
+            onSuccess={(data) => {
+              // Add the new quote row to the table
+              setRows((prev) => [
+                ...prev,
+                {
+                  no: prev.length + 1,
+                  quotesRef: data.quoteRef,
+                  project: data.project || "",
+                  mainFolder: "",
+                  subFolder: "",
+                  variationRef: data.variationRef || "-",
+                  supplierName: data.supplierName,
+                  supplierEmailAddress: data.supplierEmail,
+                  dateOfQuoteApproved: "-",
+                  quoteTotal: `$${Number(data.quoteTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+                  poCreated: false,
+                  datePoWasCreated: "-",
+                  procurementComments: "",
+                  approveQuotesStatus: "Pending",
+                  quoteApprovalReasons: "-",
+                },
+              ])
+              setNewQuoteOpen(false)
+            }}
+            onCancel={() => setNewQuoteOpen(false)}
+          />
         </DialogContent>
       </Dialog>
 

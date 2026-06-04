@@ -47,13 +47,63 @@ type SupplierRow = {
   invoiceDueThisMonth: string
 }
 
+function buildInvoiceDocHtml(invoice: any) {
+  const paidText = invoice.paid ? "Yes" : "No"
+  const confirmedDate = invoice.releaseDate || invoice.paymentDueDate || "-"
+  const value = invoice.total || "-"
+  const invoiceNumber = invoice.invoiceNumber || invoice.no
+
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice ${invoiceNumber}</title>
+  </head>
+  <body style="font-family: Arial, Helvetica, sans-serif; color: #111;">
+    <div style="max-width: 720px; margin: 0 auto; padding: 24px;">
+      <h1 style="margin: 0 0 8px;">INVOICE</h1>
+      <div style="margin: 0 0 16px; font-size: 12px;">
+        <div><strong>Invoice Number:</strong> ${invoiceNumber}</div>
+        <div><strong>Invoice Date:</strong> ${invoice.date || "-"}</div>
+        <div><strong>Paid:</strong> ${paidText}</div>
+        <div><strong>Date of confirmed payment:</strong> ${confirmedDate}</div>
+      </div>
+
+      <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+          <tr>
+            <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px 4px;">Description</th>
+            <th style="text-align: right; border-bottom: 1px solid #ddd; padding: 8px 4px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">Work completed (sample)</td>
+            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${value}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td style="padding: 12px 4px; text-align: right;"><strong>Total</strong></td>
+            <td style="padding: 12px 4px; text-align: right;"><strong>${value}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <p style="margin-top: 16px; font-size: 11px; color: #444;">
+        This is a sample invoice document generated from the supplier list.
+      </p>
+    </div>
+  </body>
+</html>`
+}
+
 const summaryRows = [
-  { label: "Approved Invoices", value: "1000" },
-  { label: "Approved Invoices Value", value: "£845,200" },
-  { label: "Invoices Due This Week", value: "184" },
-  { label: "Invoices Value Due This Week", value: "£1,654,800" },
-  { label: "Invoices Paid QTY", value: "156" },
-  { label: "Invoices Paid Value", value: "£1,200,000" },
+  { label: "Approved Invoices", qty: "1000", value: "£400" },
+  { label: "Invoices Due This Week", qty: "184", value: "£200" },
+  { label: "Invoices Paid", qty: "156", value: "£200" },
 ]
 
 const initialData: SupplierRow[] = [
@@ -191,6 +241,24 @@ export default function Page() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingRowId, setPendingRowId] = useState<string | null>(null)
   const [nextPaid, setNextPaid] = useState(false)
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState<SupplierRow | null>(null)
+
+  function openInvoice(invoice: SupplierRow) {
+    setSelectedInvoice(invoice)
+    setInvoiceDialogOpen(true)
+  }
+
+  function downloadInvoiceDoc(invoice: SupplierRow) {
+    const html = buildInvoiceDocHtml(invoice)
+    const blob = new Blob([html], { type: "application/msword" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `${invoice.invoiceNumber || invoice.no}.doc`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
 
   function openPaymentConfirm(rowId: string, checked: boolean) {
     setPendingRowId(rowId)
@@ -216,11 +284,17 @@ export default function Page() {
       headerName: "Invoice Number",
       field: "invoiceNumber",
       cellRenderer: (params: { data?: SupplierRow; value: string }) => (
-        <a
+        <button
+          type="button"
           className={`hover:underline ${params.data?.paid ? "text-green-500" : "text-red-500"}`}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (!params.data) return
+            openInvoice(params.data)
+          }}
         >
           {params.value}
-        </a>
+        </button>
       ),
     },
     { headerName: "Date(Supplier sent)", field: "date", minWidth: 150 },
@@ -282,6 +356,92 @@ export default function Page() {
           resizable: true,
         }}
       />
+
+      <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
+        <DialogContent className="sm:max-w-[900px]">
+          <DialogHeader>
+            <DialogTitle>Invoice preview</DialogTitle>
+          </DialogHeader>
+
+          {selectedInvoice ? (
+            <div className="max-h-[70vh] overflow-auto border border-input bg-white p-6">
+              <div className="flex items-start justify-between gap-6">
+                <div>
+                  <h2 className="text-lg font-semibold">INVOICE</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Sample document preview
+                  </p>
+                </div>
+                <div className="text-right text-sm">
+                  <div>
+                    <span className="font-medium">Invoice Number:</span>{" "}
+                    {selectedInvoice.invoiceNumber || selectedInvoice.no}
+                  </div>
+                  <div>
+                    <span className="font-medium">Invoice Date:</span>{" "}
+                    {selectedInvoice.date || "-"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Paid:</span>{" "}
+                    {selectedInvoice.paid ? "Yes" : "No"}
+                  </div>
+                  <div>
+                    <span className="font-medium">
+                      Date of confirmed payment:
+                    </span>{" "}
+                    {selectedInvoice.releaseDate || selectedInvoice.paymentDueDate || "-"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="my-6 h-px bg-border" />
+
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="py-2 text-left font-medium">Description</th>
+                    <th className="py-2 text-right font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border/60">
+                    <td className="py-3">Work completed (sample)</td>
+                    <td className="py-3 text-right">{selectedInvoice.total || "-"}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td className="py-3 text-right font-semibold">Total</td>
+                    <td className="py-3 text-right font-semibold">
+                      {selectedInvoice.total || "-"}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => setInvoiceDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!selectedInvoice) return
+                downloadInvoiceDoc(selectedInvoice)
+              }}
+              disabled={!selectedInvoice}
+            >
+              Download Invoice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -238,10 +238,10 @@ export default function AccountsOverviewPage() {
             {expanded ? String(year) : String(year)}
           </Button>
           <ExportCsvButton
-            filename={`accounts-overview-${year}.csv`}
+            fileName={`accounts-overview-${year}.csv`}
             columns={columnDefs.map((col) => ({
               header: String(col.headerName),
-              field: String(col.colId ?? col.field),
+              field: String(col.colId ?? col.field) as keyof AccountsRow,
             }))}
             rows={rows}
           />

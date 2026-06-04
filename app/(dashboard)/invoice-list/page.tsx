@@ -83,12 +83,9 @@ async function getInvoices(): Promise<InvoiceListRow[]> {
 
 async function getSummaryStats() {
   return [
-    { label: "Approved Invoices", value: "1000" },
-    { label: "Approved Invoices Value", value: "£400" },
-    { label: "Invoices Due This Week", value: "200" },
-    { label: "Invoices Value Due This Week", value: "£200" },
-    { label: "Invoices Paid QTY", value: "200" },
-    { label: "Invoices Paid Value", value: "£200" },
+    { label: "Approved Invoices", qty: "1000", value: "£400" },
+    { label: "Invoices Due This Week", qty: "200", value: "£200" },
+    { label: "Invoices Paid", qty: "200", value: "£200" },
   ]
 }
 

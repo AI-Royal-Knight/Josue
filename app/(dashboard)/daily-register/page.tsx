@@ -3,13 +3,6 @@
 import type { ColDef } from "ag-grid-community"
 
 import { AgTable } from "@/components/common/AgTable"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
@@ -114,7 +107,10 @@ export default function Page() {
         <TableStat summaryRows={summaryRows} />
 
         <ExportCsvButton
-          columns={columns}
+          columns={columns.map((c) => ({
+            header: c.headerName ?? "",
+            field: typeof c.field === "string" ? c.field : undefined,
+          }))}
           rows={rows}
           fileName="daily-register.csv"
         />

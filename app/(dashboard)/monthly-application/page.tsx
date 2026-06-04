@@ -91,8 +91,8 @@ export default function Page() {
       <div className="flex items-end justify-end">
         <ExportCsvButton
           columns={[
-            { headerName: "Metric", field: "label" },
-            { headerName: "Value", field: "value" },
+            { header: "Metric", field: "label" },
+            { header: "Value", field: "value" },
           ]}
           rows={[
             {

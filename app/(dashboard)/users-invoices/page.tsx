@@ -2,13 +2,6 @@
 
 import { useMemo, useState, useCallback } from "react"
 import type { ColDef } from "ag-grid-community"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import TableStat from "@/components/common/table-stat"
 import { AgTable } from "@/components/common/AgTable"
 import { Switch } from "@/components/ui/switch"
@@ -23,6 +16,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import SelectProject from "@/components/shared/select-project"
+import ViewInvoiceDialog, {
+  InvoicePreviewData,
+} from "@/components/common/view-invoice-dialog"
+import { useRoleStore } from "@/lib/role-store"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/** The four sequential approval signatures */
+type ApprovalSignatures = {
+  supervisorApproved: boolean
+  supervisorApprovedDate: string
+  contractsManagerApproved: boolean
+  contractsManagerApprovedDate: string
+  projectDirectorApproved: boolean
+  projectDirectorApprovedDate: string
+  managingDirectorApproved: boolean
+  managingDirectorApprovedDate: string
+}
 
 type InvoiceRow = {
   no: string
@@ -42,13 +53,33 @@ type InvoiceRow = {
   paidBy: string
   financeComments: string
   commercialComments: string
-}
+} & ApprovalSignatures
 
+/** Which toggle is being confirmed */
 type PendingToggle = {
   no: string
   invoiceNumber: string
+  field: keyof ApprovalSignatures & `${string}Approved`
   nextValue: boolean
+  label: string
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const today = () => new Date().toLocaleDateString("en-GB")
+
+const emptySignatures: ApprovalSignatures = {
+  supervisorApproved: false,
+  supervisorApprovedDate: "",
+  contractsManagerApproved: false,
+  contractsManagerApprovedDate: "",
+  projectDirectorApproved: false,
+  projectDirectorApprovedDate: "",
+  managingDirectorApproved: false,
+  managingDirectorApprovedDate: "",
+}
+
+// ─── Initial data ─────────────────────────────────────────────────────────────
 
 const initialRows: InvoiceRow[] = [
   {
@@ -69,6 +100,15 @@ const initialRows: InvoiceRow[] = [
     paidBy: "Sarah L.",
     financeComments: "Cleared",
     commercialComments: "Approved",
+    // Pre-seeded: first two signed
+    supervisorApproved: true,
+    supervisorApprovedDate: "16/03/2024",
+    contractsManagerApproved: true,
+    contractsManagerApprovedDate: "17/03/2024",
+    projectDirectorApproved: false,
+    projectDirectorApprovedDate: "",
+    managingDirectorApproved: false,
+    managingDirectorApprovedDate: "",
   },
   {
     no: "2",
@@ -88,6 +128,7 @@ const initialRows: InvoiceRow[] = [
     paidBy: "",
     financeComments: "",
     commercialComments: "",
+    ...emptySignatures,
   },
   {
     no: "3",
@@ -107,6 +148,15 @@ const initialRows: InvoiceRow[] = [
     paidBy: "Sarah L.",
     financeComments: "Processed",
     commercialComments: "Verified",
+    // All three prior signed → MD visible
+    supervisorApproved: true,
+    supervisorApprovedDate: "29/03/2024",
+    contractsManagerApproved: true,
+    contractsManagerApprovedDate: "30/03/2024",
+    projectDirectorApproved: true,
+    projectDirectorApprovedDate: "01/04/2024",
+    managingDirectorApproved: false,
+    managingDirectorApprovedDate: "",
   },
   {
     no: "4",
@@ -126,6 +176,7 @@ const initialRows: InvoiceRow[] = [
     paidBy: "",
     financeComments: "",
     commercialComments: "",
+    ...emptySignatures,
   },
   {
     no: "5",
@@ -145,47 +196,168 @@ const initialRows: InvoiceRow[] = [
     paidBy: "",
     financeComments: "",
     commercialComments: "",
+    ...emptySignatures,
   },
 ]
 
+// ─── Approval toggle cell ─────────────────────────────────────────────────────
+
+function ApprovalToggleCell({
+  row,
+  field,
+  dateField,
+  canToggle,
+  isDisabled,
+  disabledReason,
+  onRequest,
+}: {
+  row: InvoiceRow
+  field: keyof ApprovalSignatures & `${string}Approved`
+  dateField: keyof ApprovalSignatures & `${string}ApprovedDate`
+  canToggle: boolean
+  isDisabled: boolean
+  disabledReason?: string
+  onRequest: (
+    field: keyof ApprovalSignatures & `${string}Approved`,
+    nextValue: boolean
+  ) => void
+}) {
+  const checked = row[field] as boolean
+  const date = row[dateField] as string
+
+  return (
+    <div className="flex flex-col justify-center gap-0.5 py-1">
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={checked}
+          disabled={!canToggle || isDisabled}
+          title={isDisabled ? disabledReason : undefined}
+          onCheckedChange={(next) => onRequest(field, next)}
+        />
+        <span
+          className={
+            checked
+              ? "text-xs font-medium text-emerald-400"
+              : "text-xs font-medium text-slate-400"
+          }
+        >
+          {checked ? "Yes" : "No"}
+        </span>
+      </div>
+      {date && (
+        <span className="text-[10px] text-slate-500 leading-none">{date}</span>
+      )}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function Page() {
-  const [selectedProject, setSelectedProject] = useState("project-a")
   const [rows, setRows] = useState<InvoiceRow[]>(initialRows)
   const [pending, setPending] = useState<PendingToggle | null>(null)
 
-  // Stage toggle — opens confirmation dialog
-  const requestToggle = useCallback(
-    (no: string, invoiceNumber: string, nextValue: boolean) => {
-      setPending({ no, invoiceNumber, nextValue })
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] =
+    useState<InvoicePreviewData | null>(null)
+
+  const role = useRoleStore((s) => s.role)
+  const isSupervisor = role === "supervisor" || role === "managers"
+  const isContractsManager = role === "contracts_manager"
+  const isProjectDirector = role === "project_director"
+  const isManagingDirector = role === "managing_director"
+
+  const openInvoice = useCallback((row: InvoiceRow) => {
+    setSelectedInvoice({
+      invoiceNumber: row.invoiceNumber,
+      date: row.date,
+      project: row.project,
+      statusLabel: "Approved",
+      statusValue: row.approved ? "Yes" : "No",
+      amount: row.total || "£0.00",
+      description: row.description || "User invoice work",
+    })
+    setInvoiceDialogOpen(true)
+  }, [])
+
+  // Stage a signature toggle — opens confirmation dialog
+  const requestSignatureToggle = useCallback(
+    (
+      row: InvoiceRow,
+      field: keyof ApprovalSignatures & `${string}Approved`,
+      nextValue: boolean,
+      label: string
+    ) => {
+      setPending({
+        no: row.no,
+        invoiceNumber: row.invoiceNumber || `Row ${row.no}`,
+        field,
+        nextValue,
+        label,
+      })
     },
     []
   )
 
-  // Confirmed — commit
+  // Stage the main approved toggle
+  const requestToggle = useCallback(
+    (no: string, invoiceNumber: string, nextValue: boolean) => {
+      setPending({
+        no,
+        invoiceNumber,
+        field: "supervisorApproved", // not used for main toggle; handled separately
+        nextValue,
+        label: "Finance",
+      })
+    },
+    []
+  )
+
+  // Confirmed — commit the toggle
   const confirmToggle = useCallback(() => {
     if (!pending) return
-    const today = new Date().toLocaleDateString("en-GB")
+    const todayStr = today()
+
     setRows((prev) =>
-      prev.map((r) =>
-        r.no === pending.no
-          ? {
-              ...r,
-              approved: pending.nextValue,
-              approvedBy: pending.nextValue ? "Finance Department" : "",
-              datePaid: pending.nextValue ? today : "",
-              paidBy: pending.nextValue ? "Finance Department" : "",
-            }
-          : r
-      )
+      prev.map((r) => {
+        if (r.no !== pending.no) return r
+
+        // If it's the main "Approved/Paid" toggle (label === "Finance")
+        if (pending.label === "Finance") {
+          return {
+            ...r,
+            approved: pending.nextValue,
+            approvedBy: pending.nextValue ? "Finance Department" : "",
+            datePaid: pending.nextValue ? todayStr : "",
+            paidBy: pending.nextValue ? "Finance Department" : "",
+          }
+        }
+
+        // It's one of the 4 signature toggles
+        const dateField = (pending.field.replace(
+          "Approved",
+          "ApprovedDate"
+        ) as keyof ApprovalSignatures) as keyof ApprovalSignatures &
+          `${string}ApprovedDate`
+
+        return {
+          ...r,
+          [pending.field]: pending.nextValue,
+          [dateField]: pending.nextValue ? todayStr : "",
+        }
+      })
     )
+
     setPending(null)
   }, [pending])
 
   const approvedCount = rows.filter((r) => r.approved && r.invoiceNumber).length
-  const pendingCount = rows.filter((r) => !r.approved && r.invoiceNumber).length
+  const pendingCount = rows.filter(
+    (r) => !r.approved && r.invoiceNumber
+  ).length
 
-  const columns = useMemo<ColDef<InvoiceRow>[]>(
-    () => [
+  const columns = useMemo<ColDef<InvoiceRow>[]>(() => {
+    const cols: ColDef<InvoiceRow>[] = [
       {
         headerName: "Invoice Number",
         field: "invoiceNumber",
@@ -194,26 +366,30 @@ export default function Page() {
           if (!params.value) return null
           const approved = params.data?.approved
           return (
-            <span
-              className={
+            <button
+              type="button"
+              className={`hover:underline ${
                 approved
                   ? "font-medium text-emerald-400"
                   : "font-medium text-red-400"
-              }
+              }`}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (params.data) openInvoice(params.data)
+              }}
             >
               {params.value}
-            </span>
+            </button>
           )
         },
       },
-
       { headerName: "Date", field: "date", minWidth: 120 },
       {
         headerName: "Variation Sheet No.",
         field: "variationSheetNo",
         minWidth: 160,
       },
-      { headerName: "NFI Proforma No.", field: "nfiProformaNo", minWidth: 150 },
+      { headerName: "Proforma NR", field: "nfiProformaNo", minWidth: 150 },
       { headerName: "Project", field: "project", minWidth: 160 },
       {
         headerName: "Description of Work",
@@ -222,6 +398,7 @@ export default function Page() {
       },
       { headerName: "Created By", field: "createdBy", minWidth: 140 },
 
+      // ── Main Approved toggle (Finance) ──────────────────────────────────
       {
         headerName: "Approved",
         field: "approved",
@@ -229,11 +406,10 @@ export default function Page() {
         cellRenderer: (params: { data?: InvoiceRow }) => {
           const row = params.data
           if (!row) return null
-          const approved = row.approved
           return (
             <div className="flex items-center gap-2 py-2">
               <Switch
-                checked={approved}
+                checked={row.approved}
                 onCheckedChange={(checked) =>
                   requestToggle(
                     row.no,
@@ -244,18 +420,141 @@ export default function Page() {
               />
               <span
                 className={
-                  approved
+                  row.approved
                     ? "text-xs font-medium text-emerald-400"
                     : "text-xs font-medium text-slate-400"
                 }
               >
-                {approved ? "Yes" : "No"}
+                {row.approved ? "Yes" : "No"}
               </span>
             </div>
           )
         },
       },
 
+      // ── Signature 1: Supervisor / Manager ───────────────────────────────
+      {
+        headerName: "Supervisor / Manager",
+        colId: "sig_supervisor",
+        minWidth: 180,
+        cellRenderer: (params: { data?: InvoiceRow }) => {
+          const row = params.data
+          if (!row) return null
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="supervisorApproved"
+              dateField="supervisorApprovedDate"
+              canToggle={isSupervisor}
+              isDisabled={false}
+              onRequest={(field, next) =>
+                requestSignatureToggle(row, field, next, "Supervisor / Manager")
+              }
+            />
+          )
+        },
+      },
+
+      // ── Signature 2: Contracts Manager ──────────────────────────────────
+      {
+        headerName: "Contracts Manager",
+        colId: "sig_contracts_manager",
+        minWidth: 180,
+        cellRenderer: (params: { data?: InvoiceRow }) => {
+          const row = params.data
+          if (!row) return null
+          const prerequisiteMet = row.supervisorApproved
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="contractsManagerApproved"
+              dateField="contractsManagerApprovedDate"
+              canToggle={isContractsManager}
+              isDisabled={!prerequisiteMet}
+              disabledReason="Supervisor must approve first"
+              onRequest={(field, next) =>
+                requestSignatureToggle(row, field, next, "Contracts Manager")
+              }
+            />
+          )
+        },
+      },
+
+      // ── Signature 3: Project Director (visible once first 2 signed) ─────
+      {
+        headerName: "Project Director",
+        colId: "sig_project_director",
+        minWidth: 180,
+        cellRenderer: (params: { data?: InvoiceRow }) => {
+          const row = params.data
+          if (!row) return null
+          // Only shows content once first 2 signatures exist
+          const firstTwoSigned =
+            row.supervisorApproved && row.contractsManagerApproved
+          if (!firstTwoSigned) {
+            return (
+              <span className="text-[11px] italic text-slate-600">
+                Awaiting prior approvals
+              </span>
+            )
+          }
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="projectDirectorApproved"
+              dateField="projectDirectorApprovedDate"
+              canToggle={isProjectDirector}
+              isDisabled={false}
+              onRequest={(field, next) =>
+                requestSignatureToggle(row, field, next, "Project Director")
+              }
+            />
+          )
+        },
+      },
+
+      // ── Signature 4: Managing Director (visible once first 3 signed) ────
+      {
+        headerName: "Managing Director",
+        colId: "sig_managing_director",
+        minWidth: 180,
+        cellRenderer: (params: { data?: InvoiceRow }) => {
+          const row = params.data
+          if (!row) return null
+          // Only shows content once all 3 prior signatures exist
+          const allThreeSigned =
+            row.supervisorApproved &&
+            row.contractsManagerApproved &&
+            row.projectDirectorApproved
+          if (!allThreeSigned) {
+            return (
+              <span className="text-[11px] italic text-slate-600">
+                Awaiting prior approvals
+              </span>
+            )
+          }
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="managingDirectorApproved"
+              dateField="managingDirectorApprovedDate"
+              canToggle={isManagingDirector}
+              isDisabled={false}
+              onRequest={(field, next) =>
+                requestSignatureToggle(row, field, next, "Managing Director")
+              }
+            />
+          )
+        },
+      },
+
+      // ── Rest of columns ──────────────────────────────────────────────────
+      {
+        headerName: "Money on Hold",
+        field: "total",
+        minWidth: 160,
+        cellStyle: { textAlign: "right" },
+      },
       { headerName: "Approved By", field: "approvedBy", minWidth: 140 },
       {
         headerName: "Total",
@@ -284,7 +583,6 @@ export default function Page() {
           )
         },
       },
-
       { headerName: "Date Paid", field: "datePaid", minWidth: 120 },
       { headerName: "Paid By", field: "paidBy", minWidth: 140 },
       {
@@ -297,48 +595,78 @@ export default function Page() {
         field: "commercialComments",
         minWidth: 200,
       },
-    ],
-    [requestToggle]
-  )
+    ]
+
+    return cols
+  }, [
+    openInvoice,
+    requestToggle,
+    requestSignatureToggle,
+    isSupervisor,
+    isContractsManager,
+    isProjectDirector,
+    isManagingDirector,
+  ])
+
+  // Confirmation dialog copy
+  const isMainToggle = pending?.label === "Finance"
+  const dialogTitle = pending
+    ? isMainToggle
+      ? pending.nextValue
+        ? "Approve invoice?"
+        : "Revoke approval?"
+      : pending.nextValue
+        ? `Sign as ${pending.label}?`
+        : `Revoke ${pending.label} signature?`
+    : ""
+
+  const dialogDescription = pending
+    ? isMainToggle
+      ? pending.nextValue
+        ? `Approving ${pending.invoiceNumber} will mark it as paid. Are you sure?`
+        : `Revoking approval for ${pending.invoiceNumber} will mark it as unpaid.`
+      : pending.nextValue
+        ? `You are adding your signature as ${pending.label} to invoice ${pending.invoiceNumber}. Today's date will be recorded.`
+        : `This will remove your ${pending.label} signature from invoice ${pending.invoiceNumber}.`
+    : ""
 
   return (
     <div className="w-full space-y-6 p-6">
       <h2 className="text-2xl font-semibold">User Invoices</h2>
+      <SelectProject />
 
-      <div className="flex items-start justify-between">
-        <TableStat
-          summaryRows={[
-            {
-              label: "Invoices",
-              value: String(rows.filter((r) => r.invoiceNumber).length),
-            },
-            {
-              label: "Approved Invoices",
-              value: String(approvedCount),
-              valueColor: "green",
-            },
-            {
-              label: "Awaiting Approval",
-              value: String(pendingCount),
-              valueColor: pendingCount > 0 ? "red" : undefined,
-            },
-            { label: "Invoices Paid", value: String(approvedCount) },
-          ]}
-        />
-        <SelectProject />
-      </div>
+      <TableStat
+        summaryRows={[
+          {
+            label: "Invoices",
+            value: String(rows.filter((r) => r.invoiceNumber).length),
+          },
+          {
+            label: "Approved Invoices",
+            value: String(approvedCount),
+            valueColor: "green",
+          },
+          {
+            label: "Awaiting Approval",
+            value: String(pendingCount),
+            valueColor: pendingCount > 0 ? "red" : undefined,
+          },
+          { label: "Invoices Paid", value: String(approvedCount) },
+          {
+            label: "Money on hold",
+            value: "£110,000.00",
+            valueColor: pendingCount > 0 ? "red" : undefined,
+          },
+        ]}
+      />
 
-      <div className="overflow-x-auto border border-white/10">
-        <div className="min-w-[1400px]">
-          <AgTable
-            rowData={rows}
-            columnDefs={columns}
-            suppressCellClickAction
-            height="auto"
-            gridOptions={{ rowHeight: 48 }}
-          />
-        </div>
-      </div>
+      <AgTable
+        rowData={rows}
+        columnDefs={columns}
+        suppressCellClickAction
+        height="auto"
+        gridOptions={{ rowHeight: 56 }}
+      />
 
       {/* Confirmation dialog */}
       <AlertDialog
@@ -347,25 +675,25 @@ export default function Page() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pending?.nextValue ? "Approve invoice?" : "Revoke approval?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pending?.nextValue
-                ? `Approving ${pending.invoiceNumber} will mark it as paid. Are you sure?`
-                : `Revoking approval for ${pending?.invoiceNumber} will mark it as unpaid.`}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{dialogTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{dialogDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPending(null)}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction onClick={confirmToggle}>
-              {pending?.nextValue ? "Approve" : "Revoke"}
+              {pending?.nextValue ? "Confirm" : "Revoke"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ViewInvoiceDialog
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+        invoice={selectedInvoice}
+      />
     </div>
   )
 }

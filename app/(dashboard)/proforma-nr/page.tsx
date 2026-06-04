@@ -6,8 +6,6 @@ import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
 import { useState } from "react"
-import { Switch } from "@/components/ui/switch"
-import { format } from "date-fns"
 import {
   Dialog,
   DialogContent,
@@ -16,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { InvoiceListRow } from "../invoice-list/types/invoice"
+import AssignUsersDialog from "../variations/_components/AssignUsersDialog"
 
 type ProformaRow = {
   no: number
@@ -43,51 +41,6 @@ type InvoiceRow = {
   paid: boolean
   paymentDate: string
 }
-
-const initialRows: InvoiceRow[] = [
-  {
-    invoiceNumber: "INV-001",
-    date: "2024-06-01",
-    value: "$1,000.00",
-    paid: true,
-    paymentDate: "2024-06-05",
-  },
-  {
-    invoiceNumber: "INV-002",
-    date: "2024-06-03",
-    value: "$2,500.00",
-    paid: false,
-    paymentDate: "",
-  },
-  {
-    invoiceNumber: "INV-003",
-    date: "2024-06-05",
-    value: "$750.00",
-    paid: true,
-    paymentDate: "2024-06-10",
-  },
-  {
-    invoiceNumber: "INV-004",
-    date: "2024-06-07",
-    value: "$1,200.00",
-    paid: false,
-    paymentDate: "",
-  },
-  {
-    invoiceNumber: "INV-005",
-    date: "2024-06-10",
-    value: "$3,000.00",
-    paid: true,
-    paymentDate: "2024-06-15",
-  },
-  {
-    invoiceNumber: "INV-006",
-    date: "2024-06-12",
-    value: "$500.00",
-    paid: false,
-    paymentDate: "",
-  },
-]
 
 function buildInvoiceDocHtml(invoice: InvoiceRow) {
   const paidText = invoice.paid ? "Yes" : "No"
@@ -240,6 +193,8 @@ export default function Page() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(
     null
   )
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+  const [assignedUsers, setAssignedUsers] = useState<string[]>([])
 
   function openInvoice(invoice: InvoiceRow) {
     setSelectedInvoice(invoice)
@@ -310,13 +265,25 @@ export default function Page() {
     { headerName: "Finance team comments", field: "financeComments" },
     { headerName: "Commercial team Comments", field: "commercialComments" },
   ]
-  
+
   return (
     <div className="w-full min-w-0 space-y-6 p-6">
       <h1 className="text-2xl font-semibold">Proforma NR List</h1>
 
       <SelectProject />
       <TableStat summaryRows={summaryRows} />
+
+      <Button onClick={() => setAssignDialogOpen(true)}>Assign User</Button>
+
+      <AssignUsersDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        initialSelected={assignedUsers}
+        onAssign={(ids) => {
+          setAssignedUsers(ids)
+          setAssignDialogOpen(false)
+        }}
+      />
 
       <AgTable rowData={rows} columnDefs={columns} height="auto" />
 

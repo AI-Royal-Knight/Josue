@@ -23,7 +23,7 @@ export const DASHBOARD_NAV = {
     //  { title: "Daily Register", url: "/daily-register" },
     //  { title: "Variation List", url: "/variation-list" },
     //  { title: "Assign Management", url: "/assign-management" },
-    //  { title: "Supplier List", url: "/supplier-list" },
+    //   { title: "Supplier List", url: "/supplier-list" },
     //  { title: "variation summary", url: "/variation-summary" },
     //  { title: "variation list", url: "/variation-list" },
     //  { title: "supplier invoices", url: "/supplier-invoices" },
@@ -43,6 +43,7 @@ export const DASHBOARD_NAV = {
     { title: "Variations", url: "/variations" },
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
     { title: "Profile", url: "/profile" },
   ],
   project_director: [
@@ -81,7 +82,7 @@ export const DASHBOARD_NAV = {
   ],
   contracts_manager: [
     { title: "Users", url: "/users" },
-   //  { title: "Assign Management", url: "/assign-management" },
+    //  { title: "Assign Management", url: "/assign-management" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
@@ -93,6 +94,8 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
+    { title: "Operations", url: "/operations" },
     { title: "Profile", url: "/profile" },
   ],
   managers: [
@@ -107,6 +110,8 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
+    { title: "Operations", url: "/operations" },
     { title: "Profile", url: "/profile" },
   ],
   supervisor: [
@@ -121,6 +126,8 @@ export const DASHBOARD_NAV = {
     { title: "Proforma NR", url: "/proforma-nr" },
     { title: "Loading and Clearing", url: "/loading-and-clearing" },
     { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
+    { title: "Operations", url: "/operations" },
     { title: "Profile", url: "/profile" },
   ],
 }

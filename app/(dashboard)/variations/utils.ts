@@ -51,8 +51,7 @@ export const initialRows: VariationRow[] = [
 ]
 
 export const summaryMetrics = [
-  { label: "Variations QTY", value: "4" },
-  { label: "Variations Value", value: "£12,100" },
+  { label: "Variations", value: "£12,100" },
   { label: "Approved", value: "2", valueColor: "green" as const },
   { label: "Awaiting Approval", value: "1", valueColor: "red" as const },
   { label: "Submitted to Client", value: "2" },

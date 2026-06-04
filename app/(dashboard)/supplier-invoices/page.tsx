@@ -21,6 +21,7 @@ import type {
 } from "ag-grid-community"
 import TableStat from "@/components/common/table-stat"
 import { useRoleStore } from "@/lib/role-store"
+import ViewInvoiceDialog, { InvoicePreviewData } from "@/components/common/view-invoice-dialog"
 
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
@@ -244,6 +245,22 @@ export default function Page() {
   const [rows, setRows] = useState(initialRows)
   const [pending, setPending] = useState<PendingToggle | null>(null)
 
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoicePreviewData | null>(null)
+
+  const openInvoice = useCallback((row: SupplierInvoiceRow) => {
+    setSelectedInvoice({
+      invoiceNumber: row.invoiceNumber,
+      date: row.date,
+      project: row.project,
+      statusLabel: "Approved Status",
+      statusValue: row.approved,
+      amount: row.invoiceTotal || "£0.00",
+      description: `Supplier: ${row.supplierName}`,
+    })
+    setInvoiceDialogOpen(true)
+  }, [])
+
   const role = useRoleStore((state) => state.role)
 
   // Stage the toggle — opens confirmation dialog
@@ -301,11 +318,16 @@ export default function Page() {
           data?: SupplierInvoiceRow
           value: string
         }) => (
-          <a
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (params.data) openInvoice(params.data)
+            }}
             className={`${params.data?.approved === "Approved" ? "text-green-400" : "text-red-500"} text-sm font-medium hover:underline`}
           >
             {params.value}
-          </a>
+          </button>
         ),
       },
       { field: "poDate", headerName: "PO Date" },
@@ -450,6 +472,12 @@ export default function Page() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ViewInvoiceDialog
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+        invoice={selectedInvoice}
+      />
     </div>
   )
 }

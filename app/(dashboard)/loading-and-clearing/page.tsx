@@ -4,119 +4,79 @@ import type { ColDef } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Upload } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useRef, useState } from "react"
+import SelectProject from "@/components/shared/select-project"
+import TableStat from "@/components/common/table-stat"
+import AssignUsersDialog from "../variations/_components/AssignUsersDialog"
 
 type LoadingClearingRow = {
-  no: string
-  refNo: string
-  descriptionOfWorks: string
-  workArea: string
-  workSection: string
-  labourTarget: string
-  qty: string
-  total: string
+  invoiceNo: string
+  name: string
+  surname: string
+  date: string
+  value: string
+  moneyOnHold: string
 }
 
 const rows: LoadingClearingRow[] = [
   {
-    no: "1",
-    refNo: "LC-001",
-    descriptionOfWorks: "USER TYPE",
-    workArea: "USER TYPE",
-    workSection: "USER TYPE",
-    labourTarget: "USER TYPES AMOUNT UNITS",
-    qty: "-",
-    total: "Labour X QTY",
+    invoiceNo: "1",
+    name: "John",
+    surname: "Doe",
+    date: "2023-01-01",
+    value: "$100.00",
+    moneyOnHold: "$50.00",
   },
   {
-    no: "2",
-    refNo: "LC-002",
-    descriptionOfWorks: "USER TYPE",
-    workArea: "USER TYPE",
-    workSection: "USER TYPE",
-    labourTarget: "USER TYPES AMOUNT UNITS",
-    qty: "-",
-    total: "Labour X QTY",
+    invoiceNo: "2",
+    name: "Jane",
+    surname: "Smith",
+    date: "2023-01-02",
+    value: "$200.00",
+    moneyOnHold: "$100.00",
   },
   {
-    no: "3",
-    refNo: "LC-003",
-    descriptionOfWorks: "USER TYPE",
-    workArea: "USER TYPE",
-    workSection: "USER TYPE",
-    labourTarget: "USER TYPES AMOUNT UNITS",
-    qty: "-",
-    total: "Labour X QTY",
+    invoiceNo: "3",
+    name: "Alice",
+    surname: "Johnson",
+    date: "2023-01-03",
+    value: "$300.00",
+    moneyOnHold: "$150.00",
   },
   {
-    no: "4",
-    refNo: "LC-004",
-    descriptionOfWorks: "USER TYPE",
-    workArea: "USER TYPE",
-    workSection: "USER TYPE",
-    labourTarget: "USER TYPES AMOUNT UNITS",
-    qty: "-",
-    total: "Labour X QTY",
+    invoiceNo: "4",
+    name: "Bob",
+    surname: "Brown",
+    date: "2023-01-04",
+    value: "$400.00",
+    moneyOnHold: "$200.00",
   },
   {
-    no: "5",
-    refNo: "LC-005",
-    descriptionOfWorks: "USER TYPE",
-    workArea: "USER TYPE",
-    workSection: "USER TYPE",
-    labourTarget: "USER TYPES AMOUNT UNITS",
-    qty: "-",
-    total: "Labour X QTY",
-  },
-  {
-    no: "6",
-    refNo: "LC-006",
-    descriptionOfWorks: "USER TYPE",
-    workArea: "USER TYPE",
-    workSection: "USER TYPE",
-    labourTarget: "USER TYPES AMOUNT UNITS",
-    qty: "-",
-    total: "Labour X QTY",
-  },
-  {
-    no: "7",
-    refNo: "LC-007",
-    descriptionOfWorks: "USER TYPE",
-    workArea: "USER TYPE",
-    workSection: "USER TYPE",
-    labourTarget: "USER TYPES AMOUNT UNITS",
-    qty: "-",
-    total: "Labour X QTY",
+    invoiceNo: "5",
+    name: "Charlie",
+    surname: "Davis",
+    date: "2023-01-05",
+    value: "$500.00",
+    moneyOnHold: "$250.00",
   },
 ]
 
 const columnDefs: ColDef<LoadingClearingRow>[] = [
-  { headerName: "No.", field: "no", maxWidth: 70 },
-  { headerName: "Ref. No.", field: "refNo", maxWidth: 120 },
-  {
-    headerName: "Description of works",
-    field: "descriptionOfWorks",
-    minWidth: 240,
-  },
-  { headerName: "Work area", field: "workArea", minWidth: 180 },
-  { headerName: "Work section", field: "workSection", minWidth: 180 },
-  { headerName: "Labour target", field: "labourTarget", minWidth: 220 },
-  { headerName: "QTY", field: "qty", maxWidth: 90 },
-  { headerName: "TOTAL", field: "total", minWidth: 140 },
+  { headerName: "Invoice No.", field: "invoiceNo" },
+  { headerName: "Name", field: "name" },
+  { headerName: "Surname", field: "surname" },
+  { headerName: "Date", field: "date" },
+  { headerName: "Value", field: "value" },
+  { headerName: "Money on Hold", field: "moneyOnHold" },
 ]
 
 export default function Page() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+  const [assignedUsers, setAssignedUsers] = useState<string[]>([])
 
   const handleUploadFile = () => {
     fileRef.current?.click()
@@ -129,32 +89,27 @@ export default function Page() {
 
   return (
     <div className="w-full min-w-0 space-y-6 p-6 text-slate-100">
-
       <h2>Loading and Clearing</h2>
-      <Select>
-        <SelectTrigger className="w-[240px] bg-[#1a2842]">
-          <SelectValue placeholder="Select project" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="project-a">Project A</SelectItem>
-          <SelectItem value="project-b">Project B</SelectItem>
-        </SelectContent>
-      </Select>
-      <Card>
-        <CardContent>
-          <div>
-            <div className="text-xs tracking-[0.2em] text-slate-400 uppercase">
-              Invoice No.
-            </div>
-            <div className="text-xs tracking-[0.2em] text-slate-400 uppercase">
-              NR No.
-            </div>
-            <div className="text-xs tracking-[0.2em] text-slate-400 uppercase">
-              User:
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <SelectProject />
+
+      <TableStat
+        summaryRows={[
+          { label: "Loading and clearing Invoices", qty: "", value: "0" },
+          { label: "Money on Hold", qty: "", value: "0" },
+        ]}
+      />
+
+      <Button onClick={() => setAssignDialogOpen(true)}>Assign User</Button>
+
+      <AssignUsersDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        initialSelected={assignedUsers}
+        onAssign={(ids) => {
+          setAssignedUsers(ids)
+          setAssignDialogOpen(false)
+        }}
+      />
 
       <AgTable
         rowData={rows}
@@ -162,8 +117,8 @@ export default function Page() {
         rowSelection="multiple"
         height={60}
         defaultColDef={{
-          filter: false,
-          sortable: false,
+         //  filter: false,
+         //  sortable: false,
           resizable: true,
           flex: 1,
         }}

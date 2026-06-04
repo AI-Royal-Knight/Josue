@@ -8,6 +8,7 @@ import { UserProfileDialog } from "@/components/user-profile-dialog"
 type UserRow = {
   name: string
   surname: string
+  phone: string
   email: string
   profession: string
   cscsCardNo: string
@@ -33,6 +34,7 @@ const users: UserRow[] = [
     ipaf: "Yes",
     name: "John",
     pasma: "No",
+    phone: "07700 900123",
     profession: "Electrician",
     ssstsSmsts: "SSTS",
     surname: "Doe",
@@ -48,6 +50,7 @@ const users: UserRow[] = [
     ipaf: "No",
     name: "Jane",
     pasma: "Yes",
+    phone: "07700 900456",
     profession: "Plumber",
     ssstsSmsts: "None",
     surname: "Smith",
@@ -63,6 +66,7 @@ const users: UserRow[] = [
     ipaf: "Yes",
     name: "Robert",
     pasma: "Yes",
+    phone: "07700 900789",
     profession: "Site Manager",
     ssstsSmsts: "SMSTS",
     surname: "Johnson",
@@ -78,6 +82,7 @@ const users: UserRow[] = [
     ipaf: "No",
     name: "Emily",
     pasma: "No",
+    phone: "07700 900321",
     profession: "Carpenter",
     ssstsSmsts: "None",
     surname: "Davis",
@@ -93,6 +98,7 @@ const users: UserRow[] = [
     ipaf: "Yes",
     name: "William",
     pasma: "No",
+    phone: "07700 900654",
     profession: "Steel Fixer",
     ssstsSmsts: "SSTS",
     surname: "Brown",
@@ -108,6 +114,7 @@ const users: UserRow[] = [
     ipaf: "No",
     name: "Olivia",
     pasma: "Yes",
+    phone: "07700 900987",
     profession: "Painter",
     ssstsSmsts: "None",
     surname: "Taylor",
@@ -169,7 +176,7 @@ const columns: ColDef<UserRow>[] = [
 
 export function UsersScreen() {
   return (
-    <div className="w-full min-w-0 px-6 py-4 space-y-6">
+    <div className="w-full min-w-0 space-y-6 px-6 py-4">
       <h2>Users</h2>
       <AgTable rowData={users} columnDefs={columns} height="auto" />
     </div>
