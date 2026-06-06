@@ -142,6 +142,8 @@ export function AgTable<TData extends object>({
       resizable: true,
       filter: true,
       sortable: true,
+      wrapHeaderText: true,
+      autoHeaderHeight: true,
       ...defaultColDef,
     }),
     [defaultColDef]
