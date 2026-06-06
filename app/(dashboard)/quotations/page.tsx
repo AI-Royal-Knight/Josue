@@ -203,7 +203,6 @@ export default function Page() {
   }
 
   const columns: ColDef<QuotationRow>[] = [
-    { headerName: "No.", field: "no", maxWidth: 60, filter: false },
     { headerName: "Quotes Ref", field: "quotesRef", minWidth: 140 },
     { headerName: "Project", field: "project" },
     { headerName: "Main Folder", field: "mainFolder" },
@@ -424,17 +423,23 @@ export default function Page() {
           <CreateQuotationForm
             onSuccess={(data) => {
               // Add the new quote row to the table
+              const payload = data as typeof data & {
+                mainFolder?: string
+                subFolder?: string
+                supplierEmails?: string[]
+                variationRef?: string
+              }
               setRows((prev) => [
                 ...prev,
                 {
                   no: prev.length + 1,
                   quotesRef: data.quoteRef,
                   project: data.project || "",
-                  mainFolder: "",
-                  subFolder: "",
-                  variationRef: data.variationRef || "-",
+                  mainFolder: payload.mainFolder || "",
+                  subFolder: payload.subFolder || "",
+                  variationRef: payload.variationRef || "-",
                   supplierName: data.supplierName,
-                  supplierEmailAddress: data.supplierEmail,
+                  supplierEmailAddress: payload.supplierEmails?.join(", ") ?? data.supplierEmail,
                   dateOfQuoteApproved: "-",
                   quoteTotal: `$${Number(data.quoteTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
                   poCreated: false,

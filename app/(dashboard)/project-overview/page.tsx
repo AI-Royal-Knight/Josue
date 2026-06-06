@@ -383,7 +383,6 @@ export default function Page() {
         <TableStat
           summaryRows={[
             { label: "Total PO Raised", value: "£1,000,000" },
-            { label: "Total Variation PO Raised", value: "£300" },
             { label: "Proforma NR", value: "£320", valueColor: "red" },
             {
               label: "Proforma NR Material Estimate",
