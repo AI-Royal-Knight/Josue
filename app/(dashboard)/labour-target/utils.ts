@@ -10,7 +10,7 @@ export const emptyRow = (): Row => ({
   labourTarget: "0",
 });
 
-export const defaultRows = (n = 7): Row[] =>
+export const defaultRows = (n = 1): Row[] =>
   Array.from({ length: n }, emptyRow);
 
 export const FIELD_HEADERS: {

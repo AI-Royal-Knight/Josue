@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { X, Plus, Save, Upload } from "lucide-react"
+import { X, Plus, Save, Upload, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -36,11 +36,13 @@ export function SubfolderModal({
   const [rows, setRows] = useState<Row[]>(() =>
     subfolder.rows.map((r) => ({ ...r }))
   )
+  const [isImporting, setIsImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setIsImporting(true)
     const reader = new FileReader()
     reader.onload = (ev) => {
       const text = ev.target?.result as string
@@ -57,7 +59,9 @@ export function SubfolderModal({
         }
       })
       if (parsed.length) setRows(parsed)
+      setIsImporting(false)
     }
+    reader.onerror = () => setIsImporting(false)
     reader.readAsText(file)
     e.target.value = ""
   }
@@ -86,9 +90,17 @@ export function SubfolderModal({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => fileRef.current?.click()}>
-                <Upload className="h-4 w-4" />
-                Import
+              <Button
+                variant="outline"
+                disabled={isImporting}
+                onClick={() => fileRef.current?.click()}
+              >
+                {isImporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                {isImporting ? "Importing…" : "Import"}
               </Button>
               <input
                 ref={fileRef}
@@ -110,9 +122,17 @@ export function SubfolderModal({
              because the scroll container has a concrete pixel height to work with.
         */}
         <div
-          className="overflow-hidden px-6 py-3"
+          className="relative overflow-hidden px-6 py-3"
           style={{ height: `calc(90vh - ${CHROME_HEIGHT}px)` }}
         >
+          {isImporting && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded bg-background/80 backdrop-blur-sm">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm font-medium text-muted-foreground">
+                Importing CSV…
+              </p>
+            </div>
+          )}
           <SpreadsheetTable
             rows={rows}
             onChange={setRows}

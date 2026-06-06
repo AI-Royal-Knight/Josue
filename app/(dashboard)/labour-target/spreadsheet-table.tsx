@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { cn } from "@/lib/utils"
 import type { Row, FocusedCell } from "./types"
 import { FIELD_HEADERS } from "./utils"
+import { Input } from "@/components/ui/input"
 
 type CellSelection = {
   startRow: number
@@ -262,7 +263,7 @@ export function SpreadsheetTable({
                         handleCellMouseEnter(rowIndex, fieldIndex)
                       }
                     >
-                      <input
+                      <Input
                         value={row[field]}
                         placeholder={placeholder}
                         inputMode={isNumber ? "decimal" : "text"}
@@ -271,15 +272,15 @@ export function SpreadsheetTable({
                         onChange={(e) =>
                           updateCell(rowIndex, field, e.target.value)
                         }
-                        className={cn(
-                          "w-full rounded px-2.5 py-1.5 text-[13px] text-[#e2e8f0] transition-colors outline-none placeholder:text-[#374151]",
-                          isNumber && "text-right tabular-nums",
-                          isFocused
-                            ? "border border-blue-500 bg-[#1a2a45]"
-                            : isSelected
-                              ? "border border-blue-400 bg-[#1a3a5a]"
-                              : "border border-[#1f2937] bg-[#0f1929] hover:border-[#2d4060]"
-                        )}
+                        // className={cn(
+                        //   "w-full rounded px-2.5 py-1.5 text-[13px] text-[#e2e8f0] transition-colors outline-none placeholder:text-[#374151]",
+                        //   isNumber && "text-right tabular-nums",
+                        //   isFocused
+                        //     ? "border border-blue-500"
+                        //     : isSelected
+                        //       ? "border border-blue-400"
+                        //       : "border border-[#1f2937] bg-[#0f1929] hover:border-[#2d4060]"
+                        // )}
                         style={{ userSelect: "none" }}
                       />
                     </td>
