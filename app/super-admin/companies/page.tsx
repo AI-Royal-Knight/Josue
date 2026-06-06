@@ -274,7 +274,7 @@ export default function CompaniesPage() {
         return <Badge variant={getStatusVariant(status)}>{status}</Badge>
       },
     },
-    { headerName: "Actions", cellRenderer: ActionsCell, minWidth: 120 },
+   //  { headerName: "Actions", cellRenderer: ActionsCell, minWidth: 120 },
   ]
 
   const defaultColDef = useMemo(

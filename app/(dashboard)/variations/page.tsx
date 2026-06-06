@@ -172,7 +172,7 @@ export default function Page() {
         )
       },
       { headerName: "Date", field: "date", minWidth: 120 },
-      { headerName: "Sheet No.", field: "variationSheetNumber" },
+      { headerName: "Variation No.", field: "variationSheetNumber" },
       { headerName: "Project", field: "project" },
       {
         headerName: "Site Instruction No.",
