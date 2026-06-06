@@ -4,6 +4,19 @@ export type VatOption = {
   rate: 0 | 5 | 20
 }
 
+export type CurrencyOption = {
+  label: string
+  value: string
+  symbol: string
+  code: string
+}
+
+export const CURRENCY_OPTIONS: CurrencyOption[] = [
+  { label: "British Pound (£)", value: "GBP", symbol: "£", code: "GBP" },
+  { label: "US Dollar ($)",     value: "USD", symbol: "$", code: "USD" },
+  { label: "Euro (€)",          value: "EUR", symbol: "€", code: "EUR" },
+]
+
 export const VAT_OPTIONS: VatOption[] = [
   { label: "N (0%)",           value: "N_0",          rate: 0  },
   { label: "No VAT (0%)",      value: "NO_VAT_0",     rate: 0  },
@@ -33,6 +46,7 @@ export type ProjectItem = {
   labourEstimate?: string
   prelimsEstimate?: string
   estimateProfit?: string
+  currency?: string
 }
 
 export const projects: ProjectItem[] = [

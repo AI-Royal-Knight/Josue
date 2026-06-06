@@ -13,12 +13,13 @@ import {
 } from "@/components/ui/select"
 import { createProject } from "../actions"
 import { Calendar } from "@/components/ui/calendar"
-import { VAT_OPTIONS } from "@/constants/projects"
+import { VAT_OPTIONS, CURRENCY_OPTIONS } from "@/constants/projects"
 
 export default function CreateProjectForm() {
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [vatRate, setVatRate] = useState<string>("")
+  const [currency, setCurrency] = useState<string>("GBP")
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [completionDate, setCompletionDate] = useState<Date | undefined>(
     undefined
@@ -30,8 +31,9 @@ export default function CreateProjectForm() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    // Inject the controlled vatRate value since Select isn't a native input
+    // Inject controlled values since Select isn't a native input
     formData.set("vatRate", vatRate)
+    formData.set("currency", currency)
 
     startTransition(async () => {
       const result = await createProject(null, formData)
@@ -39,6 +41,7 @@ export default function CreateProjectForm() {
         setMessage(result.message)
         e.currentTarget.reset()
         setVatRate("")
+        setCurrency("GBP")
       } else {
         setMessage(result.error)
       }
@@ -108,18 +111,20 @@ export default function CreateProjectForm() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-         <Field>
-            <FieldLabel htmlFor="description">Developer/Client Name</FieldLabel>
-            <FieldContent>
-               <Input id="description" name="description" />
-            </FieldContent>
-         </Field>
-         <Field>
-            <FieldLabel htmlFor="description">Developer/Client Address</FieldLabel>
-            <FieldContent>
-               <Input id="description" name="description" />
-            </FieldContent>
-         </Field>
+        <Field>
+          <FieldLabel htmlFor="description">Developer/Client Name</FieldLabel>
+          <FieldContent>
+            <Input id="description" name="description" />
+          </FieldContent>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="description">
+            Developer/Client Address
+          </FieldLabel>
+          <FieldContent>
+            <Input id="description" name="description" />
+          </FieldContent>
+        </Field>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -132,12 +137,16 @@ export default function CreateProjectForm() {
         <Field>
           <FieldLabel htmlFor="materialEstimate">Material Estimate</FieldLabel>
           <FieldContent>
-            <Input id="materialEstimate" name="materialEstimate" type="number" />
+            <Input
+              id="materialEstimate"
+              name="materialEstimate"
+              type="number"
+            />
           </FieldContent>
         </Field>
-        </div>
+      </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <Field>
           <FieldLabel htmlFor="labourEstimate">Labour Estimate</FieldLabel>
           <FieldContent>
@@ -154,6 +163,23 @@ export default function CreateProjectForm() {
           <FieldLabel htmlFor="estimateProfit">Estimate Profit</FieldLabel>
           <FieldContent>
             <Input id="estimateProfit" name="estimateProfit" type="number" />
+          </FieldContent>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="currency">Currency</FieldLabel>
+          <FieldContent>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger id="currency">
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FieldContent>
         </Field>
       </div>
