@@ -270,7 +270,7 @@ const columns: ColDef<BreakdownRow>[] = [
     headerClass: "text-orange-400",
   },
   {
-    headerName: "Variation Labour Value",
+    headerName: "Variations Labour Value",
     field: "variationLabourValue",
     headerClass: "text-orange-400",
   },
