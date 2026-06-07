@@ -6,6 +6,9 @@ const bg = colors.background.trim()
  * MUI DataGrid `sx` preset to match the AG Grid (AgTable) dark Quartz theme.
  */
 export const agTableDataGridSx = {
+  "& .MuiDataGrid-columnHeaders *": {
+    backgroundColor: `${colors.oddRowBackground} !important`,
+  },
   backgroundColor: bg,
   color: colors.foreground,
   border: `1px solid ${colors.border}`,
@@ -18,7 +21,7 @@ export const agTableDataGridSx = {
 
   "& .MuiDataGrid-columnHeader": {
     backgroundColor: colors.oddRowBackground,
-    color: colors.headerText,
+    //  color: colors.headerText,
     borderColor: colors.border,
   },
 
