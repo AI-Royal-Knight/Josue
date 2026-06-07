@@ -26,6 +26,7 @@ import {
   AlertCircleIcon,
   XIcon,
 } from "lucide-react"
+import { useRoleStore } from "@/lib/role-store"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -619,6 +620,8 @@ export default function Page() {
   const [data, setData] = useState<PurchaseOrderRow[]>(INITIAL_DATA)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  const role = useRoleStore((state) => state.role)
+
   const handleCreated = (row: PurchaseOrderRow) => {
     setData((prev) => [...prev, row])
   }
@@ -628,10 +631,13 @@ export default function Page() {
       {/* Header row */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Purchase Order List</h2>
-        <Button onClick={() => setDialogOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create PO
-        </Button>
+
+        {role === "procurement_department" && (
+          <Button onClick={() => setDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create PO
+          </Button>
+        )}
       </div>
 
       <SelectProject />

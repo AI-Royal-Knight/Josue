@@ -4,7 +4,14 @@ import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Send, Trash2, ChevronDown, Search as SearchIcon, X } from "lucide-react"
+import {
+  Plus,
+  Send,
+  Trash2,
+  ChevronDown,
+  Search as SearchIcon,
+  X,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
@@ -21,11 +28,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import FileUpload from "@/components/ui/file-uploader"
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 
 const FOLDER_STRUCTURE: Record<string, string[]> = {
-  APARTMENTS: ["Electrical", "Electrical First Fix", "Plumbing", "Joinery", "Finishes"],
+  APARTMENTS: [
+    "Electrical",
+    "Electrical First Fix",
+    "Plumbing",
+    "Joinery",
+    "Finishes",
+  ],
   CORRIDORS: ["Electrical", "Electrical First Fix", "Mechanical", "Painting"],
   "COMMON AREAS": ["Tiling", "Ceilings", "HVAC", "Fire Protection"],
   BASEMENT: ["Structural", "Waterproofing", "Drainage", "Mechanical"],
@@ -33,9 +47,18 @@ const FOLDER_STRUCTURE: Record<string, string[]> = {
 }
 
 const VARIATION_REFS = [
-  "VAR-001", "VAR-002", "VAR-003", "VAR-004",
-  "VAR-005", "VAR-006", "VAR-007", "VAR-008",
-  "VAR-009", "VAR-010", "VAR-011", "VAR-012",
+  "VAR-001",
+  "VAR-002",
+  "VAR-003",
+  "VAR-004",
+  "VAR-005",
+  "VAR-006",
+  "VAR-007",
+  "VAR-008",
+  "VAR-009",
+  "VAR-010",
+  "VAR-011",
+  "VAR-012",
 ]
 
 const MAX_EMAILS = 5
@@ -121,7 +144,7 @@ function VariationRefSearch({
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs",
-          "ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none",
           !value && "text-muted-foreground"
         )}
       >
@@ -155,19 +178,29 @@ function VariationRefSearch({
             <button
               type="button"
               className="w-full px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-accent"
-              onClick={() => { onChange(""); setOpen(false); setQuery("") }}
+              onClick={() => {
+                onChange("")
+                setOpen(false)
+                setQuery("")
+              }}
             >
               — None —
             </button>
 
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-muted-foreground">No results</p>
+              <p className="px-3 py-2 text-xs text-muted-foreground">
+                No results
+              </p>
             ) : (
               filtered.map((ref) => (
                 <button
                   key={ref}
                   type="button"
-                  onClick={() => { onChange(ref); setOpen(false); setQuery("") }}
+                  onClick={() => {
+                    onChange(ref)
+                    setOpen(false)
+                    setQuery("")
+                  }}
                   className={cn(
                     "w-full px-3 py-1.5 text-left text-sm hover:bg-accent",
                     value === ref && "bg-accent font-medium"
@@ -231,8 +264,14 @@ export default function CreateQuotationForm({
 
   // ── Line items ──
   const [lineItems, setLineItems] = useState<LineItem[]>(() => [
-    makeRow(), makeRow(), makeRow(), makeRow(),
-    makeRow(), makeRow(), makeRow(), makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
   ])
 
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -259,8 +298,14 @@ export default function CreateQuotationForm({
       setVariationRef("")
       setSupplierEmails([""])
       setLineItems([
-        makeRow(), makeRow(), makeRow(), makeRow(),
-        makeRow(), makeRow(), makeRow(), makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
       ])
     } catch {
       setSubmitError("Failed to create quotation. Please try again.")
@@ -339,7 +384,9 @@ export default function CreateQuotationForm({
               <SelectTrigger>
                 <SelectValue
                   placeholder={
-                    mainFolder ? "Select sub folder" : "Select main folder first"
+                    mainFolder
+                      ? "Select sub folder"
+                      : "Select main folder first"
                   }
                 />
               </SelectTrigger>
@@ -360,7 +407,10 @@ export default function CreateQuotationForm({
         <Field>
           <FieldLabel>Variation Ref</FieldLabel>
           <FieldContent>
-            <VariationRefSearch value={variationRef} onChange={setVariationRef} />
+            <VariationRefSearch
+              value={variationRef}
+              onChange={setVariationRef}
+            />
           </FieldContent>
         </Field>
 
@@ -419,6 +469,39 @@ export default function CreateQuotationForm({
           </div>
         </FieldContent>
       </Field>
+
+      {/* site contact */}
+      <div className="grid grid-cols-2 gap-4">
+        <span className="col-span-full text-sm font-medium text-muted-foreground">
+          Site Contact Information
+        </span>
+        <Field>
+          <FieldLabel>Name</FieldLabel>
+          <FieldContent>
+            <Input
+              type="email"
+              //   placeholder={`supplier${idx + 1}@example.com`}
+              //   value={email}
+              //   onChange={(e) => updateEmail(idx, e.target.value)}
+              className="flex-1"
+            />
+          </FieldContent>
+        </Field>
+        <Field>
+          <FieldLabel>Phone</FieldLabel>
+          <FieldContent>
+            <Input
+              type="email"
+              //   placeholder={`supplier${idx + 1}@example.com`}
+              //   value={email}
+              //   onChange={(e) => updateEmail(idx, e.target.value)}
+              className="flex-1"
+            />
+          </FieldContent>
+        </Field>
+      </div>
+
+      <FileUpload />
 
       {/* ── Line items table ── */}
       <LineItemTable items={lineItems} onChange={setLineItems} />
