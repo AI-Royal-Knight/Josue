@@ -11,7 +11,7 @@ type RoleAssignment = {
   users: Array<{ id: string; name: string; checked: boolean }>
 }
 
-const initialAssignments: RoleAssignment[] = [
+export const initialAssignments: RoleAssignment[] = [
   {
     role: "Project Director",
     users: [

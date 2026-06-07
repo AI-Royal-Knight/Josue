@@ -389,17 +389,6 @@ export default function ProjectRFIsPage() {
         ) : null,
     },
     {
-      field: "closed",
-      headerName: "Closed",
-      minWidth: 110,
-      cellRenderer: (params: ICellRendererParams<RFI>) =>
-        params.value ? (
-          <span className="text-slate-400">{params.value}</span>
-        ) : (
-          <span className="text-slate-600">—</span>
-        ),
-    },
-    {
       field: "dateRfiClosed",
       headerName: "Date RFI closed",
       minWidth: 140,
