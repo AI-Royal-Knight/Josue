@@ -139,8 +139,8 @@ export default function VariationSummaryView() {
         field: "descriptionOfWorks",
         minWidth: 260,
       },
-      { headerName: "Labour cost", field: "labourCost", minWidth: 120 },
-      { headerName: "Material Cost", field: "materialCost", minWidth: 120 },
+      // { headerName: "Labour cost", field: "labourCost", minWidth: 120 },
+      // { headerName: "Material Cost", field: "materialCost", minWidth: 120 },
       {
         headerName: "Valuation Amount",
         field: "valuationAmount",

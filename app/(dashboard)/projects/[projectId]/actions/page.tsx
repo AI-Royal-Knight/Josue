@@ -1,25 +1,21 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import Box from "@mui/material/Box"
-import Button from "@mui/material/Button"
-import MenuItem from "@mui/material/MenuItem"
-import Select from "@mui/material/Select"
-import Chip from "@mui/material/Chip"
-
-import {
-  DataGrid,
-  type GridColDef,
-  type GridRenderCellParams,
-  type GridRenderEditCellParams,
-  useGridApiContext,
-} from "@mui/x-data-grid"
-
+import { useCallback, useMemo, useState } from "react"
+import { type ColDef } from "ag-grid-community"
 import { Save } from "lucide-react"
-import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
-import { colors } from "@/constants/colors"
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+import { AgTable } from "@/components/common/AgTable"
+import MultiSelectInput, {
+  type MultiSelectInputOption,
+} from "@/components/multi-select-input"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const ACTION_TYPES = [
   "User Invoices",
@@ -40,180 +36,181 @@ const CAUSE_OPTIONS = [
   "ALL",
 ] as const
 
+type CauseOption = (typeof CAUSE_OPTIONS)[number]
+
 const SIGNATURE_OPTIONS = [
-  "Supervisor/Contracts Manager",
-  "Supervisor/Contracts Manager/Project Director/Managing Director",
-  "Procurement/Managing director",
-  "Procurement/Managing Director",
-  "Commercial Manager/Project Director",
+  "Supervisor",
+  "Contracts Manager",
+  "Project Director",
+  "Managing Director",
+  "Procurement",
+  "Commercial Manager",
 ] as const
 
 type ApprovalRule = {
-  cause: string
-  signatures: string
+  cause: CauseOption
+  signatures: string[]
   toggles: number
 }
 
 type ActionsConfig = Record<ActionType, ApprovalRule>
 
+type StoredApprovalRule = {
+  cause?: unknown
+  signatures?: unknown
+  toggles?: unknown
+}
+
+type StoredActionsConfig = Partial<Record<ActionType, StoredApprovalRule>>
+
+type ActionRow = {
+  actionType: ActionType
+  cause: CauseOption
+  signatures: string[]
+  toggles: number
+}
+
+const STORAGE_KEY = "tresta:project-actions"
+
 const DEFAULT_ACTIONS_CONFIG: ActionsConfig = {
   "User Invoices": {
     cause: ">£2000",
-    signatures: "Supervisor/Contracts Manager",
+    signatures: ["Supervisor", "Contracts Manager"],
     toggles: 2,
   },
   "Proforma Nr Invoices": {
     cause: "ALL",
-    signatures: "Supervisor/Contracts Manager/Project Director/Managing Director",
+    signatures: [
+      "Supervisor",
+      "Contracts Manager",
+      "Project Director",
+      "Managing Director",
+    ],
     toggles: 4,
   },
   "User Variations Invoices": {
     cause: "ALL",
-    signatures: "Supervisor/Contracts Manager/Project Director/Managing Director",
+    signatures: [
+      "Supervisor",
+      "Contracts Manager",
+      "Project Director",
+      "Managing Director",
+    ],
     toggles: 2,
   },
   "Supplier Invoices": {
     cause: ">£50,000.00",
-    signatures: "Procurement/Managing director",
+    signatures: ["Procurement", "Managing Director"],
     toggles: 2,
   },
   "Purchase orders": {
     cause: ">£50,000.00",
-    signatures: "Procurement/Managing Director",
+    signatures: ["Procurement", "Managing Director"],
     toggles: 2,
   },
   Variations: {
     cause: ">£2000",
-    signatures: "Commercial Manager/Project Director",
+    signatures: ["Commercial Manager", "Project Director"],
     toggles: 2,
   },
 }
 
-// ─── Inline select editor: Cause ─────────────────────────────────────────────
-
-function CauseEditCell(params: GridRenderEditCellParams) {
-  const { id, value, field } = params
-  const api = useGridApiContext()
-
-  return (
-    <Select
-      value={value as string}
-      onChange={(e) => {
-        void api.current.setEditCellValue({ id, field, value: e.target.value })
-        api.current.stopCellEditMode({ id, field })
-      }}
-      size="small"
-      autoFocus
-      open
-      sx={{
-        width: "100%",
-        fontSize: 12,
-        color: colors.foreground,
-        "& .MuiOutlinedInput-notchedOutline": { borderColor: colors.border },
-        "& .MuiSvgIcon-root": { color: colors.foreground },
-        "& .MuiSelect-select": { py: 0.5 },
-      }}
-      MenuProps={{
-        slotProps: {
-          paper: {
-            sx: {
-              bgcolor: colors.accent,
-              color: colors.foreground,
-              border: `1px solid ${colors.border}`,
-              fontSize: 12,
-            },
-          },
-        },
-      }}
-    >
-      {CAUSE_OPTIONS.map((opt) => (
-        <MenuItem key={opt} value={opt} sx={{ fontSize: 12 }}>
-          {opt}
-        </MenuItem>
-      ))}
-    </Select>
-  )
+function cloneConfig(config: ActionsConfig): ActionsConfig {
+  return ACTION_TYPES.reduce((next, actionType) => {
+    next[actionType] = {
+      cause: config[actionType].cause,
+      signatures: [...config[actionType].signatures],
+      toggles: config[actionType].toggles,
+    }
+    return next
+  }, {} as ActionsConfig)
 }
 
-// ─── Inline select editor: Signatures ────────────────────────────────────────
-
-function SignaturesEditCell(params: GridRenderEditCellParams) {
-  const { id, value, field } = params
-  const api = useGridApiContext()
-
-  return (
-    <Select
-      value={value as string}
-      onChange={(e) => {
-        void api.current.setEditCellValue({ id, field, value: e.target.value })
-        api.current.stopCellEditMode({ id, field })
-      }}
-      size="small"
-      autoFocus
-      open
-      sx={{
-        width: "100%",
-        fontSize: 12,
-        color: colors.foreground,
-        "& .MuiOutlinedInput-notchedOutline": { borderColor: colors.border },
-        "& .MuiSvgIcon-root": { color: colors.foreground },
-        "& .MuiSelect-select": { py: 0.5 },
-      }}
-      MenuProps={{
-        slotProps: {
-          paper: {
-            sx: {
-              bgcolor: colors.accent,
-              color: colors.foreground,
-              border: `1px solid ${colors.border}`,
-              fontSize: 12,
-              maxWidth: 420,
-            },
-          },
-        },
-      }}
-    >
-      {SIGNATURE_OPTIONS.map((opt) => (
-        <MenuItem key={opt} value={opt} sx={{ fontSize: 12, whiteSpace: "normal" }}>
-          {opt}
-        </MenuItem>
-      ))}
-    </Select>
-  )
+function isCauseOption(value: string): value is CauseOption {
+  return CAUSE_OPTIONS.includes(value as CauseOption)
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function ActionsPage() {
-  const storageKey = "tresta:project-actions"
-
-  const [config, setConfig] = useState<ActionsConfig>(() => {
-    if (typeof window === "undefined") return DEFAULT_ACTIONS_CONFIG
-    try {
-      const raw = window.localStorage.getItem(storageKey)
-      if (!raw) return DEFAULT_ACTIONS_CONFIG
-      return { ...DEFAULT_ACTIONS_CONFIG, ...(JSON.parse(raw) as Partial<ActionsConfig>) }
-    } catch {
-      return DEFAULT_ACTIONS_CONFIG
-    }
-  })
-
-  const [saved, setSaved] = useState(false)
-
-  const handleSave = () => {
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(config))
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch {
-      // ignore
-    }
+function normalizeSignatures(signatures: unknown): string[] {
+  if (Array.isArray(signatures)) {
+    return signatures
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean)
   }
 
-  const rows = useMemo(
+  if (typeof signatures === "string") {
+    return signatures
+      .split("/")
+      .map((value) => value.trim())
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+function parseStoredConfig(rawValue: string | null): ActionsConfig {
+  const base = cloneConfig(DEFAULT_ACTIONS_CONFIG)
+  if (!rawValue) return base
+
+  try {
+    const parsed = JSON.parse(rawValue) as StoredActionsConfig
+
+    ACTION_TYPES.forEach((actionType) => {
+      const storedRule = parsed[actionType]
+      if (!storedRule) return
+
+      const cause = storedRule.cause
+      if (typeof cause === "string" && isCauseOption(cause)) {
+        base[actionType].cause = cause
+      }
+
+      const signatures = normalizeSignatures(storedRule.signatures)
+      if (signatures.length > 0) {
+        base[actionType].signatures = signatures
+      }
+
+      const toggles = Number(storedRule.toggles)
+      if (Number.isFinite(toggles) && toggles >= 0) {
+        base[actionType].toggles = Math.floor(toggles)
+      }
+    })
+
+    return base
+  } catch {
+    return base
+  }
+}
+
+export default function ActionsPage() {
+  const [config, setConfig] = useState<ActionsConfig>(() => {
+    if (typeof window === "undefined") return cloneConfig(DEFAULT_ACTIONS_CONFIG)
+    return parseStoredConfig(window.localStorage.getItem(STORAGE_KEY))
+  })
+  const [saved, setSaved] = useState(false)
+
+  const signatureOptions = useMemo<MultiSelectInputOption[]>(
     () =>
-      ACTION_TYPES.map((actionType, index) => ({
-        id: index + 1,
+      SIGNATURE_OPTIONS.map((signature) => ({
+        label: signature,
+        value: signature,
+      })),
+    []
+  )
+
+  const updateRule = useCallback(
+    (actionType: ActionType, update: (current: ApprovalRule) => ApprovalRule) => {
+      setSaved(false)
+      setConfig((previous) => ({
+        ...previous,
+        [actionType]: update(previous[actionType]),
+      }))
+    },
+    []
+  )
+
+  const rowData = useMemo<ActionRow[]>(
+    () =>
+      ACTION_TYPES.map((actionType) => ({
         actionType,
         cause: config[actionType].cause,
         signatures: config[actionType].signatures,
@@ -222,132 +219,157 @@ export default function ActionsPage() {
     [config]
   )
 
-  const columns: GridColDef[] = useMemo(
+  const columnDefs = useMemo<ColDef<ActionRow>[]>(
     () => [
       {
-        field: "actionType",
         headerName: "Actions",
-        width: 190,
-        editable: false,
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ fontSize: 13, color: colors.foreground, fontWeight: 500, whiteSpace: "normal", lineHeight: 1.35, py: 0.5 }}>
-            {params.value as string}
-          </Box>
-        ),
+        field: "actionType",
+        minWidth: 220,
+        flex: 1.2,
+        cellClass: "font-medium text-slate-100",
       },
       {
-        field: "cause",
         headerName: "Cause",
-        width: 150,
-        editable: true,
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ fontSize: 13, color: "#93c5fd", fontWeight: 500 }}>
-            {params.value as string}
-          </Box>
-        ),
-        renderEditCell: (params: GridRenderEditCellParams) => <CauseEditCell {...params} />,
-      },
-      {
-        field: "signatures",
-        headerName: "Signatures / Toggles",
+        field: "cause",
+        minWidth: 190,
         flex: 1,
-        minWidth: 320,
-        editable: true,
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ fontSize: 13, color: colors.foreground, whiteSpace: "normal", lineHeight: 1.35, py: 0.5 }}>
-            {params.value as string}
-          </Box>
-        ),
-        renderEditCell: (params: GridRenderEditCellParams) => <SignaturesEditCell {...params} />,
+        cellRenderer: (params: { data?: ActionRow }) => {
+          const row = params.data
+          if (!row) return null
+
+          return (
+            <div className="min-w-[170px]" data-cell-click-ignore>
+              <Select
+                value={row.cause}
+                onValueChange={(value) =>
+                  updateRule(row.actionType, (current) => ({
+                    ...current,
+                    cause: value as CauseOption,
+                  }))
+                }
+              >
+                <SelectTrigger size="sm">
+                  <SelectValue placeholder="Select cause" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CAUSE_OPTIONS.map((cause) => (
+                    <SelectItem key={cause} value={cause}>
+                      {cause}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )
+        },
       },
       {
-        field: "toggles",
+        headerName: "Signatures",
+        field: "signatures",
+        minWidth: 360,
+        flex: 2.3,
+        cellRenderer: (params: { data?: ActionRow }) => {
+          const row = params.data
+          if (!row) return null
+
+          return (
+            <div className="relative z-30 min-w-[320px]" data-cell-click-ignore>
+              <MultiSelectInput
+                options={signatureOptions}
+                value={row.signatures}
+                onChange={(nextSignatures) =>
+                  updateRule(row.actionType, (current) => ({
+                    ...current,
+                    signatures: nextSignatures,
+                  }))
+                }
+                placeholder="Select signatures or type to add"
+                creatable
+              />
+            </div>
+          )
+        },
+      },
+      {
         headerName: "Toggles",
-        width: 100,
-        editable: true,
-        type: "number",
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <Chip
-              label={params.value as number}
-              size="small"
-              sx={{
-                bgcolor: "#1e3a5f",
-                color: "#93c5fd",
-                fontWeight: 700,
-                fontSize: 13,
-                height: 24,
-                minWidth: 32,
-                "& .MuiChip-label": { px: 1 },
-              }}
-            />
-          </Box>
-        ),
+        field: "toggles",
+        minWidth: 120,
+        maxWidth: 140,
+        cellRenderer: (params: { data?: ActionRow }) => {
+          const row = params.data
+          if (!row) return null
+
+          return (
+            <div className="flex justify-center" data-cell-click-ignore>
+              <Input
+                type="number"
+                min={0}
+                className="h-7 w-20 text-center"
+                value={row.toggles}
+                onChange={(event) => {
+                  const parsed = Number.parseInt(event.target.value, 10)
+                  updateRule(row.actionType, (current) => ({
+                    ...current,
+                    toggles: Number.isNaN(parsed) ? 0 : Math.max(parsed, 0),
+                  }))
+                }}
+              />
+            </div>
+          )
+        },
       },
     ],
-    []
+    [signatureOptions, updateRule]
   )
 
+  const handleSave = () => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      // ignore write failures
+    }
+  }
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", p: 3, gap: 2 }}>
-      {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box>
-          <Box sx={{ fontSize: 18, fontWeight: 700, color: colors.headerText, mb: 0.5 }}>
+    <div className="w-full space-y-4 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-100">
             Approval Actions
-          </Box>
-          <Box sx={{ fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>
-            Configure approval thresholds and required signatories for each document type.
-            <br />
-            <span style={{ color: "#93c5fd" }}>Cause</span>: triggers approval.&nbsp;
-            <span style={{ color: "#93c5fd" }}>Signatures / Toggles</span>: roles that must sign.&nbsp;
-            <span style={{ color: "#93c5fd" }}>Toggles</span>: number of approvers required.
-          </Box>
-        </Box>
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Edit directly in the table using the selectors and inputs in each
+            row.
+          </p>
+        </div>
+
         <Button
-          variant={saved ? "contained" : "outlined"}
+          variant={saved ? "default" : "outline"}
           onClick={handleSave}
-          startIcon={<Save size={16} />}
-          sx={saved ? { bgcolor: "#2d7f5c", "&:hover": { bgcolor: "#246b4e" } } : {}}
+          className={saved ? "bg-emerald-600 hover:bg-emerald-700" : undefined}
         >
+          <Save className="mr-1 size-4" />
           {saved ? "Saved" : "Save"}
         </Button>
-      </Box>
+      </div>
 
-      {/* Table */}
-      <Box sx={{ flex: 1, overflow: "auto" }}>
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          hideFooter
-          disableRowSelectionOnClick
-          showCellVerticalBorder
-          showColumnVerticalBorder
-          rowHeight={52}
-          processRowUpdate={(newRow) => {
-            const actionType = newRow.actionType as ActionType
-            setConfig((prev) => ({
-              ...prev,
-              [actionType]: {
-                cause: newRow.cause as string,
-                signatures: newRow.signatures as string,
-                toggles: newRow.toggles as number,
-              },
-            }))
-            return newRow
-          }}
-          sx={{
-            ...agTableDataGridSx,
-            "& .MuiDataGrid-columnHeaderTitleContainer": { justifyContent: "center" },
-            "& .MuiDataGrid-columnHeaderTitle": { textAlign: "center", width: "100%" },
-            "& .MuiDataGrid-cell": {
-              ...agTableDataGridSx["& .MuiDataGrid-cell"],
-              alignItems: "flex-start",
-              pt: "10px",
-            },
-          }}
-        />
-      </Box>
-    </Box>
+      <AgTable
+        rowData={rowData}
+        columnDefs={columnDefs}
+        showRowNumberColumn={false}
+        suppressCellClickAction
+        height="auto"
+        defaultColDef={{
+          sortable: false,
+          filter: false,
+          resizable: false,
+        }}
+        gridOptions={{
+          rowHeight: 88,
+        }}
+      />
+    </div>
   )
 }

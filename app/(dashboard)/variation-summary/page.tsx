@@ -129,10 +129,10 @@ const columns: ColDef<VariationSummaryRow>[] = [
     headerName: "Date",
     field: "date",
   },
-  {
-    headerName: "Variation Sheet Number",
-    field: "variationSheetNumber",
-  },
+//   {
+//     headerName: "Variation Sheet Number",
+//     field: "variationSheetNumber",
+//   },
   {
     headerName: "Description of Works",
     field: "descriptionOfWorks",
@@ -141,14 +141,14 @@ const columns: ColDef<VariationSummaryRow>[] = [
     headerName: "Variation value",
     field: "variationAmount",
   },
-  {
-    headerName: "% Claimed",
-    field: "percentClaimed",
-  },
-  {
-    headerName: "Amount Claimed",
-    field: "amountClaimed",
-  },
+//   {
+//     headerName: "% Claimed",
+//     field: "percentClaimed",
+//   },
+//   {
+//     headerName: "Amount Claimed",
+//     field: "amountClaimed",
+//   },
   {
     headerName: "Add to Application",
     field: "addToApplication",
@@ -165,22 +165,22 @@ const columns: ColDef<VariationSummaryRow>[] = [
     ),
   },
   { headerName: "Signed by Client", field: "signByClient" },
-  {
-    headerName: "Client Certified Amount",
-    field: "clientCertifiedAmount",
-  },
-  {
-    headerName: "Diffrence",
-    field: "diffrenceAmount",
-  },
-  {
-    headerName: "Payment Status nr",
-    field: "paymentStatusNr",
-  },
-  {
-    headerName: "Claim QS Comment",
-    field: "claimGQComment",
-  },
+//   {
+//     headerName: "Client Certified Amount",
+//     field: "clientCertifiedAmount",
+//   },
+//   {
+//     headerName: "Diffrence",
+//     field: "diffrenceAmount",
+//   },
+//   {
+//     headerName: "Payment Status nr",
+//     field: "paymentStatusNr",
+//   },
+//   {
+//     headerName: "Claim QS Comment",
+//     field: "claimGQComment",
+//   },
   {
     headerName: "Comments",
     field: "comments",
