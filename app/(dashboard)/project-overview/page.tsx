@@ -362,17 +362,14 @@ export default function Page() {
             { label: "Labour Estimate", value: "£320" },
             { label: "Prelims Estimate", value: "£50,000" },
             { label: "Estimate Profit", value: "£150,000" },
+            { label: "TOTAL Invoiced", value: "£500,000", valueColor: "green" },
+            { label: "TOTAL Spent", value: "£850,000", valueColor: "red" },
           ]}
         />
         <TableStat
           summaryRows={[
             { label: "Total PO Raised", value: "£1,000,000" },
             { label: "Proforma NR", value: "£320", valueColor: "red" },
-            {
-              label: "Proforma NR Material Estimate",
-              value: "£50,000",
-              valueColor: "red",
-            },
             {
               label: "Total Unclaimed",
               value: "£150,000",

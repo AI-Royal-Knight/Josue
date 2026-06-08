@@ -34,6 +34,7 @@ import type { CallOffRow, PODialogState, HistoryDialogState } from "./types"
 import { formatGBP, initialData, summaryMetrics, baseTheme } from "./utils"
 import HistoryDialog from "./_components/HistoryDialog"
 import PODialog from "./_components/PODialog"
+import { Switch } from "@/components/ui/switch"
 
 type GroupHeaderRow = {
   _kind: "group"
@@ -78,7 +79,9 @@ export default function Page() {
   const [poDialog, setPoDialog] = useState<PODialogState | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sentPO, setSentPO] = useState<string | null>(null)
-  const [historyDialog, setHistoryDialog] = useState<HistoryDialogState | null>(null)
+  const [historyDialog, setHistoryDialog] = useState<HistoryDialogState | null>(
+    null
+  )
 
   const role = useRoleStore((s) => s.role)
   const isProcurement = role === "procurement_department"
@@ -150,7 +153,11 @@ export default function Page() {
     )
 
   const orderTotal = useMemo(
-    () => (poDialog?.lines ?? []).reduce((s, l) => s + l.orderQty * l.unitPriceNum, 0),
+    () =>
+      (poDialog?.lines ?? []).reduce(
+        (s, l) => s + l.orderQty * l.unitPriceNum,
+        0
+      ),
     [poDialog]
   )
   const hasOrder = (poDialog?.lines ?? []).some((l) => l.orderQty > 0)
@@ -180,7 +187,10 @@ export default function Page() {
 
     poRefs.forEach((poRef) => {
       const children = data.filter((r) => r.poRef === poRef)
-      const totalValue = children.reduce((s, r) => s + r.unitPriceNum * r.totalQty, 0)
+      const totalValue = children.reduce(
+        (s, r) => s + r.unitPriceNum * r.totalQty,
+        0
+      )
 
       // Group header row
       rows.push({
@@ -420,23 +430,41 @@ export default function Page() {
           const row = params.data as ChildRow
           const approved = params.value
           return (
-            <button
-              onClick={() => isProcurement && toggleManagementApproval(row.callOffRef)}
-              title={isProcurement ? (approved ? "Click to revoke" : "Click to approve") : undefined}
+            // <button
+            //   onClick={() => isProcurement && toggleManagementApproval(row.callOffRef)}
+            //   title={isProcurement ? (approved ? "Click to revoke" : "Click to approve") : undefined}
+            //   className={cn(
+            //     "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity",
+            //     approved
+            //       ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+            //       : "bg-slate-700/60 text-slate-400 hover:bg-slate-700",
+            //     !isProcurement && "cursor-default pointer-events-none"
+            //   )}
+            // >
+            //   {approved ? (
+            //     <><CheckCircle2 className="size-3" /> Approved</>
+            //   ) : (
+            //     <><XCircle className="size-3" /> Pending</>
+            //   )}
+            // </button>
+            <Switch
+              checked={approved}
+              onCheckedChange={() =>
+                isProcurement && toggleManagementApproval(row.callOffRef)
+              }
+              disabled={!isProcurement}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity",
-                approved
-                  ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
-                  : "bg-slate-700/60 text-slate-400 hover:bg-slate-700",
-                !isProcurement && "cursor-default pointer-events-none"
+                "hover:bg-slate-700/30 data-[state=checked]:bg-emerald-500/20 data-[state=checked]:text-emerald-300",
+                !isProcurement && "pointer-events-none cursor-default"
               )}
-            >
-              {approved ? (
-                <><CheckCircle2 className="size-3" /> Approved</>
-              ) : (
-                <><XCircle className="size-3" /> Pending</>
-              )}
-            </button>
+              title={
+                isProcurement
+                  ? approved
+                    ? "Click to revoke"
+                    : "Click to approve"
+                  : undefined
+              }
+            />
           )
         },
       },
@@ -447,8 +475,15 @@ export default function Page() {
         hide: !isProcurement,
         cellRenderer: (params: { data?: VirtualRow; value: string | null }) => {
           if (params.data?._kind !== "child") return null
-          if (!params.value) return <span className="text-xs italic text-slate-500">Not yet approved</span>
-          return <span className="text-xs text-emerald-300">{params.value}</span>
+          if (!params.value)
+            return (
+              <span className="text-xs text-slate-500 italic">
+                Not yet approved
+              </span>
+            )
+          return (
+            <span className="text-xs text-emerald-300">{params.value}</span>
+          )
         },
       },
 
@@ -461,7 +496,12 @@ export default function Page() {
           const row = params.data as ChildRow
           const approved = isApproved(row)
           return (
-            <span className={cn("text-[12px] font-medium", approved ? "text-emerald-400" : "text-amber-400")}>
+            <span
+              className={cn(
+                "text-[12px] font-medium",
+                approved ? "text-emerald-400" : "text-amber-400"
+              )}
+            >
               {params.value}
             </span>
           )
@@ -479,19 +519,16 @@ export default function Page() {
     toggleManagementApproval,
   ])
 
-  const getRowStyle = useCallback(
-    (params: { data?: VirtualRow }) => {
-      if (params.data?._kind === "group") {
-        return {
-          background: colors.oddRowBackground,
-          borderBottom: `2px solid ${colors.border}`,
-          cursor: "pointer",
-        }
+  const getRowStyle = useCallback((params: { data?: VirtualRow }) => {
+    if (params.data?._kind === "group") {
+      return {
+        background: colors.oddRowBackground,
+        borderBottom: `2px solid ${colors.border}`,
+        cursor: "pointer",
       }
-      return undefined
-    },
-    []
-  )
+    }
+    return undefined
+  }, [])
 
   return (
     <div className="w-full space-y-6 p-6">
