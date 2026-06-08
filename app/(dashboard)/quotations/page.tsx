@@ -22,6 +22,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import CreateQuotationForm from "./_components/create-quotation-form"
+import ViewQuoteDialog from "./_components/ViewQuoteDialog"
+import type { QuotePreviewData } from "./_components/ViewQuoteDialog"
+import ReQuoteDialog from "./_components/ReQuoteDialog"
+import type { ReQuoteTarget } from "./_components/ReQuoteDialog"
 import { addOrder } from "@/lib/po-store"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
@@ -45,6 +49,7 @@ type QuotationRow = {
   procurementComments: string
   approveQuotesStatus: ApprovalStatus
   quoteApprovalReasons: string
+  requoteComments: string
 }
 
 type PendingAction =
@@ -68,6 +73,7 @@ const initialRows: QuotationRow[] = [
     procurementComments: "",
     approveQuotesStatus: "Approved",
     quoteApprovalReasons: "Lowest bidder, meets all specs.",
+    requoteComments: "",
   },
   {
     no: 2,
@@ -85,6 +91,7 @@ const initialRows: QuotationRow[] = [
     procurementComments: "",
     approveQuotesStatus: "Pending",
     quoteApprovalReasons: "-",
+    requoteComments: "",
   },
   {
     no: 3,
@@ -102,6 +109,7 @@ const initialRows: QuotationRow[] = [
     procurementComments: "",
     approveQuotesStatus: "Approved",
     quoteApprovalReasons: "Preferred vendor, fast lead time.",
+    requoteComments: "",
   },
   {
     no: 4,
@@ -119,6 +127,7 @@ const initialRows: QuotationRow[] = [
     procurementComments: "",
     approveQuotesStatus: "Pending",
     quoteApprovalReasons: "-",
+    requoteComments: "",
   },
   {
     no: 5,
@@ -136,18 +145,33 @@ const initialRows: QuotationRow[] = [
     procurementComments: "",
     approveQuotesStatus: "Rejected",
     quoteApprovalReasons: "Rejected due to budget constraints.",
+    requoteComments: "",
   },
 ]
 
 export default function Page() {
   const [rows, setRows] = useState<QuotationRow[]>(initialRows)
   const [newQuoteOpen, setNewQuoteOpen] = useState(false)
+  const [viewQuote, setViewQuote] = useState<QuotePreviewData | null>(null)
+  const [reQuoteTarget, setReQuoteTarget] = useState<ReQuoteTarget | null>(null)
   const [pending, setPending] = useState<PendingAction | null>(null)
 
   const role = useRoleStore((s) => s.role)
   const isProcurement = role === "procurement_department"
 
   // Apply a confirmed action
+  const handleReQuote = (comments: string) => {
+    if (!reQuoteTarget) return
+    setRows((prev) =>
+      prev.map((r) =>
+        r.no === reQuoteTarget.no
+          ? { ...r, requoteComments: comments }
+          : r
+      )
+    )
+    setReQuoteTarget(null)
+  }
+
   const handleConfirm = () => {
     if (!pending) return
     const today = new Date().toISOString().slice(0, 10)
@@ -207,12 +231,13 @@ export default function Page() {
       headerName: "Quotes Ref",
       field: "quotesRef",
       minWidth: 140,
-      cellRenderer: (params) => {
+      cellRenderer: (params: { data?: QuotationRow; value: string }) => {
+        const row = params.data
         const quoteRef = params.value || ""
         return (
           <span
             className="cursor-pointer font-medium text-blue-400 hover:underline"
-            onClick={() => alert(`Clicked on quote ${quoteRef}`)}
+            onClick={() => row && setViewQuote(row)}
           >
             {quoteRef}
           </span>
@@ -366,15 +391,27 @@ export default function Page() {
       headerName: "Request Re-quote",
       sortable: false,
       filter: false,
-      cellRenderer: () => (
-        <Button
-          variant="outline"
-          className="h-7 rounded-none border-white/10 bg-slate-700 px-2 text-xs text-slate-200 hover:bg-slate-600"
-        >
-          <RotateCcw className="size-3.5" />
-          Re-quote
-        </Button>
-      ),
+      cellRenderer: (params: { data?: QuotationRow }) => {
+        const row = params.data
+        return (
+          <Button
+            variant="outline"
+            className="h-7 rounded-none border-white/10 bg-slate-700 px-2 text-xs text-slate-200 hover:bg-slate-600"
+            onClick={() =>
+              row &&
+              setReQuoteTarget({
+                no: row.no,
+                quotesRef: row.quotesRef,
+                supplierName: row.supplierName,
+                quoteTotal: row.quoteTotal,
+              })
+            }
+          >
+            <RotateCcw className="size-3.5" />
+            Re-quote
+          </Button>
+        )
+      },
     },
   ]
 
@@ -465,6 +502,7 @@ export default function Page() {
                   procurementComments: "",
                   approveQuotesStatus: "Pending",
                   quoteApprovalReasons: "-",
+                  requoteComments: "",
                 },
               ])
               setNewQuoteOpen(false)
@@ -473,6 +511,21 @@ export default function Page() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Re-quote dialog */}
+      <ReQuoteDialog
+        open={!!reQuoteTarget}
+        onOpenChange={(open) => !open && setReQuoteTarget(null)}
+        target={reQuoteTarget}
+        onSubmit={handleReQuote}
+      />
+
+      {/* View quote details dialog */}
+      <ViewQuoteDialog
+        open={!!viewQuote}
+        onOpenChange={(open) => !open && setViewQuote(null)}
+        quote={viewQuote}
+      />
 
       {/* Confirmation dialog for approve / reject / create PO */}
       <AlertDialog

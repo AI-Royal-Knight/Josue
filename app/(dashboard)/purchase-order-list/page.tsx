@@ -16,6 +16,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { useFileUpload } from "@/hooks/use-file-upload"
+import ViewPODialog from "./_components/ViewPODialog"
+import type { POPreviewData } from "./_components/ViewPODialog"
 import { cn } from "@/lib/utils"
 import {
   PlusCircle,
@@ -27,6 +29,7 @@ import {
   XIcon,
 } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
+import { ExportCsvButton } from "@/components/common/export-csv-button"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -218,9 +221,7 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
   },
 ]
 
-const summaryMetrics = [
-  { label: "PO", value: "£2,550,000" },
-]
+const summaryMetrics = [{ label: "PO", value: "£2,550,000" }]
 
 // ─── Create PO Dialog ─────────────────────────────────────────────────────────
 
@@ -569,47 +570,63 @@ function CreatePODialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const columns: ColDef<PurchaseOrderRow>[] = [
-  { headerName: "No.", field: "no", maxWidth: 60, filter: false },
-  { headerName: "PO Ref", field: "quotationRef" },
-  { headerName: "Project", field: "project" },
-  { headerName: "Main Folder", field: "mainFolder" },
-  { headerName: "Sub Folder", field: "subFolder" },
-  { headerName: "Variation Ref", field: "variationRef" },
-  { headerName: "Supplier Name", field: "supplierName" },
-  { headerName: "Supplier Email", field: "supplierEmail" },
-  { headerName: "Date Quote Approved", field: "dateOfQuoteApproved" },
-  { headerName: "PO Total", field: "quoteTotal" },
-  { headerName: "Date PO Created", field: "datePOCreated" },
-  {
-    headerName: "Procurement Comments",
-    field: "procurementComments",
-    editable: true,
-  },
-  {
-    headerName: "Source PDF",
-    field: "sourceFile",
-    cellRenderer: (params: { data?: PurchaseOrderRow }) =>
-      params.data?.sourceFile ? (
-        <a
-          href={params.data.sourceFileUrl ?? "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1 text-[12px] text-blue-400 underline-offset-2 hover:text-blue-300 hover:underline"
-        >
-          <FileTextIcon className="h-3 w-3 shrink-0" />
-          {params.data.sourceFile}
-        </a>
-      ) : null,
-  },
-]
-
 export default function Page() {
   const [data, setData] = useState<PurchaseOrderRow[]>(INITIAL_DATA)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [viewPO, setViewPO] = useState<POPreviewData | null>(null)
 
   const role = useRoleStore((state) => state.role)
+
+  const columns: ColDef<PurchaseOrderRow>[] = [
+    { headerName: "No.", field: "no", maxWidth: 60, filter: false },
+    {
+      headerName: "PO Ref",
+      field: "quotationRef",
+      cellRenderer: (params: { data?: PurchaseOrderRow; value: string }) => {
+        const row = params.data
+        const ref = params.value || ""
+        return (
+          <span
+            className="cursor-pointer font-medium text-blue-400 hover:underline"
+            onClick={() => row && setViewPO(row)}
+          >
+            {ref}
+          </span>
+        )
+      },
+    },
+    { headerName: "Project", field: "project" },
+    { headerName: "Main Folder", field: "mainFolder" },
+    { headerName: "Sub Folder", field: "subFolder" },
+    { headerName: "Variation Ref", field: "variationRef" },
+    { headerName: "Supplier Name", field: "supplierName" },
+    { headerName: "Supplier Email", field: "supplierEmail" },
+    { headerName: "Date Quote Approved", field: "dateOfQuoteApproved" },
+    { headerName: "PO Total", field: "quoteTotal" },
+    { headerName: "Date PO Created", field: "datePOCreated" },
+    {
+      headerName: "Procurement Comments",
+      field: "procurementComments",
+      editable: true,
+    },
+    {
+      headerName: "Source PDF",
+      field: "sourceFile",
+      cellRenderer: (params: { data?: PurchaseOrderRow }) =>
+        params.data?.sourceFile ? (
+          <a
+            href={params.data.sourceFileUrl ?? "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-[12px] text-blue-400 underline-offset-2 hover:text-blue-300 hover:underline"
+          >
+            <FileTextIcon className="h-3 w-3 shrink-0" />
+            {params.data.sourceFile}
+          </a>
+        ) : null,
+    },
+  ]
 
   const handleCreated = (row: PurchaseOrderRow) => {
     setData((prev) => [...prev, row])
@@ -630,13 +647,28 @@ export default function Page() {
       </div>
 
       <SelectProject />
-      <TableStat summaryRows={summaryMetrics} />
+      <div className="flex items-end justify-between">
+        <TableStat summaryRows={summaryMetrics} />
 
+        <ExportCsvButton
+          rows={data}
+          columns={columns}
+          fileName="purchase_orders.csv"
+        />
+      </div>
       <AgTable
         rowData={data}
         columnDefs={columns}
         height="auto"
         defaultColDef={{ flex: 1, minWidth: 150 }}
+        suppressCellClickAction
+      />
+
+      {/* View PO details dialog */}
+      <ViewPODialog
+        open={!!viewPO}
+        onOpenChange={(open) => !open && setViewPO(null)}
+        po={viewPO}
       />
 
       {dialogOpen && (
