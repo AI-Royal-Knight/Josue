@@ -8,14 +8,12 @@ import MultiSelectInput, {
   type MultiSelectInputOption,
 } from "@/components/multi-select-input"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import MultipleSelector from "@/components/ui/multiselect"
+import type { Option } from "@/components/ui/multiselect"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Label,
+} from "@/components/ui/label"
 
 const ACTION_TYPES = [
   "User Invoices",
@@ -36,8 +34,6 @@ const CAUSE_OPTIONS = [
   "ALL",
 ] as const
 
-type CauseOption = (typeof CAUSE_OPTIONS)[number]
-
 const SIGNATURE_OPTIONS = [
   "Supervisor",
   "Contracts Manager",
@@ -48,9 +44,9 @@ const SIGNATURE_OPTIONS = [
 ] as const
 
 type ApprovalRule = {
-  cause: CauseOption
+  cause: string
   signatures: string[]
-  toggles: number
+  toggleStates: boolean[]
 }
 
 type ActionsConfig = Record<ActionType, ApprovalRule>
@@ -58,16 +54,16 @@ type ActionsConfig = Record<ActionType, ApprovalRule>
 type StoredApprovalRule = {
   cause?: unknown
   signatures?: unknown
-  toggles?: unknown
+  toggleStates?: unknown
 }
 
 type StoredActionsConfig = Partial<Record<ActionType, StoredApprovalRule>>
 
 type ActionRow = {
   actionType: ActionType
-  cause: CauseOption
+  cause: string
   signatures: string[]
-  toggles: number
+  toggleStates: boolean[]
 }
 
 const STORAGE_KEY = "tresta:project-actions"
@@ -76,7 +72,7 @@ const DEFAULT_ACTIONS_CONFIG: ActionsConfig = {
   "User Invoices": {
     cause: ">£2000",
     signatures: ["Supervisor", "Contracts Manager"],
-    toggles: 2,
+    toggleStates: [false, false],
   },
   "Proforma Nr Invoices": {
     cause: "ALL",
@@ -86,7 +82,7 @@ const DEFAULT_ACTIONS_CONFIG: ActionsConfig = {
       "Project Director",
       "Managing Director",
     ],
-    toggles: 4,
+    toggleStates: [false, false, false, false],
   },
   "User Variations Invoices": {
     cause: "ALL",
@@ -96,22 +92,22 @@ const DEFAULT_ACTIONS_CONFIG: ActionsConfig = {
       "Project Director",
       "Managing Director",
     ],
-    toggles: 2,
+    toggleStates: [false, false, false, false],
   },
   "Supplier Invoices": {
     cause: ">£50,000.00",
     signatures: ["Procurement", "Managing Director"],
-    toggles: 2,
+    toggleStates: [false, false],
   },
   "Purchase orders": {
     cause: ">£50,000.00",
     signatures: ["Procurement", "Managing Director"],
-    toggles: 2,
+    toggleStates: [false, false],
   },
   Variations: {
     cause: ">£2000",
     signatures: ["Commercial Manager", "Project Director"],
-    toggles: 2,
+    toggleStates: [false, false],
   },
 }
 
@@ -120,14 +116,10 @@ function cloneConfig(config: ActionsConfig): ActionsConfig {
     next[actionType] = {
       cause: config[actionType].cause,
       signatures: [...config[actionType].signatures],
-      toggles: config[actionType].toggles,
+      toggleStates: [...config[actionType].toggleStates],
     }
     return next
   }, {} as ActionsConfig)
-}
-
-function isCauseOption(value: string): value is CauseOption {
-  return CAUSE_OPTIONS.includes(value as CauseOption)
 }
 
 function normalizeSignatures(signatures: unknown): string[] {
@@ -160,7 +152,7 @@ function parseStoredConfig(rawValue: string | null): ActionsConfig {
       if (!storedRule) return
 
       const cause = storedRule.cause
-      if (typeof cause === "string" && isCauseOption(cause)) {
+      if (typeof cause === "string") {
         base[actionType].cause = cause
       }
 
@@ -169,9 +161,19 @@ function parseStoredConfig(rawValue: string | null): ActionsConfig {
         base[actionType].signatures = signatures
       }
 
-      const toggles = Number(storedRule.toggles)
-      if (Number.isFinite(toggles) && toggles >= 0) {
-        base[actionType].toggles = Math.floor(toggles)
+      const toggleStates = storedRule.toggleStates
+      if (Array.isArray(toggleStates)) {
+        base[actionType].toggleStates = toggleStates.filter(
+          (t): t is boolean => typeof t === "boolean"
+        )
+      }
+
+      // Ensure toggleStates matches signatures length
+      // Handles backward compat with old `toggles: number` format
+      if (base[actionType].toggleStates.length !== base[actionType].signatures.length) {
+        base[actionType].toggleStates = base[actionType].signatures.map(
+          () => false
+        )
       }
     })
 
@@ -214,7 +216,7 @@ export default function ActionsPage() {
         actionType,
         cause: config[actionType].cause,
         signatures: config[actionType].signatures,
-        toggles: config[actionType].toggles,
+        toggleStates: config[actionType].toggleStates,
       })),
     [config]
   )
@@ -231,34 +233,48 @@ export default function ActionsPage() {
       {
         headerName: "Cause",
         field: "cause",
-        minWidth: 190,
-        flex: 1,
+        minWidth: 240,
+        flex: 1.3,
         cellRenderer: (params: { data?: ActionRow }) => {
           const row = params.data
           if (!row) return null
 
+          const causeOptions: Option[] = CAUSE_OPTIONS.map((c) => ({
+            label: c,
+            value: c,
+          }))
+
+          const selectedValue: Option[] = [{ label: row.cause, value: row.cause }]
+
           return (
-            <div className="min-w-[170px]" data-cell-click-ignore>
-              <Select
-                value={row.cause}
-                onValueChange={(value) =>
-                  updateRule(row.actionType, (current) => ({
-                    ...current,
-                    cause: value as CauseOption,
-                  }))
-                }
-              >
-                <SelectTrigger size="sm">
-                  <SelectValue placeholder="Select cause" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CAUSE_OPTIONS.map((cause) => (
-                    <SelectItem key={cause} value={cause}>
-                      {cause}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="min-w-[200px]" data-cell-click-ignore>
+              <div className="relative z-40">
+                <Label className="sr-only">Cause</Label>
+                <MultipleSelector
+                  commandProps={{
+                    label: "Cause",
+                  }}
+                  defaultOptions={causeOptions}
+                  options={causeOptions}
+                  value={selectedValue}
+                  maxSelected={1}
+                  creatable
+                  hideClearAllButton
+                  hidePlaceholderWhenSelected
+                  placeholder="Select or type cause…"
+                  onChange={(selected) => {
+                    if (selected.length === 0) return
+                    updateRule(row.actionType, (current) => ({
+                      ...current,
+                      cause: selected[0].value,
+                    }))
+                  }}
+                  badgeClassName="max-w-full truncate"
+                  inputProps={{
+                    className: "text-xs",
+                  }}
+                />
+              </div>
             </div>
           )
         },
@@ -278,10 +294,17 @@ export default function ActionsPage() {
                 options={signatureOptions}
                 value={row.signatures}
                 onChange={(nextSignatures) =>
-                  updateRule(row.actionType, (current) => ({
-                    ...current,
-                    signatures: nextSignatures,
-                  }))
+                  updateRule(row.actionType, (current) => {
+                    // Auto-resize toggleStates to match signature count
+                    const newToggleStates = nextSignatures.map(
+                      (_, i) => current.toggleStates[i] ?? false
+                    )
+                    return {
+                      ...current,
+                      signatures: nextSignatures,
+                      toggleStates: newToggleStates,
+                    }
+                  })
                 }
                 placeholder="Select signatures or type to add"
                 creatable
@@ -292,28 +315,41 @@ export default function ActionsPage() {
       },
       {
         headerName: "Toggles",
-        field: "toggles",
-        minWidth: 120,
-        maxWidth: 140,
+        field: "toggleStates",
+        minWidth: 240,
+        flex: 1.5,
         cellRenderer: (params: { data?: ActionRow }) => {
           const row = params.data
           if (!row) return null
 
           return (
-            <div className="flex justify-center" data-cell-click-ignore>
-              <Input
-                type="number"
-                min={0}
-                className="h-7 w-20 text-center"
-                value={row.toggles}
-                onChange={(event) => {
-                  const parsed = Number.parseInt(event.target.value, 10)
-                  updateRule(row.actionType, (current) => ({
-                    ...current,
-                    toggles: Number.isNaN(parsed) ? 0 : Math.max(parsed, 0),
-                  }))
-                }}
-              />
+            <div className="flex flex-wrap items-center gap-2 px-1" data-cell-click-ignore>
+              {row.toggleStates.map((toggled, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-1.5"
+                >
+                  <Switch
+                    size="sm"
+                    checked={toggled}
+                    onCheckedChange={(checked) =>
+                      updateRule(row.actionType, (current) => {
+                        const next = [...current.toggleStates]
+                        next[idx] = checked
+                        return { ...current, toggleStates: next }
+                      })
+                    }
+                  />
+                  <span className="text-[10px] leading-none text-slate-400">
+                    {row.signatures[idx] ?? `#${idx + 1}`}
+                  </span>
+                </div>
+              ))}
+              {row.toggleStates.length === 0 && (
+                <span className="text-[11px] text-slate-500 italic">
+                  No toggles
+                </span>
+              )}
             </div>
           )
         },

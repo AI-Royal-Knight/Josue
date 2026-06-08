@@ -249,22 +249,6 @@ const columns: ColDef<BreakdownRow>[] = [
     },
   },
   {
-    headerName: "Proforma NR Material Estimate",
-    field: "proformaNRMaterialEstimate",
-    headerClass: "text-red-500",
-    cellRenderer: (params: { value: number }) => {
-      const value = params.value as number
-      return (
-        <span className="text-red-500">
-          {value.toLocaleString("en-GB", {
-            style: "currency",
-            currency: "GBP",
-          })}
-        </span>
-      )
-    },
-  },
-  {
     headerName: "Variation Value",
     field: "variationValue",
     headerClass: "text-orange-400",
