@@ -117,6 +117,10 @@ export default function ViewInvoiceDialog({ open, onOpenChange, invoice }: Props
             </div>
 
             <div className="mb-4">
+              <span className="font-medium text-slate-400">Subtotal:</span>
+               <p className="mt-1 text-lg font-semibold text-white">{invoice.amount}</p>
+               <span className="font-medium text-slate-400">Vat :</span>
+              <p className="mt-1 text-lg font-semibold text-white">0.00</p>
               <span className="font-medium text-slate-400">Total Amount:</span>
               <p className="mt-1 text-lg font-semibold text-white">{invoice.amount}</p>
             </div>

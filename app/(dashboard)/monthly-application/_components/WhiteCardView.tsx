@@ -1,160 +1,351 @@
 "use client"
 
+import { useCallback, useMemo, useState, useEffect, useRef } from "react"
 import Box from "@mui/material/Box"
-import { DataGrid, type GridColDef } from "@mui/x-data-grid"
-import { colors } from "@/constants/colors"
+
+import {
+  DataGrid,
+  type GridColDef,
+  type GridColumnGroupingModel,
+} from "@mui/x-data-grid"
+
+import { FolderPlus } from "lucide-react"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
+import { colors } from "@/constants/colors"
 
-const DATA_ROWS = 5
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
-const rows = [
-  ...Array.from({ length: DATA_ROWS }, (_, i) => ({
-    id: i + 1,
-    section: "APARTMENTS",
-    el_ws: "",
-    el_wa: "",
-    el_pv: "",
-    eff_ws: "",
-    eff_wa: "",
-    eff_pv: "",
-    pl_ws: "",
-    pl_wa: "",
-    pl_pv: "",
-  })),
-  ...Array.from({ length: DATA_ROWS }, (_, i) => ({
-    id: i + DATA_ROWS + 1,
-    section: "CORRIDORS",
-    el_ws: "",
-    el_wa: "",
-    el_pv: "",
-    eff_ws: "",
-    eff_wa: "",
-    eff_pv: "",
-    pl_ws: "",
-    pl_wa: "",
-    pl_pv: "", // empty — no Plumbing for Corridors
-  })),
-]
+import { SubfolderModal } from "@/app/(dashboard)/labour-target/subfolder-modal"
+import type {
+  FolderType,
+  ModalState,
+  Row,
+} from "@/app/(dashboard)/labour-target/types"
+import { defaultRows, uid } from "@/app/(dashboard)/labour-target/utils"
+import SelectSearch from "@/components/select-search"
 
-const columns: GridColDef[] = [
+const ROWS_PER_FOLDER = 5
+const ROW_HEIGHT = 42
+// Each DataGrid has: column-group header row + column-name header row + data rows
+// We measure this per-grid with a ResizeObserver; this is just the initial fallback.
+const HEADER_FALLBACK = 98
+
+const DEFAULT_FOLDERS: FolderType[] = [
   {
-    field: "section",
-    headerName: "",
-    width: 130,
-    cellClassName: "cell-section",
-    renderCell: ({ value }) => (
-      <Box
-        sx={{
-          writingMode: "vertical-lr",
-          transform: "rotate(180deg)",
-          height: "100%",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: 700,
-          fontSize: 13,
-          letterSpacing: "0.1em",
-          color: colors.headerText,
-        }}
-      >
-        {value}
-      </Box>
-    ),
+    id: "apartments",
+    name: "APARTMENTS",
+    subfolders: [
+      { id: "electrical", name: "Electrical", rows: defaultRows() },
+      { id: "plumbing", name: "Plumbing", rows: defaultRows() },
+    ],
   },
-
-  // electrical group
-  { field: "el_ws", headerName: "Work section", flex: 1, minWidth: 130 },
-  { field: "el_wa", headerName: "Work area", flex: 1, minWidth: 130 },
-  // standalone → spans both header rows automatically
   {
-    field: "el_pv",
-    headerName: "Project Value",
-    flex: 1,
-    minWidth: 120,
-    cellClassName: "cell-pv",
-  },
-
-  // Electrical First Fix group
-  { field: "eff_ws", headerName: "Work section", flex: 1, minWidth: 130 },
-  { field: "eff_wa", headerName: "Work area", flex: 1, minWidth: 130 },
-  {
-    field: "eff_pv",
-    headerName: "Project Value",
-    flex: 1,
-    minWidth: 120,
-    cellClassName: "cell-pv",
-  },
-
-  // Plumbing group
-  { field: "pl_ws", headerName: "Work section", flex: 1, minWidth: 130 },
-  { field: "pl_wa", headerName: "Work area", flex: 1, minWidth: 130 },
-  {
-    field: "pl_pv",
-    headerName: "Project Value",
-    flex: 1,
-    minWidth: 120,
-    cellClassName: "cell-pv",
+    id: "corridors",
+    name: "CORRIDORS",
+    subfolders: [{ id: "electrical", name: "Electrical", rows: defaultRows() }],
   },
 ]
 
-const columnGroupingModel = [
-  {
-    groupId: "electrical",
-    headerName: "electrical",
-    children: [{ field: "el_ws" }, { field: "el_wa" }],
-  },
-  {
-    groupId: "eff",
-    headerName: "Electrical First Fix",
-    children: [{ field: "eff_ws" }, { field: "eff_wa" }],
-  },
-  {
-    groupId: "plumbing",
-    headerName: "Plumbing",
-    children: [{ field: "pl_ws" }, { field: "pl_wa" }],
-  },
-]
+// Per-folder DataGrid
+function FolderGrid({
+  folder,
+  isLocked,
+  sx,
+}: {
+  folder: FolderType
+  isLocked: boolean
+  sx?: object
+}) {
+  const rows = useMemo(
+    () =>
+      Array.from({ length: ROWS_PER_FOLDER }, (_, i) => {
+        const row: Record<string, unknown> = { id: i + 1 }
+        folder.subfolders.forEach((sub) => {
+          row[`${sub.id}_ws`] = ""
+          row[`${sub.id}_wa`] = ""
+          row[`${sub.id}_pv`] = ""
+          row[`${sub.id}_lt`] = ""
+        })
+        return row
+      }),
+    [folder]
+  )
 
-export default function WhiteCardView() {
+  const columns: GridColDef[] = useMemo(
+    () =>
+      folder.subfolders.flatMap((sub) => [
+        {
+          field: `${sub.id}_ws`,
+          headerName: "Work Section",
+          width: 120,
+          editable: true,
+        },
+        {
+          field: `${sub.id}_wa`,
+          headerName: "Work Area",
+          width: 120,
+          editable: true,
+        },
+        {
+          field: `${sub.id}_pv`,
+          headerName: "Project Value",
+          width: 120,
+          editable: true,
+        },
+      ]),
+    [folder]
+  )
+
+  const columnGroupingModel: GridColumnGroupingModel = useMemo(
+    () =>
+      folder.subfolders.map((sub) => ({
+        groupId: sub.id,
+        headerName: sub.name.toUpperCase(),
+        children: [
+          { field: `${sub.id}_ws` },
+          { field: `${sub.id}_wa` },
+          { field: `${sub.id}_pv` },
+        ],
+      })),
+    [folder]
+  )
+
+  const fg = colors.foreground ?? "#e2e8f0"
+
   return (
-    <Box sx={{ width: "100%", overflowX: "auto" }}>
-      <Box sx={{ minWidth: 1200 }}>
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          columnGroupingModel={columnGroupingModel}
-          rowSpanning // auto-merges consecutive equal values per column
-          showCellVerticalBorder
-          showColumnVerticalBorder
-          disableRowSelectionOnClick
-          hideFooter
-          rowHeight={40}
-          sx={{
-            ...agTableDataGridSx,
+    <DataGrid
+      rows={rows}
+      columns={columns}
+      columnGroupingModel={columnGroupingModel}
+      hideFooter
+      disableRowSelectionOnClick
+      showCellVerticalBorder
+      showColumnVerticalBorder
+      disableColumnResize
+      disableColumnSorting
+      disableColumnMenu
+      rowHeight={ROW_HEIGHT}
+      isCellEditable={() => !isLocked}
+      sx={{
+        ...agTableDataGridSx,
+        ...sx,
+        "& .MuiDataGrid-columnHeaderTitleContainer": {
+          justifyContent: "center",
+        },
+        "& .MuiDataGrid-columnHeaderTitle": {
+          textAlign: "center",
+          width: "100%",
+        },
+        "& .MuiDataGrid-cell--editing": {
+          backgroundColor: "transparent !important",
+          boxShadow: "none",
+          padding: 0,
+        },
+        "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
+          backgroundColor: "transparent",
+          color: fg,
+          fontSize: "0.875rem",
+          padding: "0 8px",
+        },
+        "& .MuiDataGrid-cell--editing .MuiInputBase-input": {
+          color: fg,
+          padding: 0,
+        },
+      }}
+    />
+  )
+}
 
-            // Center all column header titles (normal + group headers)
-            "& .MuiDataGrid-columnHeaderTitleContainer": {
-              justifyContent: "center",
-            },
-            "& .MuiDataGrid-columnHeaderTitle": {
-              textAlign: "center",
-              width: "100%",
-            },
+export default function DynamicFolderTable() {
+  const storageKey = "tresta:labour-target"
+  const lockKey = `${storageKey}:locked`
 
-            // Section column header is blank; match grid background.
-            '& .MuiDataGrid-columnHeader[data-field="section"]': {
-              backgroundColor: colors.background.trim(),
-            },
+  const [selectedRole, setSelectedRole] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
-            // Section cells: keep consistent with AG Grid header tone.
-            "& .cell-section": {
-              backgroundColor: `${colors.oddRowBackground} !important`,
-              padding: "0 !important",
-            },
-          }}
-        />
+  const handleOpenModal = useCallback((role: string) => {
+    setSelectedRole(role)
+    setModalOpen(true)
+  }, [])
+
+  const [folders, setFolders] = useState<FolderType[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_FOLDERS
+    try {
+      const raw = window.localStorage.getItem(storageKey)
+      if (!raw) return DEFAULT_FOLDERS
+      const parsed = JSON.parse(raw) as unknown
+      return Array.isArray(parsed) ? (parsed as FolderType[]) : DEFAULT_FOLDERS
+    } catch {
+      return DEFAULT_FOLDERS
+    }
+  })
+
+  const [isLocked, setIsLocked] = useState(() => {
+    if (typeof window === "undefined") return false
+    try {
+      return window.localStorage.getItem(lockKey) === "true"
+    } catch {
+      return false
+    }
+  })
+
+  const [modal, setModal] = useState<ModalState>(null)
+  const [copiedValue, setCopiedValue] = useState("")
+
+  // ── Per-folder header height measurement
+  // We need each folder's DataGrid header height so the sidebar label is
+  // offset correctly for every grid independently.
+  const gridRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const [headerHeights, setHeaderHeights] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    const observers: ResizeObserver[] = []
+    folders.forEach((folder) => {
+      const el = gridRefs.current.get(folder.id)
+      if (!el) return
+      const measure = () => {
+        const header = el.querySelector(
+          ".MuiDataGrid-columnHeaders"
+        ) as HTMLElement | null
+        if (header) {
+          setHeaderHeights((prev) =>
+            prev[folder.id] === header.offsetHeight
+              ? prev
+              : { ...prev, [folder.id]: header.offsetHeight }
+          )
+        }
+      }
+      measure()
+      const obs = new ResizeObserver(measure)
+      obs.observe(el)
+      observers.push(obs)
+    })
+    return () => observers.forEach((o) => o.disconnect())
+  }, [folders])
+
+  const saveSubfolder = useCallback(
+    (folderId: string, subfolderId: string, rows: Row[]) => {
+      setFolders((prev) =>
+        prev.map((f) =>
+          f.id === folderId
+            ? {
+                ...f,
+                subfolders: f.subfolders.map((sf) =>
+                  sf.id === subfolderId ? { ...sf, rows } : sf
+                ),
+              }
+            : f
+        )
+      )
+      setModal(null)
+    },
+    []
+  )
+
+  const activeFolder = modal
+    ? folders.find((f) => f.id === modal.folderId)
+    : null
+  const activeSubfolder = activeFolder?.subfolders.find(
+    (sf) => sf.id === modal?.subfolderId
+  )
+
+  const borderColor = colors.border ?? "rgba(255,255,255,0.12)"
+  const sectionBg = colors.oddRowBackground ?? "rgba(255,255,255,0.04)"
+  const fg = colors.foreground ?? "#e2e8f0"
+
+  return (
+      <Box sx={{ display: "flex", overflow: "hidden" }}>
+        <Box sx={{ flex: 1, overflow: "auto" }}>
+          {/* ── One row per folder: sidebar label + its own DataGrid  */}
+          <Box sx={{ minWidth: 1200 }}>
+            {folders.map((folder) => {
+              const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
+              const sectionH = hh + ROWS_PER_FOLDER * ROW_HEIGHT
+
+              return (
+                <Box
+                  key={folder.id}
+                  sx={{ display: "flex", alignItems: "stretch" }}
+                >
+                  {/* Sidebar label — full height of header + data rows */}
+                      <Box
+                        title={
+                          isLocked ? undefined : "Right-click to add subfolder"
+                        }
+                        sx={{
+                          flexShrink: 0,
+                          width: 48,
+                          height: sectionH,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          writingMode: "vertical-lr",
+                          transform: "rotate(180deg)",
+                          fontWeight: 700,
+                          fontSize: 11,
+                          letterSpacing: "0.12em",
+                          userSelect: "none",
+                          cursor: isLocked ? "default" : "context-menu",
+                          color: fg,
+                          backgroundColor: sectionBg,
+                          border: `1px solid ${borderColor}`,
+                          transition: "background-color 140ms",
+                          "&:hover": isLocked
+                            ? {}
+                            : {
+                                backgroundColor: "rgba(251,191,36,0.07)",
+                              },
+                        }}
+                      >
+                        {folder.name}
+                      </Box>
+                  {/* This folder's own DataGrid */}
+                  <Box
+                    ref={(el: HTMLDivElement | null) => {
+                      if (el) gridRefs.current.set(folder.id, el)
+                      else gridRefs.current.delete(folder.id)
+                    }}
+                    sx={{ flex: 1, minWidth: 0 }}
+                  >
+                    <FolderGrid
+                      folder={folder}
+                      isLocked={isLocked}
+                      // Remove top border on grids after the first to avoid double borders
+                      sx={
+                        folders.indexOf(folder) > 0
+                          ? {
+                              "& .MuiDataGrid-root, & .MuiDataGrid-main": {
+                                borderTop: "none",
+                              },
+                            }
+                          : undefined
+                      }
+                    />
+                  </Box>
+                </Box>
+              )
+            })}
+          </Box>
+        </Box>
+
+        {/* ── Subfolder edit modal  */}
+        {modal && activeSubfolder && activeFolder && (
+          <SubfolderModal
+            subfolder={activeSubfolder}
+            folderName={activeFolder.name}
+            copiedValue={copiedValue}
+            onCopy={setCopiedValue}
+            onSave={(rows) =>
+              saveSubfolder(modal.folderId, modal.subfolderId, rows)
+            }
+            onClose={() => setModal(null)}
+          />
+        )}
       </Box>
-    </Box>
   )
 }

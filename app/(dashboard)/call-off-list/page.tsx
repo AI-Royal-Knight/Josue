@@ -173,7 +173,6 @@ export default function Page() {
     })
   }, [])
 
-  // ── Build flat virtual rows: one group header per PO + child lines ──────────
   const rowData = useMemo<VirtualRow[]>(() => {
     // Preserve insertion order of PO refs
     const poRefs = Array.from(new Set(data.map((r) => r.poRef)))
@@ -214,7 +213,6 @@ export default function Page() {
         no: "",
       })
 
-      // Child rows — only include when this PO is expanded
       if (expanded.has(poRef)) {
         children.forEach((r) => rows.push({ ...r, _kind: "child" }))
       }
@@ -223,7 +221,6 @@ export default function Page() {
     return rows
   }, [data, expanded])
 
-  // ── Column definitions ──────────────────────────────────────────────────────
   const columnDefs = useMemo<ColDef<VirtualRow>[]>(() => {
     const cols: ColDef<VirtualRow>[] = [
       // PO Ref / expand-collapse column
@@ -414,7 +411,7 @@ export default function Page() {
 
       // ── Procurement-only ──────────────────────────────────────────────
       {
-        headerName: "Management Approved",
+        headerName: "Approve",
         field: "managementApproved",
         minWidth: 210,
         hide: !isProcurement,
@@ -444,7 +441,7 @@ export default function Page() {
         },
       },
       {
-        headerName: "Management Approved Date",
+        headerName: "Approval Date",
         field: "managementApprovedDate",
         minWidth: 220,
         hide: !isProcurement,
@@ -456,7 +453,7 @@ export default function Page() {
       },
 
       {
-        headerName: "Approve By",
+        headerName: "Approved By",
         field: "approveBy",
         minWidth: 130,
         cellRenderer: (params: { data?: VirtualRow; value: string }) => {

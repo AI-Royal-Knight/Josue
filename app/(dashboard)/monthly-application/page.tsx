@@ -83,6 +83,11 @@ export default function Page() {
                 value: "£12,100",
                 valueColor: "green",
               },
+              {
+                label: "Retention hold",
+                value: "£1,210",
+                valueColor: "red",
+              },
             ]}
           />
         </div>

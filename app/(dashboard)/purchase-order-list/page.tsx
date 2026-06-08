@@ -219,8 +219,7 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
 ]
 
 const summaryMetrics = [
-  { label: "Approved Quotes", value: "£2,550,000" },
-  { label: "Created PO", value: "£845,200" },
+  { label: "PO", value: "£2,550,000" },
 ]
 
 // ─── Create PO Dialog ─────────────────────────────────────────────────────────
@@ -580,23 +579,13 @@ const columns: ColDef<PurchaseOrderRow>[] = [
   { headerName: "Supplier Name", field: "supplierName" },
   { headerName: "Supplier Email", field: "supplierEmail" },
   { headerName: "Date Quote Approved", field: "dateOfQuoteApproved" },
-  { headerName: "Quote Total", field: "quoteTotal" },
+  { headerName: "PO Total", field: "quoteTotal" },
   { headerName: "Date PO Created", field: "datePOCreated" },
-  {
-    headerName: "Send Reminder",
-    field: "sendReminder",
-    cellRenderer: (params: { data?: PurchaseOrderRow }) => (
-      <Button size="sm" variant="ghost">
-        🔔 {params.data?.sendReminder}
-      </Button>
-    ),
-  },
   {
     headerName: "Procurement Comments",
     field: "procurementComments",
     editable: true,
   },
-  { headerName: "Approval", field: "approvalQuotation" },
   {
     headerName: "Source PDF",
     field: "sourceFile",

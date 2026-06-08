@@ -217,7 +217,7 @@ export default function DynamicFolderTable() {
 
   const currentAssignment = assignments.find((a) => a.role === selectedRole)
 
-  // ── Per-folder header height measurement ────────────────────────────────
+  // ── Per-folder header height measurement
   // We need each folder's DataGrid header height so the sidebar label is
   // offset correctly for every grid independently.
   const gridRefs = useRef<Map<string, HTMLDivElement>>(new Map())

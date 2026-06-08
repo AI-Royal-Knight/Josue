@@ -203,7 +203,22 @@ export default function Page() {
   }
 
   const columns: ColDef<QuotationRow>[] = [
-    { headerName: "Quotes Ref", field: "quotesRef", minWidth: 140 },
+    {
+      headerName: "Quotes Ref",
+      field: "quotesRef",
+      minWidth: 140,
+      cellRenderer: (params) => {
+        const quoteRef = params.value || ""
+        return (
+          <span
+            className="cursor-pointer font-medium text-blue-400 hover:underline"
+            onClick={() => alert(`Clicked on quote ${quoteRef}`)}
+          >
+            {quoteRef}
+          </span>
+        )
+      },
+    },
     { headerName: "Project", field: "project" },
     { headerName: "Main Folder", field: "mainFolder" },
     { headerName: "Sub Folder", field: "subFolder" },
@@ -250,7 +265,9 @@ export default function Page() {
           )
         }
         if (!isProcurement) {
-          return <span className="text-amber-400 font-medium text-sm">Pending</span>
+          return (
+            <span className="text-sm font-medium text-amber-400">Pending</span>
+          )
         }
 
         return (
@@ -299,7 +316,7 @@ export default function Page() {
             <Button
               disabled
               title="Only procurement department can create."
-              className="h-7 rounded-none bg-slate-800 px-3 text-xs text-slate-500 cursor-not-allowed"
+              className="h-7 cursor-not-allowed rounded-none bg-slate-800 px-3 text-xs text-slate-500"
             >
               <FileText className="size-3.5" />
               Create PO
@@ -439,7 +456,8 @@ export default function Page() {
                   subFolder: payload.subFolder || "",
                   variationRef: payload.variationRef || "-",
                   supplierName: data.supplierName,
-                  supplierEmailAddress: payload.supplierEmails?.join(", ") ?? data.supplierEmail,
+                  supplierEmailAddress:
+                    payload.supplierEmails?.join(", ") ?? data.supplierEmail,
                   dateOfQuoteApproved: "-",
                   quoteTotal: `$${Number(data.quoteTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
                   poCreated: false,
