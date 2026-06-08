@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 
 type CsvColumn<TData extends object> = {
-  header: string
+  /** CSV column header text. Use this or `headerName` (AG Grid compat). */
+  header?: string
+  /** Alias for `header`, accepts AG Grid's `headerName` field. */
+  headerName?: string
   field?: keyof TData & string
   value?: (row: TData) => unknown
 }
@@ -32,7 +35,9 @@ const buildCsv = <TData extends object>({
   rows: TData[]
   columns: CsvColumn<TData>[]
 }) => {
-  const headers = columns.map((col) => csvEscape(col.header)).join(",")
+  const headers = columns
+    .map((col) => csvEscape(col.header ?? col.headerName ?? ""))
+    .join(",")
 
   const body = rows
     .map((row) =>

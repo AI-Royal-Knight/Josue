@@ -249,7 +249,7 @@ export default function DynamicFolderTable() {
   }, [folders])
 
   const saveSubfolder = useCallback(
-    (folderId: string, subfolderId: string, rows: Row[]) => {
+    (folderId: string, subfolderId: string | null, rows: Row[]) => {
       setFolders((prev) =>
         prev.map((f) =>
           f.id === folderId
@@ -349,7 +349,7 @@ export default function DynamicFolderTable() {
                       <ContextMenuItem
                         className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
                         onSelect={() =>
-                          setModalOpen({
+                          setModal({
                             folderId: folder.id,
                             subfolderId: null,
                           })

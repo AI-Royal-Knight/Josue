@@ -229,7 +229,7 @@ export default function DynamicFolderTable() {
   }, [folders])
 
   const saveSubfolder = useCallback(
-    (folderId: string, subfolderId: string, rows: Row[]) => {
+    (folderId: string, subfolderId: string | null, rows: Row[]) => {
       setFolders((prev) =>
         prev.map((f) =>
           f.id === folderId

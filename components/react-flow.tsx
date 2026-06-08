@@ -220,7 +220,7 @@ function ReactFlowComponentInner() {
   }, [])
 
   const saveSubfolder = useCallback(
-    (folderId: string, subfolderId: string, rows: Row[]) => {
+    (folderId: string, subfolderId: string | null, rows: Row[]) => {
       setFolders((prev) =>
         prev.map((folder) =>
           folder.id === folderId

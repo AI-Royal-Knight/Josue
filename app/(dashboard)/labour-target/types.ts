@@ -20,7 +20,7 @@ export type FolderType = {
 
 export type ModalState = {
   folderId: string;
-  subfolderId: string;
+  subfolderId: string | null;
 } | null;
 
 export type FocusedCell = {

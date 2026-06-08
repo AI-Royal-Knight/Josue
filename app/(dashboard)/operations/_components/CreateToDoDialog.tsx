@@ -32,6 +32,7 @@ export type ToDoFormData = {
   completionDate: string
   project: string
   assignUser: string
+  attachment: File | null
 }
 
 const PROJECTS = ["Project A", "Project B", "Project C"]
@@ -47,6 +48,7 @@ export default function CreateToDoDialog({
     completionDate: "",
     project: "",
     assignUser: "",
+    attachment: null,
   })
 
   const handleSave = () => {
@@ -58,6 +60,7 @@ export default function CreateToDoDialog({
       completionDate: "",
       project: "",
       assignUser: "",
+      attachment: null,
     })
     onOpenChange(false)
   }
