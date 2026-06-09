@@ -9,7 +9,7 @@ import {
   type GridColumnGroupingModel,
 } from "@mui/x-data-grid"
 
-import { FolderPlus } from "lucide-react"
+import { FolderPlus, UserPlus } from "lucide-react"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 import { colors } from "@/constants/colors"
 
@@ -31,6 +31,7 @@ import { AssignUserModal } from "../assign-management/_components/assign-user-mo
 import AssignUsersDialog from "../variations/_components/AssignUsersDialog"
 import { initialAssignments } from "../assign-management/page"
 import SelectSearch from "@/components/select-search"
+import { ExportCsvButton } from "@/components/common/export-csv-button"
 
 const ROWS_PER_FOLDER = 5
 const ROW_HEIGHT = 42
@@ -58,10 +59,12 @@ const DEFAULT_FOLDERS: FolderType[] = [
 function FolderGrid({
   folder,
   isLocked,
+  onAssignSubfolder,
   sx,
 }: {
   folder: FolderType
   isLocked: boolean
+  onAssignSubfolder?: (subfolderName: string) => void
   sx?: object
 }) {
   const rows = useMemo(
@@ -74,33 +77,75 @@ function FolderGrid({
           row[`${sub.id}_pv`] = ""
           row[`${sub.id}_lt`] = ""
         })
+        row["lt_total"] = ""
+        row["total_claim"] = ""
+        row["percent_claim"] = ""
         return row
       }),
     [folder]
   )
 
   const columns: GridColDef[] = useMemo(
-    () =>
-      folder.subfolders.flatMap((sub) => [
-        {
-          field: `${sub.id}_ws`,
-          headerName: "Work Section",
-          width: 120,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_wa`,
-          headerName: "Work Area",
-          width: 120,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_lt`,
-          headerName: "Labour Target",
-          width: 120,
-          editable: true,
-        },
-      ]),
+    () => [
+      ...folder.subfolders.flatMap((sub) => {
+        const wsField = `${sub.id}_ws`
+        return [
+          {
+            field: wsField,
+            headerName: "Work Section",
+            width: 145,
+            editable: true,
+            renderHeader: (params: any) => (
+              <div className="flex w-full items-center justify-between gap-1">
+                <span className="truncate text-[11px]">Work Section</span>
+                <button
+                  type="button"
+                  title={`Assign user to ${sub.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onAssignSubfolder?.(sub.name)
+                  }}
+                  className="flex size-5 shrink-0 items-center justify-center rounded hover:bg-white/10"
+                >
+                  <UserPlus size={13} className="text-amber-400" />
+                </button>
+              </div>
+            ),
+          },
+          {
+            field: `${sub.id}_wa`,
+            headerName: "Work Area",
+            width: 120,
+            editable: true,
+          },
+          {
+            field: `${sub.id}_lt`,
+            headerName: "Labour Target",
+            width: 120,
+            editable: true,
+          },
+        ]
+      }),
+      // Summary columns (always on the right side)
+      {
+        field: "lt_total",
+        headerName: "LT TOTAL",
+        width: 100,
+        editable: true,
+      },
+      {
+        field: "total_claim",
+        headerName: "TOTAL CLAIM",
+        width: 110,
+        editable: true,
+      },
+      {
+        field: "percent_claim",
+        headerName: "% CLAIM",
+        width: 90,
+        editable: true,
+      },
+    ],
     [folder]
   )
 
@@ -282,7 +327,7 @@ export default function DynamicFolderTable() {
     <div className="space-y-6 p-4">
       <h1>Labour Target</h1>
 
-      <div className="w-full max-w-sm">
+      <div className="flex w-full items-center justify-between">
         <SelectSearch
           options={folders.map((f) => ({ label: f.name, value: f.id }))}
           //   value={selectedFolder}
@@ -292,6 +337,7 @@ export default function DynamicFolderTable() {
           searchPlaceholder="Search folders..."
           emptyMessage="No folders found."
         />
+        <ExportCsvButton rows={[]} columns={[]} />
       </div>
 
       <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -375,6 +421,7 @@ export default function DynamicFolderTable() {
                     <FolderGrid
                       folder={folder}
                       isLocked={isLocked}
+                      onAssignSubfolder={(name) => handleOpenModal(name)}
                       // Remove top border on grids after the first to avoid double borders
                       sx={
                         folders.indexOf(folder) > 0

@@ -97,22 +97,10 @@ function buildInvoiceDocHtml(invoice: InvoiceRow) {
 const summaryRows = [
   { label: "Proforma NR Invoice", qty: 50, value: "1000", alert: false },
   {
-    label: "Approved Proforma NR Invoice",
-    qty: 200,
-    value: "200",
-    alert: false,
-  },
-  {
-    label: "Proforma NR Invoice Awaiting approved",
+    label: "Proforma NR Invoice Awaiting approval",
     qty: 200,
     value: "200",
     alert: true,
-  },
-  {
-    label: "Proforma NR invoices due this week",
-    qty: 200,
-    value: "200",
-    alert: false,
   },
   { label: "Proforma NR invoices paid", qty: 200, value: "200", alert: false },
 ]

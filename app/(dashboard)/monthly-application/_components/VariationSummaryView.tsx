@@ -113,7 +113,11 @@ const totalRow: VariationSummaryRow = {
 export default function VariationSummaryView() {
   const columns = useMemo<ColDef<VariationSummaryRow>[]>(
     () => [
-      { headerName: "No.", field: "no", minWidth: 70, filter: false },
+      {
+        headerName: "Variation Number",
+        field: "variationSheetNumber",
+        minWidth: 160,
+      },
       {
         headerName: "Site instruction number",
         field: "siteInstructionNumber",
@@ -129,11 +133,6 @@ export default function VariationSummaryView() {
         ),
       },
       { headerName: "Date", field: "date" },
-      {
-        headerName: "Variation Sheet Number",
-        field: "variationSheetNumber",
-        minWidth: 160,
-      },
       {
         headerName: "Description of Works",
         field: "descriptionOfWorks",

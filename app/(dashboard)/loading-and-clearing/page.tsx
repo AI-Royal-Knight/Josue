@@ -127,39 +127,6 @@ export default function Page() {
           rowHeight: 28,
         }}
       />
-
-      <Card>
-        <CardContent className="flex items-center justify-between">
-          <div>
-            <div>Other Instructions / Clarifications :</div>
-            <div>Total NR : </div>
-          </div>
-          <div>
-            <div>
-              Evidence :
-              <Button
-                type="button"
-                onClick={handleUploadFile}
-                variant={"outline"}
-                className="ml-2 h-8 px-3"
-              >
-                <Upload size={16} />
-                {selectedFileName ?? "Upload PDFs or pictures"}
-              </Button>
-            </div>
-          </div>
-          <Input
-            type="file"
-            accept=".pdf,.jpg,.png"
-            onChange={handleFileChange}
-            className="hidden"
-            ref={fileRef}
-          />
-          <Button onClick={handleUploadFile} variant={"secondary"}>
-            Submit for Approval
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   )
 }

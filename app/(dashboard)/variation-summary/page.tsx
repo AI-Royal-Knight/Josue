@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import {
   Select,
   SelectContent,
@@ -12,6 +12,9 @@ import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import type { ColDef } from "ag-grid-community"
 import { Switch } from "@/components/ui/switch"
+import ViewVariationDialog from "../variations/_components/ViewVariationDialog"
+import { VariationRow } from "../variations/types"
+import { buildVariationDocHtml, initialRows } from "../variations/utils"
 
 type VariationSummaryRow = {
   no: string
@@ -110,83 +113,6 @@ const data: VariationSummaryRow[] = [
   },
 ]
 
-const columns: ColDef<VariationSummaryRow>[] = [
-  {
-    headerName: "No.",
-    field: "no",
-    minWidth: 80,
-  },
-  {
-    headerName: "Site Instruction Number",
-    field: "siteInstructionNumber",
-    minWidth: 160,
-  },
-  {
-    headerName: "Evidence",
-    field: "evidence",
-  },
-  {
-    headerName: "Date",
-    field: "date",
-  },
-//   {
-//     headerName: "Variation Sheet Number",
-//     field: "variationSheetNumber",
-//   },
-  {
-    headerName: "Description of Works",
-    field: "descriptionOfWorks",
-  },
-  {
-    headerName: "Variation value",
-    field: "variationAmount",
-  },
-//   {
-//     headerName: "% Claimed",
-//     field: "percentClaimed",
-//   },
-//   {
-//     headerName: "Amount Claimed",
-//     field: "amountClaimed",
-//   },
-  {
-    headerName: "Add to Application",
-    field: "addToApplication",
-    cellRenderer: (params: { value: string }) => (
-      <Switch
-        checked={params.value === "£0.00" ? false : true}
-        onCheckedChange={(checked) => {
-          // Handle toggle logic here, e.g., update the value in your data source
-          console.log(
-            `Toggle for row with value ${params.value} changed to ${checked}`
-          )
-        }}
-      />
-    ),
-  },
-  { headerName: "Signed by Client", field: "signByClient" },
-//   {
-//     headerName: "Client Certified Amount",
-//     field: "clientCertifiedAmount",
-//   },
-//   {
-//     headerName: "Diffrence",
-//     field: "diffrenceAmount",
-//   },
-//   {
-//     headerName: "Payment Status nr",
-//     field: "paymentStatusNr",
-//   },
-//   {
-//     headerName: "Claim QS Comment",
-//     field: "claimGQComment",
-//   },
-  {
-    headerName: "Comments",
-    field: "comments",
-  },
-]
-
 const totalRow: VariationSummaryRow = {
   no: "",
   siteInstructionNumber: "TOTAL",
@@ -250,6 +176,143 @@ const totalRow: VariationSummaryRow = {
 
 export default function Page() {
   const [selectedProject, setSelectedProject] = useState("project-a")
+  const [rows, setRows] = useState<VariationRow[]>(initialRows)
+
+  const [variationDialogOpen, setVariationDialogOpen] = useState(false)
+  const [selectedVariation, setSelectedVariation] =
+    useState<VariationRow | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const downloadVariationDoc = useCallback((row: VariationRow) => {
+    const html = buildVariationDocHtml(row)
+    const blob = new Blob([html], { type: "application/msword" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `${row.voNo}.doc`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const submitVariationToClient = useCallback(
+    (name: string, email: string) => {
+      if (!selectedVariation || !name || !email) return
+      setIsSubmitting(true)
+      setTimeout(() => {
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === selectedVariation.id
+              ? { ...r, submittedToClient: true }
+              : r
+          )
+        )
+        setIsSubmitting(false)
+        setVariationDialogOpen(false)
+      }, 1000)
+    },
+    [selectedVariation]
+  )
+
+  const openVariationBySiteInstNo = useCallback(
+    (siteInstructionNo: string) => {
+      const variation = rows.find(
+        (r) => r.siteInstructionNo === siteInstructionNo
+      )
+      if (variation) {
+        setSelectedVariation(variation)
+        setVariationDialogOpen(true)
+      }
+    },
+    [rows]
+  )
+
+  const columns: ColDef<VariationSummaryRow>[] = [
+  {
+    headerName: "Variation No",
+    field: "no",
+  },
+  {
+    headerName: "Site Instruction Number",
+    field: "siteInstructionNumber",
+    minWidth: 160,
+    cellRenderer: (params: { data?: VariationSummaryRow; value: string }) => (
+      <span
+        className="cursor-pointer font-medium text-emerald-500 hover:underline"
+        onClick={(event) => {
+          event.stopPropagation()
+          if (!params.value) return
+          openVariationBySiteInstNo(params.value)
+        }}
+      >
+        {params.value}
+      </span>
+    ),
+  },
+  {
+    headerName: "Evidence",
+    field: "evidence",
+  },
+  {
+    headerName: "Date",
+    field: "date",
+  },
+  //   {
+  //     headerName: "Variation Sheet Number",
+  //     field: "variationSheetNumber",
+  //   },
+  {
+    headerName: "Description of Works",
+    field: "descriptionOfWorks",
+  },
+  {
+    headerName: "Variation value",
+    field: "variationAmount",
+  },
+  //   {
+  //     headerName: "% Claimed",
+  //     field: "percentClaimed",
+  //   },
+  //   {
+  //     headerName: "Amount Claimed",
+  //     field: "amountClaimed",
+  //   },
+  {
+    headerName: "Add to Application",
+    field: "addToApplication",
+    cellRenderer: (params: { value: string }) => (
+      <Switch
+        checked={params.value === "£0.00" ? false : true}
+        onCheckedChange={(checked) => {
+          // Handle toggle logic here, e.g., update the value in your data source
+          console.log(
+            `Toggle for row with value ${params.value} changed to ${checked}`
+          )
+        }}
+      />
+    ),
+  },
+  { headerName: "Signed by Client", field: "signByClient" },
+  //   {
+  //     headerName: "Client Certified Amount",
+  //     field: "clientCertifiedAmount",
+  //   },
+  //   {
+  //     headerName: "Diffrence",
+  //     field: "diffrenceAmount",
+  //   },
+  //   {
+  //     headerName: "Payment Status nr",
+  //     field: "paymentStatusNr",
+  //   },
+  //   {
+  //     headerName: "Claim QS Comment",
+  //     field: "claimGQComment",
+  //   },
+  {
+    headerName: "Comments",
+    field: "comments",
+  },
+]
 
   return (
     <div className="w-full space-y-6 p-6">
@@ -278,6 +341,7 @@ export default function Page() {
         rowData={data}
         columnDefs={columns}
         height="auto"
+        suppressCellClickAction
         gridOptions={{
           headerHeight: 40,
           suppressCellFocus: true,
@@ -298,6 +362,15 @@ export default function Page() {
           flex: 1,
           minWidth: 160,
         }}
+      />
+
+      <ViewVariationDialog
+        open={variationDialogOpen}
+        onOpenChange={setVariationDialogOpen}
+        variation={selectedVariation}
+        onDownload={downloadVariationDoc}
+        onSubmitToClient={submitVariationToClient}
+        isSubmitting={isSubmitting}
       />
     </div>
   )

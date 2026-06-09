@@ -20,6 +20,22 @@ import ViewInvoiceDialog, {
   InvoicePreviewData,
 } from "@/components/common/view-invoice-dialog"
 import { useRoleStore } from "@/lib/role-store"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -260,6 +276,33 @@ export default function Page() {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] =
     useState<InvoicePreviewData | null>(null)
+  const [moneyOnHoldRow, setMoneyOnHoldRow] = useState<InvoiceRow | null>(null)
+  const [assignUser, setAssignUser] = useState("")
+  const [assignAmount, setAssignAmount] = useState("")
+
+  // Sample users for assignment
+  const userOptions = [
+    { value: "alison", label: "Alison Taylor" },
+    { value: "alex", label: "Alex Wanchis" },
+    { value: "chanu", label: "Chanu Clap" },
+    { value: "chailau", label: "Chailau" },
+    { value: "provin", label: "Provin Kumar" },
+    { value: "yoshi", label: "Yoshi Kub" },
+  ]
+
+  const handleAssignMoneyOnHold = useCallback(() => {
+    if (!moneyOnHoldRow || !assignUser || !assignAmount) return
+    // In a real app, this would make an API call
+    setMoneyOnHoldRow(null)
+    setAssignUser("")
+    setAssignAmount("")
+  }, [moneyOnHoldRow, assignUser, assignAmount])
+
+  const openMoneyOnHold = useCallback((row: InvoiceRow) => {
+    setMoneyOnHoldRow(row)
+    setAssignUser("")
+    setAssignAmount("")
+  }, [])
 
   const role = useRoleStore((s) => s.role)
   const isSupervisor = role === "supervisor" || role === "managers"
@@ -548,12 +591,32 @@ export default function Page() {
         },
       },
 
-      // ── Rest of columns ──────────────────────────────────────────────────
+      // ── Money on Hold (clickable to assign to another user) ──────────────
       {
         headerName: "Money on Hold",
         field: "total",
+        colId: "money_on_hold",
         minWidth: 160,
-        cellStyle: { textAlign: "right" },
+        cellRenderer: (params: { data?: InvoiceRow; value: string }) => {
+          if (!params.value) return null
+          const isNegative =
+            params.value.startsWith("-") || params.value === "£0.00"
+          return (
+            <button
+              type="button"
+              className={`w-full cursor-pointer text-right transition-colors hover:text-amber-400 ${
+                isNegative ? "text-slate-400" : "font-medium text-red-400"
+              }`}
+              title="Click to assign money on hold to another user"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (params.data) openMoneyOnHold(params.data)
+              }}
+            >
+              {params.value}
+            </button>
+          )
+        },
       },
       { headerName: "Approved By", field: "approvedBy", minWidth: 140 },
       {
@@ -688,6 +751,92 @@ export default function Page() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Money on Hold Assignment Dialog ── */}
+      <Dialog
+        open={!!moneyOnHoldRow}
+        onOpenChange={(open) => !open && setMoneyOnHoldRow(null)}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Assign Money on Hold</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Current invoice info */}
+            {moneyOnHoldRow && (
+              <div className="rounded border border-white/10 bg-slate-900 p-3 text-xs">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-slate-400">Invoice</span>
+                  <span className="font-medium text-slate-200">
+                    {moneyOnHoldRow.invoiceNumber}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Amount on Hold</span>
+                  <span className="font-semibold text-red-400">
+                    {moneyOnHoldRow.total}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Amount to assign */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">
+                Amount to Assign
+              </label>
+              <Input
+                type="text"
+                placeholder="e.g. £10,000.00"
+                value={assignAmount}
+                onChange={(e) => setAssignAmount(e.target.value)}
+                className="border-white/10"
+              />
+              <p className="text-[10px] text-slate-500">
+                Enter a variable amount (not necessarily the full amount on hold)
+              </p>
+            </div>
+
+            {/* Select user */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">
+                Assign to User
+              </label>
+              <Select
+                value={assignUser}
+                onValueChange={setAssignUser}
+              >
+                <SelectTrigger className="w-full border-white/10">
+                  <SelectValue placeholder="Select a user…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userOptions.map((u) => (
+                    <SelectItem key={u.value} value={u.value}>
+                      {u.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMoneyOnHoldRow(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignMoneyOnHold}
+              disabled={!assignUser || !assignAmount}
+            >
+              Assign Amount
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ViewInvoiceDialog
         open={invoiceDialogOpen}
