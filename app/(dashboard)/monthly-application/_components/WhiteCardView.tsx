@@ -62,57 +62,27 @@ const DEFAULT_FOLDERS: FolderType[] = [
   },
 ]
 
-// Per-folder DataGrid
-function FolderGrid({
-  folder,
+// ── Summary columns (shared across all folders, right-aligned) ──
+function SummaryGrid({
   isLocked,
   sx,
 }: {
-  folder: FolderType
   isLocked: boolean
   sx?: object
 }) {
   const rows = useMemo(
     () =>
-      Array.from({ length: ROWS_PER_FOLDER }, (_, i) => {
-        const row: Record<string, unknown> = { id: i + 1 }
-        folder.subfolders.forEach((sub) => {
-          row[`${sub.id}_ws`] = ""
-          row[`${sub.id}_wa`] = ""
-          row[`${sub.id}_pv`] = ""
-          row[`${sub.id}_lt`] = ""
-        })
-        row["pj_total"] = ""
-        row["total_claim"] = ""
-        row["percent_claim"] = ""
-        return row
-      }),
-    [folder]
+      Array.from({ length: ROWS_PER_FOLDER }, (_, i) => ({
+        id: i + 1,
+        pj_total: "",
+        total_claim: "",
+        percent_claim: "",
+      })),
+    []
   )
 
   const columns: GridColDef[] = useMemo(
     () => [
-      ...folder.subfolders.flatMap((sub) => [
-        {
-          field: `${sub.id}_ws`,
-          headerName: "Work Section",
-          width: 120,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_wa`,
-          headerName: "Work Area",
-          width: 120,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_pv`,
-          headerName: "Project Value",
-          width: 120,
-          editable: true,
-        },
-      ]),
-      // Summary columns (always on the right side)
       {
         field: "pj_total",
         headerName: "PJ Total",
@@ -135,6 +105,118 @@ function FolderGrid({
         hideable: false,
       },
     ],
+    []
+  )
+
+  // Dummy column group so SummaryGrid matches FolderGrid's 2-header-row height
+  const columnGroupingModel: GridColumnGroupingModel = useMemo(
+    () => [
+      {
+        groupId: "summary-group",
+        headerName: "",
+        children: [
+          { field: "pj_total" },
+          { field: "total_claim" },
+          { field: "percent_claim" },
+        ],
+      },
+    ],
+    []
+  )
+
+  const fg = colors.foreground ?? "#e2e8f0"
+
+  return (
+    <DataGrid
+      rows={rows}
+      columns={columns}
+      columnGroupingModel={columnGroupingModel}
+      hideFooter
+      disableRowSelectionOnClick
+      showCellVerticalBorder
+      showColumnVerticalBorder
+      disableColumnResize
+      disableColumnSorting
+      disableColumnMenu
+      rowHeight={ROW_HEIGHT}
+      isCellEditable={() => !isLocked}
+      sx={{
+        ...agTableDataGridSx,
+        ...sx,
+        "& .MuiDataGrid-columnHeaderTitleContainer": {
+          justifyContent: "center",
+        },
+        "& .MuiDataGrid-columnHeaderTitle": {
+          textAlign: "center",
+          width: "100%",
+        },
+        "& .MuiDataGrid-cell--editing": {
+          backgroundColor: "transparent !important",
+          boxShadow: "none",
+          padding: 0,
+        },
+        "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
+          backgroundColor: "transparent",
+          color: fg,
+          fontSize: "0.875rem",
+          padding: "0 8px",
+        },
+        "& .MuiDataGrid-cell--editing .MuiInputBase-input": {
+          color: fg,
+          padding: 0,
+        },
+      }}
+    />
+  )
+}
+
+// Per-folder DataGrid (subfolder columns only — summary columns are in SummaryGrid)
+function FolderGrid({
+  folder,
+  isLocked,
+  sx,
+}: {
+  folder: FolderType
+  isLocked: boolean
+  sx?: object
+}) {
+  const rows = useMemo(
+    () =>
+      Array.from({ length: ROWS_PER_FOLDER }, (_, i) => {
+        const row: Record<string, unknown> = { id: i + 1 }
+        folder.subfolders.forEach((sub) => {
+          row[`${sub.id}_ws`] = ""
+          row[`${sub.id}_wa`] = ""
+          row[`${sub.id}_pv`] = ""
+          row[`${sub.id}_lt`] = ""
+        })
+        return row
+      }),
+    [folder]
+  )
+
+  const columns: GridColDef[] = useMemo(
+    () =>
+      folder.subfolders.flatMap((sub) => [
+        {
+          field: `${sub.id}_ws`,
+          headerName: "Work Section",
+          width: 120,
+          editable: true,
+        },
+        {
+          field: `${sub.id}_wa`,
+          headerName: "Work Area",
+          width: 120,
+          editable: true,
+        },
+        {
+          field: `${sub.id}_pv`,
+          headerName: "Project Value",
+          width: 120,
+          editable: true,
+        },
+      ]),
     [folder]
   )
 
@@ -470,11 +552,17 @@ export default function DynamicFolderTable() {
 
       <Box sx={{ display: "flex", overflow: "hidden" }}>
         <Box sx={{ flex: 1, overflow: "auto" }}>
-          {/* ── One row per folder: sidebar label + its own DataGrid  */}
+          {/* ── One row per folder: sidebar label + its own DataGrid + its own SummaryGrid ── */}
           <Box sx={{ minWidth: 1200 }}>
             {folders.map((folder) => {
               const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
               const sectionH = hh + ROWS_PER_FOLDER * ROW_HEIGHT
+              const isNotFirst = folders.indexOf(folder) > 0
+              const borderTopNone = {
+                "& .MuiDataGrid-root, & .MuiDataGrid-main": {
+                  borderTop: "none",
+                },
+              }
 
               return (
                 <Box
@@ -513,7 +601,7 @@ export default function DynamicFolderTable() {
                   >
                     {folder.name}
                   </Box>
-                  {/* This folder's own DataGrid */}
+                  {/* This folder's own DataGrid (subfolder columns) */}
                   <Box
                     ref={(el: HTMLDivElement | null) => {
                       if (el) gridRefs.current.set(folder.id, el)
@@ -524,16 +612,14 @@ export default function DynamicFolderTable() {
                     <FolderGrid
                       folder={folder}
                       isLocked={isLocked}
-                      // Remove top border on grids after the first to avoid double borders
-                      sx={
-                        folders.indexOf(folder) > 0
-                          ? {
-                              "& .MuiDataGrid-root, & .MuiDataGrid-main": {
-                                borderTop: "none",
-                              },
-                            }
-                          : undefined
-                      }
+                      sx={isNotFirst ? borderTopNone : undefined}
+                    />
+                  </Box>
+                  {/* Summary columns (PJ Total, Total Claim, % Claim) — always right-aligned */}
+                  <Box sx={{ flexShrink: 0 }}>
+                    <SummaryGrid
+                      isLocked={isLocked}
+                      sx={isNotFirst ? borderTopNone : undefined}
                     />
                   </Box>
                 </Box>
