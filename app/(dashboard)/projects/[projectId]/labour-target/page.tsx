@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useMemo, useState, useEffect, useRef } from "react"
+import { useParams } from "next/navigation"
 import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
 
@@ -183,20 +184,30 @@ function FolderGrid({
 }
 
 export default function DynamicFolderTable() {
+  const { projectId } = useParams<{ projectId: string }>()
   const storageKey = "tresta:labour-target"
   const lockKey = `${storageKey}:locked`
 
-  const [folders, setFolders] = useState<FolderType[]>(() => {
-    if (typeof window === "undefined") return DEFAULT_FOLDERS
-    try {
-      const raw = window.localStorage.getItem(storageKey)
-      if (!raw) return DEFAULT_FOLDERS
-      const parsed = JSON.parse(raw) as unknown
-      return Array.isArray(parsed) ? (parsed as FolderType[]) : DEFAULT_FOLDERS
-    } catch {
-      return DEFAULT_FOLDERS
-    }
-  })
+  const [folders, setFolders] = useState<FolderType[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!projectId) return
+    import("@/lib/api/project-admin").then(({ getProjectFolders }) => {
+      getProjectFolders(projectId)
+        .then((data) => {
+          if (data && data.length > 0) {
+            setFolders(data as unknown as FolderType[])
+          } else {
+            setFolders(DEFAULT_FOLDERS)
+          }
+        })
+        .catch(() => {
+          setFolders(DEFAULT_FOLDERS)
+        })
+        .finally(() => setLoading(false))
+    })
+  }, [projectId])
 
   const [isLocked, setIsLocked] = useState(() => {
     if (typeof window === "undefined") return false
@@ -262,13 +273,16 @@ export default function DynamicFolderTable() {
     setNewSubfolderName("")
   }, [])
 
-  const handleSaveProgress = useCallback(() => {
+  const handleSaveProgress = useCallback(async () => {
+    if (!projectId) return
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(folders))
-    } catch {
-      /* ignore */
+      const { updateProjectFolders } = await import("@/lib/api/project-admin")
+      await updateProjectFolders(projectId, folders as any)
+      alert("Progress saved successfully!")
+    } catch (err) {
+      alert("Failed to save progress")
     }
-  }, [folders, storageKey])
+  }, [folders, projectId])
 
   const handleToggleLock = useCallback(() => {
     setIsLocked((prev) => {

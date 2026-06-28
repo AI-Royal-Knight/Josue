@@ -1,7 +1,12 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Loader2, RefreshCw } from "lucide-react"
+
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef, ICellRendererParams } from "ag-grid-community"
 import { Button } from "@/components/ui/button"
@@ -22,13 +27,17 @@ import { Badge } from "@/components/ui/badge"
 import { getStatusVariant } from "@/lib/utils"
 import {
   getCompanies,
-  subscribeCompanies,
+  inviteAdmin,
   updateCompany,
   type CompanyRecord,
-} from "@/lib/company-store"
+  type CompanySummary,
+} from "@/lib/api/super-admin"
+import { ApiError } from "@/lib/api/client"
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type CompanyRow = {
-  id: string
+  id: number
   name: string
   adminFirstName: string
   adminSurname: string
@@ -40,8 +49,34 @@ type CompanyRow = {
   monthlySubscriptionGbp: number | null
   perUserRateGbp: number | null
   automaticMonthlyInvoices: boolean
-  status: CompanyRecord["status"]
+  status: "Active" | "Suspended"
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mapApiToRow(c: CompanyRecord): CompanyRow {
+  return {
+    id: c.id,
+    name: c.company_name ?? "—",
+    adminFirstName: c.admin_name ?? "—",
+    adminSurname: c.admin_surname ?? "—",
+    email: c.admin_email ?? "—",
+    phoneNumber: c.phone ?? "—",
+    projects: c.projects,
+    users: c.user,
+    activated: c.activate,
+    monthlySubscriptionGbp: c.monthly_subscription
+      ? parseFloat(c.monthly_subscription)
+      : null,
+    perUserRateGbp: c.per_user_rate
+      ? parseFloat(c.per_user_rate)
+      : null,
+    automaticMonthlyInvoices: c.auto_monthly_inv,
+    status: c.status === "active" ? "Active" : "Suspended",
+  }
+}
+
+// ── Currency Cell ─────────────────────────────────────────────────────────────
 
 function CurrencyInputCell({
   value,
@@ -54,7 +89,6 @@ function CurrencyInputCell({
 }) {
   const initialValue =
     value === null || value === undefined ? "" : String(value)
-  const inputKey = initialValue
 
   return (
     <div className="relative w-full">
@@ -65,7 +99,7 @@ function CurrencyInputCell({
         className="h-8 pl-6"
         inputMode="decimal"
         disabled={disabled}
-        key={inputKey}
+        key={initialValue}
         defaultValue={initialValue}
         onBlur={(e) => {
           const trimmed = e.currentTarget.value.trim()
@@ -79,11 +113,54 @@ function CurrencyInputCell({
   )
 }
 
-function InviteAdminDialog() {
+// ── Invite Admin Dialog ───────────────────────────────────────────────────────
+
+const inviteSchema = z.object({
+  company_name: z.string().min(1, "Company name is required"),
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Surname is required"),
+  email: z.string().email("Enter a valid email"),
+  phone_number: z.string().min(1, "Phone number is required"),
+})
+
+type InviteFormValues = z.infer<typeof inviteSchema>
+
+function InviteAdminDialog({ onSuccess }: { onSuccess: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<InviteFormValues>({ resolver: zodResolver(inviteSchema) })
+
+  const onSubmit = async (values: InviteFormValues) => {
+    setServerError(null)
+    setSuccessMsg(null)
+    try {
+      const res = await inviteAdmin(values)
+      setSuccessMsg(res.message)
+      reset()
+      onSuccess()
+      // Close after 2 seconds
+      setTimeout(() => {
+        setOpen(false)
+        setSuccessMsg(null)
+      }, 2000)
+    } catch (err) {
+      setServerError(
+        err instanceof ApiError ? err.message : "Something went wrong."
+      )
+    }
+  }
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Invite Admin</Button>
+        <Button id="invite-admin-btn">Invite Admin</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
@@ -92,90 +169,171 @@ function InviteAdminDialog() {
             Add a new company admin by entering the required details.
           </DialogDescription>
         </DialogHeader>
-        <form className="grid gap-4 py-4">
+
+        <form
+          id="invite-admin-form"
+          onSubmit={handleSubmit(onSubmit)}
+          className="grid gap-4 py-4"
+        >
           <Field>
-            <FieldLabel htmlFor="companyName">Company Name</FieldLabel>
+            <FieldLabel htmlFor="company_name">Company Name</FieldLabel>
             <FieldContent>
               <Input
-                id="companyName"
-                name="companyName"
+                id="company_name"
                 placeholder="Enter company name"
+                {...register("company_name")}
               />
+              {errors.company_name && (
+                <p className="mt-1 text-xs text-red-400">
+                  {errors.company_name.message}
+                </p>
+              )}
             </FieldContent>
           </Field>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="adminFirstName">Name</FieldLabel>
+              <FieldLabel htmlFor="first_name">Name</FieldLabel>
               <FieldContent>
                 <Input
-                  id="adminFirstName"
-                  name="adminFirstName"
+                  id="first_name"
                   placeholder="Enter name"
+                  {...register("first_name")}
                 />
+                {errors.first_name && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {errors.first_name.message}
+                  </p>
+                )}
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel htmlFor="adminSurname">Surname</FieldLabel>
+              <FieldLabel htmlFor="last_name">Surname</FieldLabel>
               <FieldContent>
                 <Input
-                  id="adminSurname"
-                  name="adminSurname"
+                  id="last_name"
                   placeholder="Enter surname"
+                  {...register("last_name")}
                 />
+                {errors.last_name && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {errors.last_name.message}
+                  </p>
+                )}
               </FieldContent>
             </Field>
           </div>
+
           <Field>
             <FieldLabel htmlFor="email">Email Address</FieldLabel>
             <FieldContent>
-              <Input id="email" name="email" placeholder="Enter email" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter email"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="mt-1 text-xs text-red-400">
+                  {errors.email.message}
+                </p>
+              )}
             </FieldContent>
           </Field>
+
           <Field>
-            <FieldLabel htmlFor="phoneNumber">Phone Number</FieldLabel>
+            <FieldLabel htmlFor="phone_number">Phone Number</FieldLabel>
             <FieldContent>
               <Input
-                id="phoneNumber"
-                name="phoneNumber"
+                id="phone_number"
                 placeholder="Enter phone number"
+                {...register("phone_number")}
               />
+              {errors.phone_number && (
+                <p className="mt-1 text-xs text-red-400">
+                  {errors.phone_number.message}
+                </p>
+              )}
             </FieldContent>
           </Field>
+
+          {serverError && (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {serverError}
+            </div>
+          )}
+          {successMsg && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+              {successMsg}
+            </div>
+          )}
         </form>
+
         <DialogFooter>
-          <Button variant="outline" type="button">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => setOpen(false)}
+          >
             Cancel
           </Button>
-          <Button>Send Invite</Button>
+          <Button
+            type="submit"
+            form="invite-admin-form"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Send Invite"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
 
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function CompaniesPage() {
-  const [rows, setRows] = useState<CompanyRow[]>(() => getCompanies())
+  const [rows, setRows] = useState<CompanyRow[]>([])
+  const [summary, setSummary] = useState<CompanySummary | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    return subscribeCompanies(() => setRows(getCompanies()))
-  }, [])
-
-  function ActionsCell(params: ICellRendererParams<CompanyRow>) {
-    const id = params.data?.id || ""
-    return (
-      <Button
-        className="mt-0.5 flex items-center gap-3"
-        variant="outline"
-        size="sm"
-      >
-        <Link href={`/super-admin/companies/${id}`}>View</Link>
-      </Button>
-    )
+  const fetchData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await getCompanies()
+      setSummary(res.summary)
+      setRows(res.companies.map(mapApiToRow))
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Failed to load companies."
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const columnDefs: ColDef<CompanyRow>[] = [
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const handleUpdate = async (id: number, payload: Partial<CompanyRecord>) => {
+    try {
+      await updateCompany(id, payload)
+      fetchData()
+    } catch (err) {
+      alert("Failed to update company.")
+    }
+  }
+
+  const columnDefs: ColDef<CompanyRow>[] = useMemo(() => [
     { field: "name", headerName: "Company" },
-    { field: "adminFirstName", headerName: "name" },
+    { field: "adminFirstName", headerName: "Name" },
     { field: "adminSurname", headerName: "Surname" },
     { field: "email", headerName: "Email", minWidth: 220 },
     { field: "phoneNumber", headerName: "Phone", minWidth: 160 },
@@ -194,9 +352,7 @@ export default function CompaniesPage() {
           <div className="flex items-center gap-2 py-1">
             <Switch
               checked={row.activated}
-              onCheckedChange={(checked) =>
-                updateCompany(row.id, { activated: checked })
-              }
+              onCheckedChange={(checked) => handleUpdate(row.id, { activate: checked })}
             />
             <span className="text-xs text-slate-400">
               {row.activated ? "On" : "Off"}
@@ -217,9 +373,7 @@ export default function CompaniesPage() {
         return (
           <CurrencyInputCell
             value={row.monthlySubscriptionGbp}
-            onCommit={(next) =>
-              updateCompany(row.id, { monthlySubscriptionGbp: next })
-            }
+            onCommit={(val) => handleUpdate(row.id, { monthly_subscription: val === null ? "0.00" : String(val) })}
           />
         )
       },
@@ -236,15 +390,15 @@ export default function CompaniesPage() {
         return (
           <CurrencyInputCell
             value={row.perUserRateGbp}
-            onCommit={(next) => updateCompany(row.id, { perUserRateGbp: next })}
+            onCommit={(val) => handleUpdate(row.id, { per_user_rate: val === null ? "0.00" : String(val) })}
           />
         )
       },
     },
     {
-      headerName: "Automatic monthly invoices",
+      headerName: "Auto Invoices",
       colId: "automaticMonthlyInvoices",
-      minWidth: 210,
+      minWidth: 160,
       sortable: false,
       filter: false,
       cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
@@ -254,9 +408,7 @@ export default function CompaniesPage() {
           <div className="flex items-center gap-2 py-1">
             <Switch
               checked={row.automaticMonthlyInvoices}
-              onCheckedChange={(checked) =>
-                updateCompany(row.id, { automaticMonthlyInvoices: checked })
-              }
+              onCheckedChange={(checked) => handleUpdate(row.id, { auto_monthly_inv: checked })}
             />
             <span className="text-xs text-slate-400">
               {row.automaticMonthlyInvoices ? "Yes" : "No"}
@@ -270,12 +422,11 @@ export default function CompaniesPage() {
       headerName: "Status",
       minWidth: 120,
       cellRenderer: (params: { value?: CompanyRow["status"] }) => {
-        const status = (params.value ?? "Suspended") as CompanyRow["status"]
-        return <Badge variant={getStatusVariant(status)}>{status}</Badge>
+        const s = params.value ?? "Suspended"
+        return <Badge variant={getStatusVariant(s)}>{s}</Badge>
       },
     },
-   //  { headerName: "Actions", cellRenderer: ActionsCell, minWidth: 120 },
-  ]
+  ], [])
 
   const defaultColDef = useMemo(
     () => ({ flex: 1, minWidth: 140, resizable: true }),
@@ -291,31 +442,62 @@ export default function CompaniesPage() {
             Manage admin companies and invitations
           </p>
         </div>
-        <div>
-          <InviteAdminDialog />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            disabled={loading}
+          >
+            <RefreshCw
+              className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+          <InviteAdminDialog onSuccess={fetchData} />
         </div>
       </header>
 
-      {/* <StatCards stats={data} /> */}
-      <TableStat
-        summaryRows={[
-          { label: "Admin users", value: "123" },
-          { label: "Users", value: "456" },
-          { label: "Projects", value: "789" },
-          { label: "Active", value: "12" },
-          { label: "Suspended", value: "3" },
-        ]}
-      />
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
-      <div className="flex flex-1 flex-col rounded-lg bg-card">
-        <AgTable
-          rowData={rows}
-          columnDefs={columnDefs}
-          height="100%"
-          pagination
-          pageSize={10}
-          defaultColDef={defaultColDef}
+      {/* Summary Stats */}
+      {loading && !summary ? (
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading stats…
+        </div>
+      ) : summary ? (
+        <TableStat
+          summaryRows={[
+            { label: "Admin users", value: String(summary.admin_users) },
+            { label: "Users", value: String(summary.users) },
+            { label: "Projects", value: String(summary.projects) },
+            { label: "Active", value: String(summary.active) },
+            { label: "Suspended", value: String(summary.suspended) },
+          ]}
         />
+      ) : null}
+
+      {/* Table */}
+      <div className="flex flex-1 flex-col rounded-lg bg-card">
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center gap-2 py-16 text-sm text-slate-400">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading companies…
+          </div>
+        ) : (
+          <AgTable
+            rowData={rows}
+            columnDefs={columnDefs}
+            height="100%"
+            pagination
+            pageSize={10}
+            defaultColDef={defaultColDef}
+          />
+        )}
       </div>
     </div>
   )

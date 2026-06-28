@@ -182,31 +182,65 @@ function SignaturesEditCell(params: GridRenderEditCellParams) {
   )
 }
 
+import { useParams } from "next/navigation"
+import { useEffect } from "react"
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ActionsPage() {
-  const storageKey = "tresta:project-actions"
+  const { projectId } = useParams<{ projectId: string }>()
+  
+  const [config, setConfig] = useState<ActionsConfig>(DEFAULT_ACTIONS_CONFIG)
+  const [loading, setLoading] = useState(true)
 
-  const [config, setConfig] = useState<ActionsConfig>(() => {
-    if (typeof window === "undefined") return DEFAULT_ACTIONS_CONFIG
-    try {
-      const raw = window.localStorage.getItem(storageKey)
-      if (!raw) return DEFAULT_ACTIONS_CONFIG
-      return { ...DEFAULT_ACTIONS_CONFIG, ...(JSON.parse(raw) as Partial<ActionsConfig>) }
-    } catch {
-      return DEFAULT_ACTIONS_CONFIG
-    }
-  })
+  // Load from API
+  useEffect(() => {
+    if (!projectId) return
+    import("@/lib/api/project-admin").then(({ getApprovalConfigs }) => {
+      getApprovalConfigs(projectId)
+        .then((data) => {
+          if (data && data.length > 0) {
+            const newConfig = { ...DEFAULT_ACTIONS_CONFIG }
+            data.forEach((item) => {
+              const actionType = item.action_type as ActionType
+              if (ACTION_TYPES.includes(actionType)) {
+                newConfig[actionType] = {
+                  cause: item.condition_value,
+                  signatures: item.required_roles,
+                  toggles: newConfig[actionType]?.toggles ?? 2,
+                }
+              }
+            })
+            setConfig(newConfig)
+          }
+        })
+        .catch(() => {
+          // fallback to default
+        })
+        .finally(() => setLoading(false))
+    })
+  }, [projectId])
 
   const [saved, setSaved] = useState(false)
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!projectId) return
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(config))
+      const { updateApprovalConfigs } = await import("@/lib/api/project-admin")
+      
+      const payload = Object.entries(config).map(([action_type, rule]) => ({
+        action_type,
+        condition_value: rule.cause,
+        required_roles: rule.signatures,
+        is_active: true,
+      }))
+      
+      await updateApprovalConfigs(projectId, payload)
+      
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
-      // ignore
+      alert("Failed to save actions")
     }
   }
 

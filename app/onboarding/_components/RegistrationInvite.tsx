@@ -16,6 +16,7 @@ export type RegistrationInviteData = {
   projectName: string
   companyName: string
   inviteEmail: string
+  role: string
 }
 
 export default function RegistrationInvite({
@@ -69,6 +70,13 @@ export default function RegistrationInvite({
               <div className="text-xs text-muted-foreground">Company</div>
               <div className="text-xs text-foreground">
                 {invite.companyName}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs text-muted-foreground">Role</div>
+              <div className="text-xs text-foreground capitalize">
+                {invite.role.replace(/_/g, " ")}
               </div>
             </div>
 

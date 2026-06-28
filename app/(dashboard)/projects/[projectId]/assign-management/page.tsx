@@ -1,80 +1,61 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { type ColDef } from "ag-grid-community"
 import { Button } from "@/components/ui/button"
-import { AssignUserModal } from "@/app/(dashboard)/assign-management/_components/assign-user-modal"
+import { AssignUserModal } from "./_components/assign-user-modal"
 import { AgTable } from "@/components/common/AgTable"
-
-type RoleAssignment = {
-  role: string
-  users: Array<{ id: string; name: string; checked: boolean }>
-}
-
-const initialAssignments: RoleAssignment[] = [
-  {
-    role: "Project Director",
-    users: [
-      { id: "1", name: "Alex Jonson", checked: false },
-      { id: "2", name: "Jon Alison", checked: false },
-    ],
-  },
-  {
-    role: "Procurement Department",
-    users: [
-      { id: "3", name: "Joshu Pro", checked: false },
-      { id: "4", name: "Diana Eva", checked: false },
-    ],
-  },
-  {
-    role: "Commercial Department",
-    users: [{ id: "5", name: "Evana Hani", checked: false }],
-  },
-  {
-    role: "Document Controller",
-    users: [{ id: "6", name: "Hanny Enterson", checked: false }],
-  },
-  {
-    role: "Finance Department",
-    users: [{ id: "7", name: "Evana Hani", checked: false }],
-  },
-  {
-    role: "Contracts Manager",
-    users: [{ id: "8", name: "Joshu Pro", checked: false }],
-  },
-  {
-    role: "Manager",
-    users: [{ id: "9", name: "Alison Tyson", checked: false }],
-  },
-  {
-    role: "Supervisor",
-    users: [{ id: "10", name: "Alison Tylor", checked: false }],
-  },
-]
+import { getProjectRoles, type ProjectRoleData, type ProjectUser } from "@/lib/api/project-admin"
+import { ApiError } from "@/lib/api/client"
+import { Loader2 } from "lucide-react"
 
 export default function AssignManagementPage() {
-  const [assignments, setAssignments] = useState(initialAssignments)
+  const params = useParams()
+  const projectId = params.projectId as string
+
+  const [assignments, setAssignments] = useState<ProjectRoleData[]>([])
   const [selectedRole, setSelectedRole] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleOpenModal = useCallback((role: string) => {
-    setSelectedRole(role)
+  const fetchData = async () => {
+    if (!projectId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const rolesRes = await getProjectRoles(projectId)
+      setAssignments(rolesRes)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : (err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [projectId])
+
+  const handleOpenModal = useCallback((roleKey: string) => {
+    setSelectedRole(roleKey)
     setModalOpen(true)
   }, [])
 
   const handleUsersChange = useCallback(
-    (updatedUsers: Array<{ id: string; name: string; checked: boolean }>) => {
+    (updatedUsers: ProjectUser[]) => {
       if (!selectedRole) return
       setAssignments((prev) =>
         prev.map((a) =>
-          a.role === selectedRole ? { ...a, users: updatedUsers } : a
+          a.role_key === selectedRole ? { ...a, users: updatedUsers } : a
         )
       )
     },
     [selectedRole]
   )
 
-  const columns: ColDef<RoleAssignment>[] = [
+  const columns: ColDef<ProjectRoleData>[] = [
     {
       headerName: "Role",
       field: "role",
@@ -85,7 +66,7 @@ export default function AssignManagementPage() {
       headerName: "Assigned",
       field: "users",
       flex: 2,
-      cellRenderer: (params: { data: RoleAssignment }) => {
+      cellRenderer: (params: { data: ProjectRoleData }) => {
         const assigned = params.data.users.filter((u) => u.checked)
         const displayed = assigned.length > 0 ? assigned : params.data.users
         return (
@@ -109,12 +90,12 @@ export default function AssignManagementPage() {
       width: 120,
       sortable: false,
       filter: false,
-      cellRenderer: (params: { data: RoleAssignment }) => (
+      cellRenderer: (params: { data: ProjectRoleData }) => (
         <Button
           size="sm"
           variant="outline"
           className="h-7 text-xs"
-          onClick={() => handleOpenModal(params.data.role)}
+          onClick={() => handleOpenModal(params.data.role_key)}
         >
           Assign
         </Button>
@@ -122,7 +103,7 @@ export default function AssignManagementPage() {
     },
   ]
 
-  const currentAssignment = assignments.find((a) => a.role === selectedRole)
+  const currentAssignment = assignments.find((a) => a.role_key === selectedRole)
 
   return (
     <div className="w-full p-6">
@@ -130,22 +111,39 @@ export default function AssignManagementPage() {
         Management Structure
       </h2>
 
-      <AgTable
-        rowData={assignments}
-        columnDefs={columns}
-        height="auto"
-        suppressCellClickAction
-        defaultColDef={{ minWidth: 140 }}
-        gridOptions={{ rowHeight: 48 }}
-      />
+      {error && (
+        <div className="mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
-      {selectedRole && currentAssignment && (
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading roles...
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-col rounded-lg bg-card">
+           <AgTable
+             rowData={assignments}
+             columnDefs={columns}
+             height="auto"
+             suppressCellClickAction
+             defaultColDef={{ minWidth: 140 }}
+             gridOptions={{ rowHeight: 48 }}
+           />
+        </div>
+      )}
+
+      {selectedRole && currentAssignment && projectId && (
         <AssignUserModal
           open={modalOpen}
           onOpenChange={setModalOpen}
-          role={selectedRole}
+          projectId={projectId}
+          roleKey={selectedRole}
           users={currentAssignment.users}
           onUsersChange={handleUsersChange}
+          onSuccess={fetchData}
         />
       )}
     </div>

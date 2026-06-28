@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { FormProvider, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { formatDistanceToNowStrict } from "date-fns"
-import { ArrowLeft, Check } from "lucide-react"
+import { ArrowLeft, Check, Loader2, CheckCircle2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -29,6 +30,9 @@ import CompanyInfoStep from "./steps/CompanyInfoStep"
 import InsuranceAddressStep from "./steps/InsuranceAddressStep"
 import BankDetailsStep from "./steps/BankDetailsStep"
 import TermsSignatureStep from "./steps/TermsSignatureStep"
+import { acceptInvitation } from "@/lib/api/invitations"
+import type { InvitationDetails } from "@/lib/api/invitations"
+import { ApiError } from "@/lib/api/client"
 
 const DRAFT_KEY = "onboarding-draft"
 
@@ -122,16 +126,21 @@ function reviveDate(value: unknown): Date | undefined {
 }
 
 export default function OnboardingWizard({
-  inviteEmail,
+  token,
+  invitation,
   resumeDraft,
   onExit,
 }: {
-  inviteEmail: string
+  token: string
+  invitation: InvitationDetails
   resumeDraft: boolean
   onExit: () => void
 }) {
+  const router = useRouter()
   const [stepIndex, setStepIndex] = useState(0)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isSubmitted, setIsSubmitted] = useState(false)
 
   const schemaRef = useRef(onboardingSteps[0].schema)
   schemaRef.current = onboardingSteps[stepIndex]?.schema
@@ -145,7 +154,7 @@ export default function OnboardingWizard({
 
   const form = useForm<OnboardingFormValues>({
     resolver: resolver as any,
-    defaultValues: { ...onboardingDefaultValues, email: inviteEmail } as any,
+    defaultValues: { ...onboardingDefaultValues, email: invitation.email } as any,
     mode: "onSubmit",
   })
 
@@ -164,7 +173,7 @@ export default function OnboardingWizard({
       const nextValues = {
         ...onboardingDefaultValues,
         ...parsed,
-        email: inviteEmail,
+        email: invitation.email,
       } as Partial<OnboardingFormValues>
 
       // Re-hydrate date fields from JSON strings.
@@ -203,7 +212,7 @@ export default function OnboardingWizard({
     } catch {
       // ignore
     }
-  }, [inviteEmail, reset, resumeDraft])
+  }, [invitation.email, reset, resumeDraft])
 
   const step = onboardingSteps[stepIndex]
   const isLastStep = stepIndex === onboardingSteps.length - 1
@@ -246,14 +255,52 @@ export default function OnboardingWizard({
   const onSubmit = async (values: OnboardingFormValues) => {
     const parsed = onboardingFullSchema.safeParse(values)
     if (!parsed.success) {
-      // Let the user correct with step-by-step navigation.
       console.log("Onboarding invalid", parsed.error.flatten())
       return
     }
 
-    console.log("Submitting onboarding", parsed.data)
-    localStorage.removeItem(DRAFT_KEY)
-    setLastSavedAt(null)
+    setSubmitError(null)
+
+    try {
+      await acceptInvitation({
+        token,
+        first_name: parsed.data.firstName,
+        last_name: parsed.data.surname,
+        password: parsed.data.password,
+        profession: parsed.data.professions?.join(","),
+        cscs_card_no: parsed.data.certifications?.cscs?.number,
+        company_name: parsed.data.companyName,
+      })
+
+      localStorage.removeItem(DRAFT_KEY)
+      setLastSavedAt(null)
+      setIsSubmitted(true)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setSubmitError(err.message)
+      } else {
+        setSubmitError("Something went wrong. Please try again.")
+      }
+    }
+  }
+
+  // ── Success screen ─────────────────────────────────────────────────────────
+  if (isSubmitted) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
+        <CheckCircle2 className="h-16 w-16 text-emerald-500" />
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-foreground">
+            Registration Complete!
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Your registration has been submitted and is pending review. You will
+            receive an email when your account is activated.
+          </p>
+        </div>
+        <Button onClick={() => router.push("/sign-in")}>Go to Sign In</Button>
+      </div>
+    )
   }
 
   return (
@@ -290,24 +337,39 @@ export default function OnboardingWizard({
                   {getStepContent(step.key)}
                 </CardContent>
 
-                <CardFooter className="flex items-center justify-between gap-3">
-                  <Button type="button" variant="outline" onClick={onSaveDraft}>
-                    Save as Draft
-                  </Button>
-
-                  {isLastStep ? (
-                    <Button type="submit" className="h-10 flex-1">
-                      Submit Registration
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={onNext}
-                      className="h-10 flex-1"
-                    >
-                      Continue
-                    </Button>
+                <CardFooter className="flex flex-col gap-3">
+                  {submitError && (
+                    <div className="w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                      {submitError}
+                    </div>
                   )}
+                  <div className="flex w-full items-center gap-3">
+                    <Button type="button" variant="outline" onClick={onSaveDraft}>
+                      Save as Draft
+                    </Button>
+
+                    {isLastStep ? (
+                      <Button
+                        type="submit"
+                        className="h-10 flex-1"
+                        disabled={form.formState.isSubmitting}
+                      >
+                        {form.formState.isSubmitting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Submit Registration"
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={onNext}
+                        className="h-10 flex-1"
+                      >
+                        Continue
+                      </Button>
+                    )}
+                  </div>
                 </CardFooter>
               </Card>
             </form>
