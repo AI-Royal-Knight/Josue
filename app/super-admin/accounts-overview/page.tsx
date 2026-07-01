@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState, useCallback } from "react"
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef } from "ag-grid-community"
 import { Button } from "@/components/ui/button"
@@ -17,20 +17,20 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
   getCompanies,
-  subscribeCompanies,
   updateCompany,
   type CompanyRecord,
-} from "@/lib/company-store"
-import {
-  isMonthSent,
-  setMonthSent,
-  subscribeAccountsOverview,
-  type BillingMonth,
-} from "@/lib/accounts-overview-store"
+  getInvoices,
+  submitInvoice,
+  type MonthlyInvoice,
+} from "@/lib/api/super-admin"
 import TableStat from "@/components/common/table-stat"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 type AccountsRow = CompanyRecord
+
+type BillingMonth = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
 
 const months: { key: BillingMonth; label: string }[] = [
   { key: 1, label: "January" },
@@ -47,20 +47,22 @@ const months: { key: BillingMonth; label: string }[] = [
   { key: 12, label: "December" },
 ]
 
-function formatGbp(amount: number) {
-  const hasDecimals = Math.round(amount * 100) % 100 !== 0
+function formatGbp(amount: number | string) {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount
+  if (isNaN(num)) return "£0.00"
+  const hasDecimals = Math.round(num * 100) % 100 !== 0
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
     minimumFractionDigits: hasDecimals ? 2 : 0,
     maximumFractionDigits: hasDecimals ? 2 : 0,
-  }).format(amount)
+  }).format(num)
 }
 
 function monthlyCharge(row: AccountsRow): number {
-  const monthly = row.monthlySubscriptionGbp ?? 0
-  const perUser = row.perUserRateGbp ?? 0
-  return monthly + perUser * row.users
+  const monthly = parseFloat(row.monthly_subscription || "0")
+  const perUser = parseFloat(row.per_user_rate || "0")
+  return monthly + perUser * (row.user || 0)
 }
 
 function annualCharge(row: AccountsRow): number {
@@ -76,46 +78,91 @@ type PendingInvoice = {
 }
 
 export default function AccountsOverviewPage() {
-  // Default to previous year (matches the mockups using 2025)
-  const year = new Date().getFullYear() - 1
+  const year = new Date().getFullYear() - 1 // Default to previous year as requested
   const [expanded, setExpanded] = useState(false)
 
-  const [rows, setRows] = useState<AccountsRow[]>(() =>
-    getCompanies().filter((c) => c.activated)
-  )
-  const [billingTick, setBillingTick] = useState(0)
+  const [rows, setRows] = useState<AccountsRow[]>([])
+  const [invoices, setInvoices] = useState<MonthlyInvoice[]>([])
+  const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState<PendingInvoice | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const loadData = useCallback(async () => {
+    try {
+      const [compRes, invRes] = await Promise.all([
+        getCompanies(),
+        getInvoices(year),
+      ])
+      // Filter for active companies only
+      setRows(compRes.companies.filter((c) => c.activate))
+      setInvoices(invRes)
+    } catch (err) {
+      console.error("Failed to load accounts overview", err)
+      toast.error("Failed to load data")
+    } finally {
+      setLoading(false)
+    }
+  }, [year])
 
   useEffect(() => {
-    return subscribeCompanies(() =>
-      setRows(getCompanies().filter((c) => c.activated))
-    )
-  }, [])
+    loadData()
+  }, [loadData])
 
-  useEffect(() => {
-    return subscribeAccountsOverview(() => setBillingTick((n) => n + 1))
-  }, [])
+  const handleToggleAutoInvoice = async (companyId: string, checked: boolean) => {
+    try {
+      await updateCompany(companyId, { auto_monthly_inv: checked })
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === companyId ? { ...r, auto_monthly_inv: checked } : r
+        )
+      )
+      toast.success("Settings updated")
+    } catch (err) {
+      toast.error("Failed to update settings")
+    }
+  }
+
+  const handleSubmitInvoice = async () => {
+    if (!pending) return
+    setIsSubmitting(true)
+    try {
+      await submitInvoice({
+        company_id: pending.companyId,
+        year,
+        month: pending.month,
+        amount: pending.amount,
+      })
+      toast.success("Invoice submitted")
+      setPending(null)
+      // Refresh invoices
+      const invRes = await getInvoices(year)
+      setInvoices(invRes)
+    } catch (err) {
+      toast.error("Failed to submit invoice")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const columnDefs = useMemo<ColDef<AccountsRow>[]>(() => {
     const base: ColDef<AccountsRow>[] = [
-      { field: "name", headerName: "Company", minWidth: 220 },
+      { field: "company_name", headerName: "Company", minWidth: 220 },
       {
         headerName: "Monthly Subscription",
-        colId: "monthlySubscriptionGbp",
+        colId: "monthly_subscription",
         minWidth: 170,
-        valueGetter: (p) =>
-          formatGbp((p.data?.monthlySubscriptionGbp ?? 0) as number),
+        valueGetter: (p) => formatGbp(p.data?.monthly_subscription || "0"),
       },
       {
         headerName: "per User rate",
-        colId: "perUserRateGbp",
+        colId: "per_user_rate",
         minWidth: 140,
-        valueGetter: (p) => formatGbp((p.data?.perUserRateGbp ?? 0) as number),
+        valueGetter: (p) => formatGbp(p.data?.per_user_rate || "0"),
       },
-      { field: "users", headerName: "Users", minWidth: 90 },
+      { field: "user", headerName: "Users", minWidth: 90 },
       {
         headerName: "Automatic",
-        colId: "automaticMonthlyInvoices",
+        colId: "auto_monthly_inv",
         minWidth: 140,
         sortable: false,
         filter: false,
@@ -125,10 +172,8 @@ export default function AccountsOverviewPage() {
           return (
             <div className="flex items-center gap-2 py-1">
               <Switch
-                checked={row.automaticMonthlyInvoices}
-                onCheckedChange={(checked) =>
-                  updateCompany(row.id, { automaticMonthlyInvoices: checked })
-                }
+                checked={row.auto_monthly_inv}
+                onCheckedChange={(checked) => handleToggleAutoInvoice(row.id, checked)}
               />
             </div>
           )
@@ -144,10 +189,15 @@ export default function AccountsOverviewPage() {
         cellRenderer: (params: { data?: AccountsRow }) => {
           const row = params.data
           if (!row) return null
-          const auto = row.automaticMonthlyInvoices
-          const allSent = months.every(({ key }) =>
-            auto ? true : isMonthSent(row.id, year, key)
+          const auto = row.auto_monthly_inv
+          const companyInvoices = invoices.filter(
+            (inv) => inv.company_id === row.id && inv.is_sent
           )
+          
+          const allSent = months.every(({ key }) =>
+            auto ? true : companyInvoices.some((i) => i.month === key)
+          )
+          
           return (
             <span
               className={
@@ -174,10 +224,12 @@ export default function AccountsOverviewPage() {
           if (!row) return null
 
           const amount = monthlyCharge(row)
-          const auto = row.automaticMonthlyInvoices
-          const sent = auto ? true : isMonthSent(row.id, year, m.key)
+          const auto = row.auto_monthly_inv
+          const isSent = auto || invoices.some(
+            (inv) => inv.company_id === row.id && inv.month === m.key && inv.is_sent
+          )
 
-          if (sent) {
+          if (isSent) {
             return (
               <span className="font-medium text-emerald-400">
                 {formatGbp(amount)}
@@ -193,7 +245,7 @@ export default function AccountsOverviewPage() {
               onClick={() =>
                 setPending({
                   companyId: row.id,
-                  companyName: row.name,
+                  companyName: row.company_name || `Company ${row.id}`,
                   month: m.key,
                   monthLabel: m.label,
                   amount,
@@ -208,13 +260,34 @@ export default function AccountsOverviewPage() {
     }
 
     return base
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, year, billingTick])
+  }, [expanded, year, invoices])
 
   const defaultColDef = useMemo(
     () => ({ flex: 0, resizable: true, sortable: true, filter: true }),
     []
   )
+
+  const stats = useMemo(() => {
+    let totalRev = 0
+    let monthlyRev = 0
+    rows.forEach((r) => {
+      const mc = monthlyCharge(r)
+      monthlyRev += mc
+      totalRev += mc * 12
+    })
+    return {
+      total: formatGbp(totalRev),
+      monthly: formatGbp(monthlyRev),
+    }
+  }, [rows])
+
+  if (loading) {
+    return (
+      <div className="flex h-full min-h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-[calc(100vh-3rem)] flex-col gap-6">
@@ -222,8 +295,8 @@ export default function AccountsOverviewPage() {
         <h1 className="mb-4 text-2xl font-bold">Accounts Overview</h1>
         <TableStat
           summaryRows={[
-            { label: "Total Revenue", value: "£0.00" },
-            { label: "Monthly Revenue", value: "£0.00" },
+            { label: "Total Revenue", value: stats.total },
+            { label: "Monthly Revenue", value: stats.monthly },
           ]}
         />
       </header>
@@ -258,7 +331,7 @@ export default function AccountsOverviewPage() {
 
       <AlertDialog
         open={Boolean(pending)}
-        onOpenChange={(o) => !o && setPending(null)}
+        onOpenChange={(o) => !o && !isSubmitting && setPending(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -270,15 +343,9 @@ export default function AccountsOverviewPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (!pending) return
-                setMonthSent(pending.companyId, year, pending.month, true)
-                setPending(null)
-              }}
-            >
-              Submit
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmitInvoice} disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Submit"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

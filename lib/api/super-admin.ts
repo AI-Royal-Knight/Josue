@@ -37,7 +37,7 @@ export interface CompanySummary {
 }
 
 export interface CompanyRecord {
-  id: number
+  id: string
   company_name: string | null
   admin_name: string | null
   admin_surname: string | null
@@ -62,7 +62,7 @@ export async function getCompanies(): Promise<CompaniesResponse> {
 }
 
 export async function updateCompany(
-  id: number,
+  id: string,
   payload: Partial<CompanyRecord>
 ): Promise<CompanyRecord> {
   return apiRequest<CompanyRecord>(`/super-admin/companies/${id}/`, {
@@ -91,6 +91,69 @@ export async function inviteAdmin(
   payload: InviteAdminPayload
 ): Promise<InviteAdminResponse> {
   return apiRequest<InviteAdminResponse>("/super-admin/companies/", {
+    method: "POST",
+    body: payload,
+  })
+}
+
+// ── Company Invitations ───────────────────────────────────────────────────────
+
+export interface CompanyInvitationDetails {
+  email: string
+  first_name: string
+  last_name: string
+  company_name: string
+  role: string
+}
+
+export async function validateCompanyInvitation(
+  token: string
+): Promise<CompanyInvitationDetails> {
+  return apiRequest<CompanyInvitationDetails>(
+    `/super-admin/invitations/validate/${token}/`,
+    { public: true }
+  )
+}
+
+export async function acceptCompanyInvitation(
+  payload: Record<string, unknown>
+): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>(
+    "/super-admin/invitations/accept/",
+    {
+      method: "POST",
+      body: payload,
+      public: true,
+    }
+  )
+}
+
+// ── Invoices ──────────────────────────────────────────────────────────────
+
+export interface MonthlyInvoice {
+  id: number
+  company_id: string
+  year: number
+  month: number
+  amount: string | null
+  is_sent: boolean
+}
+
+export async function getInvoices(year: number): Promise<MonthlyInvoice[]> {
+  return apiRequest<MonthlyInvoice[]>(`/super-admin/invoices/?year=${year}`)
+}
+
+export interface SubmitInvoicePayload {
+  company_id: string
+  year: number
+  month: number
+  amount: number
+}
+
+export async function submitInvoice(
+  payload: SubmitInvoicePayload
+): Promise<MonthlyInvoice> {
+  return apiRequest<MonthlyInvoice>("/super-admin/invoices/", {
     method: "POST",
     body: payload,
   })

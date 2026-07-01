@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -13,19 +12,18 @@ import { Button } from "@/components/ui/button"
 import InviteProjectAdminForm from "./invite-project-admin-form"
 import { useState } from "react"
 
-interface InviteDialogProps {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
-
-export default function InviteDialog({
-  open,
-  onOpenChange,
-}: InviteDialogProps) {
+export default function InviteDialog({ onSuccess }: { onSuccess?: () => void }) {
   const [isOpen, setIsOpen] = useState(false)
 
+  const handleSuccess = () => {
+    setIsOpen(false)
+    if (onSuccess) {
+      onSuccess()
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="default">Invite User</Button>
       </DialogTrigger>
@@ -36,7 +34,7 @@ export default function InviteDialog({
             Send an invitation to a new project admin.
           </DialogDescription>
         </DialogHeader>
-        <InviteProjectAdminForm />
+        <InviteProjectAdminForm onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   )

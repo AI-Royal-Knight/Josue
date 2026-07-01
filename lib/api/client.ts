@@ -60,6 +60,20 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (typeof window !== "undefined") {
+        // Clear token directly to ensure it's removed immediately
+        localStorage.removeItem("tresta:accessToken")
+        localStorage.removeItem("tresta:refreshToken")
+
+        // Dynamically import to avoid circular dependency or SSR issues
+        import("@/lib/auth-store").then(({ useAuthStore }) => {
+          useAuthStore.getState().logout()
+        }).catch(() => { })
+
+        window.location.href = "/sign-in"
+      }
+    }
     throw new ApiError(response.status, data)
   }
 

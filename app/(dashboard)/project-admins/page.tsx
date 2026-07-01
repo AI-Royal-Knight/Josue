@@ -1,50 +1,65 @@
 "use client"
 
 import type { ColDef } from "ag-grid-community"
-import { useMemo } from "react"
+import { useEffect, useState } from "react"
 
 import { AgTable } from "@/components/common/AgTable"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
-import { projectAmins } from "@/constants/project-admins"
 import InviteDialog from "./_components/invite-dialog"
+import { adminApi, ProjectAdminData } from "@/lib/api/admin"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 type ProjectAdminRow = {
   name: string
   surname: string
   emailAddress: string
-  projects: string
-  dateProjectCreated: string
-  projectValue: string
+  status: string
+  dateJoined: string
 }
 
 const columnDefs: ColDef<ProjectAdminRow>[] = [
   { headerName: "Name", field: "name" },
   { headerName: "Surname", field: "surname" },
   { headerName: "Email Address", field: "emailAddress" },
-  { headerName: "Projects", field: "projects" },
-  { headerName: "Date Project Created", field: "dateProjectCreated" },
-  { headerName: "Project Value", field: "projectValue" },
+  { headerName: "Status", field: "status" },
+  { headerName: "Date Joined", field: "dateJoined" },
 ]
 
 export default function Page() {
-  const rowData = useMemo<ProjectAdminRow[]>(
-    () =>
-      projectAmins.flatMap((row) => {
-        const projects = (
-          Array.isArray(row.projects)
-            ? row.projects
-            : String(row.projects ?? "")
-                .split(",")
-                .map((project) => project.trim())
-        )
-          .map((project) => String(project).trim())
-          .filter(Boolean)
+  const [data, setData] = useState<ProjectAdminData[]>([])
+  const [loading, setLoading] = useState(true)
 
-        if (projects.length === 0) return [{ ...row, projects: "" }]
-        return projects.map((project) => ({ ...row, projects: project }))
-      }),
-    []
-  )
+  const loadData = async () => {
+    try {
+      const response = await adminApi.getProjectAdmins()
+      setData(response.project_admins)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load project admins")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const rowData: ProjectAdminRow[] = data.map((admin) => ({
+    name: admin.first_name,
+    surname: admin.last_name,
+    emailAddress: admin.email,
+    status: admin.is_active ? "Active" : "Inactive",
+    dateJoined: new Date(admin.date_joined).toLocaleDateString(),
+  }))
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <>
@@ -52,7 +67,7 @@ export default function Page() {
         <div className="flex justify-between gap-4 py-4">
           <h2>Project Admins</h2>
           <div className="flex items-center gap-2">
-            <InviteDialog />
+            <InviteDialog onSuccess={loadData} />
             <ExportCsvButton<ProjectAdminRow>
               rows={rowData}
               fileNamePrefix="project-admins"
@@ -61,9 +76,8 @@ export default function Page() {
                 { header: "Name", field: "name" },
                 { header: "Surname", field: "surname" },
                 { header: "Email Address", field: "emailAddress" },
-                { header: "Projects", field: "projects" },
-                { header: "Date Project Created", field: "dateProjectCreated" },
-                { header: "Project Value", field: "projectValue" },
+                { header: "Status", field: "status" },
+                { header: "Date Joined", field: "dateJoined" },
               ]}
             />
           </div>

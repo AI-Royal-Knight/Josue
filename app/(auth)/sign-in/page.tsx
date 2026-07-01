@@ -58,8 +58,10 @@ export default function SignInPage() {
       const assignments = res.user.role_assignments
       const hasManyRoles = assignments && assignments.length > 1
 
-      if (
-        res.user.role === "super_admin" ||
+      if (res.user.role === "super_admin") {
+        setRole("super_admin")
+        window.location.href = "/super-admin"
+      } else if (
         res.user.role === "admin" ||
         res.user.role === "project_admin"
       ) {
@@ -183,14 +185,15 @@ function getDashboardUrl(role: string): string {
   const map: Record<string, string> = {
     super_admin: "/super-admin",
     admin: "/home",
-    project_admin: "/home",
-    managing_director: "/home",
-    document_controller: "/home",
-    commercial_manager: "/home",
-    procurement: "/home",
-    contracts_manager: "/home",
-    manager: "/home",
-    supervisor: "/home",
+    project_admin: "/projects",
+    managing_director: "/project-overview",
+    document_controller: "/users",
+    commercial_department: "/variations",
+    procurement_department: "/supplier-lists",
+    contracts_manager: "/users",
+    managers: "/users",
+    supervisor: "/users",
+    project_director: "/project-overview",
     employee: "/home",
     supplier: "/supplier",
   }

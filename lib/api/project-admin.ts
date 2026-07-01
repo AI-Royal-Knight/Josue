@@ -21,6 +21,63 @@ export interface AssignRolePayload {
 
 // ── API Functions ──────────────────────────────────────────────────────────
 
+import type { ProjectItem } from "@/constants/projects"
+
+export async function getProjects(): Promise<{ projects: ProjectItem[]; total_count: number }> {
+  const data = await apiRequest<{ projects: any[]; total_count: number }>("/project-admin/projects/")
+  return {
+    ...data,
+    projects: data.projects.map((p) => ({
+      id: p.id,
+      projectName: p.project_name,
+      jobCode: p.job_code,
+      vatRate: p.vat_rate,
+      address: p.address,
+      dateCreated: p.created_at ? new Date(p.created_at).toISOString().split('T')[0] : '',
+      projectValue: p.project_value ? `£${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
+      materialEstimate: p.material_estimate ? `£${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
+      labourEstimate: p.labour_estimate ? `£${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
+      prelimsEstimate: p.prelims_estimate ? `£${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
+      estimateProfit: p.estimate_profit ? `£${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
+      startDate: p.start_date,
+      completionDate: p.completion_date,
+      overdue: p.is_overdue,
+      completed: p.is_completed,
+    })),
+  }
+}
+
+export async function createProject(payload: any): Promise<ProjectItem> {
+  return apiRequest<ProjectItem>("/project-admin/projects/", {
+    method: "POST",
+    body: payload,
+  })
+}
+
+export async function getMyProjects(): Promise<{ projects: ProjectItem[]; total_count: number }> {
+  const data = await apiRequest<{ projects: any[]; total_count: number }>("/project-admin/my-projects/")
+  return {
+    ...data,
+    projects: data.projects.map((p) => ({
+      id: p.id,
+      projectName: p.project_name,
+      jobCode: p.job_code,
+      vatRate: p.vat_rate,
+      address: p.address,
+      dateCreated: p.created_at ? new Date(p.created_at).toISOString().split('T')[0] : '',
+      projectValue: p.project_value ? `£${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
+      materialEstimate: p.material_estimate ? `£${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
+      labourEstimate: p.labour_estimate ? `£${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
+      prelimsEstimate: p.prelims_estimate ? `£${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
+      estimateProfit: p.estimate_profit ? `£${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
+      startDate: p.start_date,
+      completionDate: p.completion_date,
+      overdue: p.is_overdue,
+      completed: p.is_completed,
+    })),
+  }
+}
+
 export async function getCompanyUsers(): Promise<{ users: ProjectUser[] }> {
   return apiRequest<{ users: ProjectUser[] }>("/project-admin/users/")
 }

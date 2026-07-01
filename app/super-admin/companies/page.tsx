@@ -37,7 +37,7 @@ import { ApiError } from "@/lib/api/client"
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type CompanyRow = {
-  id: number
+  id: string
   name: string
   adminFirstName: string
   adminSurname: string
@@ -322,7 +322,7 @@ export default function CompaniesPage() {
     fetchData()
   }, [])
 
-  const handleUpdate = async (id: number, payload: Partial<CompanyRecord>) => {
+  const handleUpdate = async (id: string, payload: Partial<CompanyRecord>) => {
     try {
       await updateCompany(id, payload)
       fetchData()

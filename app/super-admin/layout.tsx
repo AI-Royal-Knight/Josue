@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import logo from "@/assets/images/logo.png"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { DashboardBreadcrumb } from "@/components/dashboard-breadcrumb"
 
 export default function SuperAdminLayout({
@@ -27,6 +27,12 @@ export default function SuperAdminLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+
+  const checkActive = (url: string, exact: boolean = false) => {
+    if (exact) return pathname === url
+    return pathname === url || (url !== "/" && pathname.startsWith(`${url}/`))
+  }
 
   const handleLogout = React.useCallback(() => {
     router.push("/sign-in")
@@ -49,29 +55,29 @@ export default function SuperAdminLayout({
             </div>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild isActive={checkActive("/super-admin", true)}>
                   <Link href="/super-admin">Overview</Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild isActive={checkActive("/super-admin/companies")}>
                   <Link href="/super-admin/companies">Companies (Admins)</Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild isActive={checkActive("/super-admin/accounts-overview")}>
                   <Link href="/super-admin/accounts-overview">
                     Accounts Overview
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild isActive={checkActive("/super-admin/invoice-list")}>
                   <Link href="/super-admin/invoice-list">Invoice List</Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild isActive={checkActive("/super-admin/profile")}>
                   <Link href="/super-admin/profile">Profile</Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

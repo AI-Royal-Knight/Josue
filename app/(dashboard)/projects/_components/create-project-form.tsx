@@ -11,12 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { createProject } from "../actions"
+import { createProject } from "@/lib/api/project-admin"
 import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 import { VAT_OPTIONS, CURRENCY_OPTIONS } from "@/constants/projects"
 
-export default function CreateProjectForm() {
-  const [isPending, startTransition] = useTransition()
+export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => void }) {
+  const [isPending, setIsPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [vatRate, setVatRate] = useState<string>("")
   const [currency, setCurrency] = useState<string>("GBP")
@@ -28,24 +32,40 @@ export default function CreateProjectForm() {
     Date | undefined
   >(undefined)
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    // Inject controlled values since Select isn't a native input
-    formData.set("vatRate", vatRate)
-    formData.set("currency", currency)
+    const form = e.currentTarget
+    const formData = new FormData(form)
+    
+    // Construct payload for API
+    const payload = {
+      project_name: formData.get("projectName"),
+      job_code: formData.get("jobCode"),
+      vat_rate: vatRate,
+      address: formData.get("address"),
+      project_value: formData.get("projectValue") || 0,
+      material_estimate: formData.get("materialEstimate") || 0,
+      labour_estimate: formData.get("labourEstimate") || 0,
+      prelims_estimate: formData.get("prelimsEstimate") || 0,
+      start_date: startDate ? startDate.toISOString().split("T")[0] : null,
+      completion_date: completionDate ? completionDate.toISOString().split("T")[0] : null,
+    }
 
-    startTransition(async () => {
-      const result = await createProject(null, formData)
-      if (result.success) {
-        setMessage(result.message)
-        e.currentTarget.reset()
-        setVatRate("")
-        setCurrency("GBP")
-      } else {
-        setMessage(result.error)
-      }
-    })
+    setIsPending(true)
+    setMessage(null)
+
+    try {
+      await createProject(payload)
+      setMessage("Project created successfully.")
+      form.reset()
+      setVatRate("")
+      setCurrency("GBP")
+      if (onSuccess) onSuccess()
+    } catch (err: any) {
+      setMessage(err.message || "Failed to create project")
+    } finally {
+      setIsPending(false)
+    }
   }
 
   const selectedOption = VAT_OPTIONS.find((o) => o.value === vatRate)
@@ -188,21 +208,55 @@ export default function CreateProjectForm() {
         <Field>
           <FieldLabel htmlFor="startDate">Start Date :</FieldLabel>
           <FieldContent>
-            <Calendar
-              mode="single"
-              selected={startDate}
-              onSelect={setStartDate}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </FieldContent>
         </Field>
         <Field>
           <FieldLabel htmlFor="completionDate">Completion Date :</FieldLabel>
           <FieldContent>
-            <Calendar
-              mode="single"
-              selected={completionDate}
-              onSelect={setCompletionDate}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !completionDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {completionDate ? format(completionDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={completionDate}
+                  onSelect={setCompletionDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </FieldContent>
         </Field>
         <Field>
@@ -210,11 +264,28 @@ export default function CreateProjectForm() {
             Monthly Application Date :
           </FieldLabel>
           <FieldContent>
-            <Calendar
-              mode="single"
-              selected={monthlyApplicationDate}
-              onSelect={setMonthlyApplicationDate}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !monthlyApplicationDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {monthlyApplicationDate ? format(monthlyApplicationDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={monthlyApplicationDate}
+                  onSelect={setMonthlyApplicationDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </FieldContent>
         </Field>
       </div>

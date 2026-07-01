@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useCallback } from "react"
+import { useRef, useCallback, useEffect, useState } from "react"
 import type { ColDef, GridApi } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import {
@@ -13,7 +13,8 @@ import {
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
-import { useRoleStore } from "@/lib/role-store"
+import { getMyProjects } from "@/lib/api/project-admin"
+import type { ProjectItem } from "@/constants/projects"
 
 type BreakdownRow = {
   period: string
@@ -37,7 +38,7 @@ type BreakdownRow = {
   variationClaimed: number
 }
 
-const data: BreakdownRow[] = [
+const mockBreakdownData: BreakdownRow[] = [
   {
     period: "January",
     applicationValue: 100000,
@@ -146,24 +147,13 @@ const columns: ColDef<BreakdownRow>[] = [
       const value = params.value as number
       return (
         <span className="text-green-400">
-          {value.toLocaleString("en-GB", {
-            style: "currency",
-            currency: "GBP",
-          })}
+          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
         </span>
       )
     },
   },
-  {
-    headerName: "Project Value",
-    field: "projectValue",
-    headerClass: "text-green-400",
-  },
-  {
-    headerName: "Labour Target",
-    field: "labourTarget",
-    headerClass: "text-green-400",
-  },
+  { headerName: "Project Value", field: "projectValue", headerClass: "text-green-400" },
+  { headerName: "Labour Target", field: "labourTarget", headerClass: "text-green-400" },
   {
     headerName: "Overspend",
     field: "overspend",
@@ -172,10 +162,7 @@ const columns: ColDef<BreakdownRow>[] = [
       const value = params.value as number
       return (
         <span className="text-red-500">
-          {value.toLocaleString("en-GB", {
-            style: "currency",
-            currency: "GBP",
-          })}
+          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
         </span>
       )
     },
@@ -188,10 +175,7 @@ const columns: ColDef<BreakdownRow>[] = [
       const value = params.value as number
       return (
         <span className="text-green-400">
-          {value.toLocaleString("en-GB", {
-            style: "currency",
-            currency: "GBP",
-          })}
+          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
         </span>
       )
     },
@@ -204,34 +188,15 @@ const columns: ColDef<BreakdownRow>[] = [
       const value = params.value as number
       return (
         <span className="text-red-500">
-          {value.toLocaleString("en-GB", {
-            style: "currency",
-            currency: "GBP",
-          })}
+          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
         </span>
       )
     },
   },
-  {
-    headerName: "PO Called off",
-    field: "poCalledOff",
-    headerClass: "text-green-500",
-  },
-  {
-    headerName: "Loading and clearing",
-    field: "loadingAndClearing",
-    headerClass: "text-green-500",
-  },
-  {
-    headerName: "Management prelims",
-    field: "managementPrelims",
-    headerClass: "text-green-500",
-  },
-  {
-    headerName: "Plant Hire",
-    field: "plantHire",
-    headerClass: "text-green-500",
-  },
+  { headerName: "PO Called off", field: "poCalledOff", headerClass: "text-green-500" },
+  { headerName: "Loading and clearing", field: "loadingAndClearing", headerClass: "text-green-500" },
+  { headerName: "Management prelims", field: "managementPrelims", headerClass: "text-green-500" },
+  { headerName: "Plant Hire", field: "plantHire", headerClass: "text-green-500" },
   {
     headerName: "Proforma NR",
     field: "proformaNR",
@@ -240,10 +205,7 @@ const columns: ColDef<BreakdownRow>[] = [
       const value = params.value as number
       return (
         <span className="text-red-500">
-          {value.toLocaleString("en-GB", {
-            style: "currency",
-            currency: "GBP",
-          })}
+          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
         </span>
       )
     },
@@ -256,44 +218,50 @@ const columns: ColDef<BreakdownRow>[] = [
       const value = params.value as number
       return (
         <span className="text-red-500">
-          {value.toLocaleString("en-GB", {
-            style: "currency",
-            currency: "GBP",
-          })}
+          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
         </span>
       )
     },
   },
-  {
-    headerName: "Variation Value",
-    field: "variationValue",
-    headerClass: "text-orange-400",
-  },
-  {
-    headerName: "Variations Labour Value",
-    field: "variationLabourValue",
-    headerClass: "text-orange-400",
-  },
-  {
-    headerName: "Variation Labour Target",
-    field: "variationLabourTarget",
-    headerClass: "text-orange-400",
-  },
-  {
-    headerName: "Variation PO Called Off",
-    field: "variationPoCalledOff",
-    headerClass: "text-orange-400",
-  },
-  {
-    headerName: "Variation Claimed",
-    field: "variationClaimed",
-    headerClass: "text-orange-400",
-  },
+  { headerName: "Variation Value", field: "variationValue", headerClass: "text-orange-400" },
+  { headerName: "Variations Labour Value", field: "variationLabourValue", headerClass: "text-orange-400" },
+  { headerName: "Variation Labour Target", field: "variationLabourTarget", headerClass: "text-orange-400" },
+  { headerName: "Variation PO Called Off", field: "variationPoCalledOff", headerClass: "text-orange-400" },
+  { headerName: "Variation Claimed", field: "variationClaimed", headerClass: "text-orange-400" },
 ]
+
+function fmt(value: number | string | undefined): string {
+  if (value === undefined || value === null) return "£0"
+  const num = typeof value === "string" ? parseFloat(value) : (value as number)
+  if (isNaN(num)) return "£0"
+  return num.toLocaleString("en-GB", { style: "currency", currency: "GBP" })
+}
 
 export default function Page() {
   const gridApiRef = useRef<GridApi<BreakdownRow> | null>(null)
-  const role = useRoleStore((s) => s.role)
+  const [projects, setProjects] = useState<ProjectItem[]>([])
+  const [selectedId, setSelectedId] = useState<string>("")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const result = await getMyProjects()
+        setProjects(result.projects)
+        if (result.projects.length > 0) {
+          setSelectedId(result.projects[0].id)
+        }
+      } catch (err) {
+        console.error("Failed to load projects:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const selectedProject = projects.find((p) => p.id === selectedId)
+
   const handleDownload = useCallback(() => {
     if (!gridApiRef.current) return
     const rows: BreakdownRow[] = []
@@ -316,7 +284,6 @@ export default function Page() {
         exportableColumns
           .map((c) => {
             if (!c.field) return csvEscape("")
-            // Compute totalSpent for the calculated column
             if (c.field === "totalSpent") {
               const total =
                 row.projectValue +
@@ -348,71 +315,70 @@ export default function Page() {
       <h2 className="mb-4">Project Overview</h2>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <Select>
+          <Select value={selectedId} onValueChange={setSelectedId}>
             <SelectTrigger className="w-[240px] border-white/10 bg-slate-900">
-              <SelectValue placeholder="Select Project" />
+              <SelectValue placeholder={loading ? "Loading projects…" : "Select Project"} />
             </SelectTrigger>
             <SelectContent className="border-white/10 bg-slate-900">
-              <SelectItem value="project-a">
-                Riverside Tower Development
-              </SelectItem>
-              <SelectItem value="project-b">Project B</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.projectName}
+                </SelectItem>
+              ))}
+              {!loading && projects.length === 0 && (
+                <SelectItem value="none" disabled>
+                  No projects available
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
         <div>
-          <h2 className="text-2xl font-semibold">
-            Riverside Tower Development
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            RT-2024-001 • 123 Thames Street, London
-          </p>
+          {selectedProject ? (
+            <>
+              <h2 className="text-2xl font-semibold">{selectedProject.projectName}</h2>
+              <p className="text-sm text-muted-foreground">
+                {selectedProject.jobCode}
+                {selectedProject.address ? ` • ${selectedProject.address}` : ""}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {loading ? "Loading…" : "Select a project to view details"}
+            </p>
+          )}
         </div>
       </div>
 
       <div className="flex w-full flex-col gap-6 md:flex-row md:items-start md:justify-start">
         <TableStat
           summaryRows={[
-            { label: "Project Value", value: "£1,000,000" },
-            { label: "Material Estimate", value: "£300" },
-            { label: "Labour Estimate", value: "£320" },
-            { label: "Prelims Estimate", value: "£50,000" },
-            { label: "Estimate Profit", value: "£150,000" },
+            { label: "Project Value", value: selectedProject ? fmt(selectedProject.projectValue) : "—" },
+            { label: "Material Estimate", value: selectedProject ? fmt(selectedProject.materialEstimate) : "—" },
+            { label: "Labour Estimate", value: selectedProject ? fmt(selectedProject.labourEstimate) : "—" },
+            { label: "Prelims Estimate", value: selectedProject ? fmt(selectedProject.prelimsEstimate) : "—" },
+            { label: "Estimate Profit", value: selectedProject ? fmt(selectedProject.estimateProfit) : "—" },
           ]}
         />
         <TableStat
           summaryRows={[
             { label: "Total PO Raised", value: "£1,000,000" },
             { label: "Proforma NR", value: "£320", valueColor: "red" },
-            {
-              label: "Proforma NR Material Estimate",
-              value: "£50,000",
-              valueColor: "red",
-            },
-            {
-              label: "Total Unclaimed",
-              value: "£150,000",
-              valueColor: "green",
-            },
-            {
-              label: "Total Overspend",
-              value: "£150,000",
-              valueColor: "red",
-            },
+            { label: "Proforma NR Material Estimate", value: "£50,000", valueColor: "red" },
+            { label: "Total Unclaimed", value: "£150,000", valueColor: "green" },
+            { label: "Total Overspend", value: "£150,000", valueColor: "red" },
           ]}
         />
-        {/* {role === "project_admin" && ( */}
-          <TableStat
-            summaryRows={[
-              { label: "Variations Value", value: "£250,000" },
-              { label: "Variation Labour value", value: "£150,000" },
-              { label: "Variation Labour target", value: "£150,000" },
-              { label: "Variations Total PO", value: "£150,000" },
-              { label: "Variations PO Call off", value: "£150,000" },
-              { label: "Variations Claimed", value: "£320", valueColor: "red" },
-            ]}
-          />
-        {/* )} */}
+        <TableStat
+          summaryRows={[
+            { label: "Variations Value", value: "£250,000" },
+            { label: "Variation Labour value", value: "£150,000" },
+            { label: "Variation Labour target", value: "£150,000" },
+            { label: "Variations Total PO", value: "£150,000" },
+            { label: "Variations PO Call off", value: "£150,000" },
+            { label: "Variations Claimed", value: "£320", valueColor: "red" },
+          ]}
+        />
       </div>
 
       <div className="mt-8">
@@ -429,7 +395,7 @@ export default function Page() {
           </Button>
         </div>
         <AgTable
-          rowData={data}
+          rowData={mockBreakdownData}
           columnDefs={columns}
           height="auto"
           suppressCellClickAction

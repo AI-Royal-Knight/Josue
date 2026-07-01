@@ -1,12 +1,20 @@
 "use client"
 
+import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import CreateProjectForm from "./create-project-form"
 import { Button } from "@/components/ui/button"
 
-export default function CreateProjectDialog() {
+export default function CreateProjectDialog({ onSuccess }: { onSuccess?: () => void }) {
+  const [open, setOpen] = useState(false)
+
+  const handleSuccess = () => {
+    setOpen(false)
+    if (onSuccess) onSuccess()
+  }
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>+ Create New Project</Button>
       </DialogTrigger>
@@ -14,7 +22,7 @@ export default function CreateProjectDialog() {
         <DialogHeader>
           <DialogTitle>Create Project</DialogTitle>
         </DialogHeader>
-        <CreateProjectForm />
+        <CreateProjectForm onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   )

@@ -1,12 +1,33 @@
 "use client"
-import { projects, VAT_OPTIONS } from "@/constants/projects"
+import { useEffect, useState } from "react"
+import { VAT_OPTIONS } from "@/constants/projects"
+import type { ProjectItem } from "@/constants/projects"
 import CreateProjectDialog from "./_components/create-project-dialog"
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef, ICellRendererParams } from "ag-grid-community"
-import type { ProjectItem } from "@/constants/projects"
 import Link from "next/link"
+import { getProjects } from "@/lib/api/project-admin"
 
 export default function Page() {
+  const [projectsData, setProjectsData] = useState<ProjectItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchProjects = async () => {
+    setLoading(true)
+    try {
+      const result = await getProjects()
+      setProjectsData(result.projects)
+    } catch (err) {
+      console.error("Failed to load projects:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchProjects()
+  }, [])
+
   const columns: ColDef<ProjectItem>[] = [
     {
       headerName: "Project Name",
@@ -80,10 +101,16 @@ export default function Page() {
     <div className="w-full px-6 py-4">
       <div className="mb-4 flex items-center justify-between">
         <h2>Projects</h2>
-        <CreateProjectDialog />
+        <CreateProjectDialog onSuccess={fetchProjects} />
       </div>
 
-      <AgTable rowData={projects} columnDefs={columns} height="auto" />
+      {loading ? (
+        <div className="py-10 text-center text-sm text-gray-500">
+          Loading projects...
+        </div>
+      ) : (
+        <AgTable rowData={projectsData} columnDefs={columns} height="auto" />
+      )}
     </div>
   )
 }

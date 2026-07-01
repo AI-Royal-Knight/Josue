@@ -1,50 +1,243 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle2 } from "lucide-react"
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
+"use client"
 
-export default function Page() {
+import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Loader2, Pencil, Check, X } from "lucide-react"
+import { getProfile, updateProfile, ProfileResponse } from "@/lib/api/profile"
+
+const profileSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  
+  // Profile nested fields
+  categories: z.string().optional(),
+  cscs_card_no: z.string().optional(),
+  cscs_expiry_date: z.string().optional(),
+  ipaf_certification: z.string().optional(),
+  pasma_certification: z.string().optional(),
+  sssts_smsts: z.string().optional(),
+  insurance_policy: z.string().optional(),
+  employer_liability: z.string().optional(),
+  digital_signature: z.string().optional(),
+  
+  // Company nested fields
+  company_name: z.string().optional(),
+  company_number: z.string().optional(),
+  vat_number: z.string().optional(),
+  bank_name: z.string().optional(),
+  bank_address: z.string().optional(),
+  account_name: z.string().optional(), // No account name in DB, we'll store it in bank_address or something else? Wait, backend has bank_name, bank_address, sort_code, account_number. We will use those.
+  account_number: z.string().optional(),
+  sort_code: z.string().optional(),
+  building_number: z.string().optional(),
+  street: z.string().optional(),
+  town: z.string().optional(),
+  city: z.string().optional(),
+  postcode: z.string().optional(),
+})
+
+type ProfileFormValues = z.infer<typeof profileSchema>
+
+export default function ProfilePage() {
+  const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [profileData, setProfileData] = useState<ProfileResponse | null>(null)
+
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      email: "",
+      categories: "",
+      cscs_card_no: "",
+      cscs_expiry_date: "",
+      ipaf_certification: "",
+      pasma_certification: "",
+      sssts_smsts: "",
+      insurance_policy: "",
+      employer_liability: "",
+      digital_signature: "",
+      company_name: "",
+      company_number: "",
+      vat_number: "",
+      bank_name: "",
+      bank_address: "",
+      account_number: "",
+      sort_code: "",
+      building_number: "",
+      street: "",
+      postcode: "",
+    }
+  })
+
+  useEffect(() => {
+    loadProfile()
+  }, [])
+
+  const loadProfile = async () => {
+    try {
+      setIsLoading(true)
+      const data = await getProfile()
+      setProfileData(data)
+      form.reset({
+        first_name: data.first_name || "",
+        last_name: data.last_name || "",
+        email: data.email || "",
+        categories: data.profile?.categories || "",
+        cscs_card_no: data.profile?.cscs_card_no || "",
+        cscs_expiry_date: data.profile?.cscs_expiry_date || "",
+        ipaf_certification: data.profile?.ipaf_certification || "",
+        pasma_certification: data.profile?.pasma_certification || "",
+        sssts_smsts: data.profile?.sssts_smsts || "",
+        insurance_policy: data.profile?.insurance_policy || "",
+        employer_liability: data.profile?.employer_liability || "",
+        digital_signature: data.profile?.digital_signature || "",
+        
+        company_name: data.company?.company_name || "",
+        company_number: data.company?.company_number?.toString() || "",
+        vat_number: data.company?.vat_number || "",
+        bank_name: data.company?.bank_name || "",
+        bank_address: data.company?.bank_address || "",
+        account_number: data.company?.account_number || "",
+        sort_code: data.company?.sort_code || "",
+        building_number: data.company?.building_number?.toString() || "",
+        street: data.company?.street || "",
+        postcode: data.company?.postcode || "",
+      })
+    } catch (err) {
+      setError("Failed to load profile data.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const onSubmit = async (values: ProfileFormValues) => {
+    try {
+      setError(null)
+      await updateProfile({
+        first_name: values.first_name,
+        last_name: values.last_name,
+        email: values.email,
+        profile: {
+          categories: values.categories,
+          cscs_card_no: values.cscs_card_no,
+          cscs_expiry_date: values.cscs_expiry_date,
+          ipaf_certification: values.ipaf_certification,
+          pasma_certification: values.pasma_certification,
+          sssts_smsts: values.sssts_smsts,
+          insurance_policy: values.insurance_policy,
+          employer_liability: values.employer_liability,
+          digital_signature: values.digital_signature,
+        },
+        company: {
+          company_name: values.company_name,
+          company_number: values.company_number ? parseInt(values.company_number) : null,
+          vat_number: values.vat_number,
+          bank_name: values.bank_name,
+          bank_address: values.bank_address,
+          account_number: values.account_number,
+          sort_code: values.sort_code,
+          building_number: values.building_number ? parseInt(values.building_number) : null,
+          street: values.street,
+          postcode: values.postcode,
+        }
+      })
+      setIsEditing(false)
+      loadProfile()
+    } catch (err) {
+      setError("Failed to update profile.")
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[400px] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    )
+  }
+
   return (
     <div className="w-full min-w-0 space-y-6 p-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-semibold">Project admin profile</h1>
-        <p className="text-sm text-muted-foreground">
-          Read-only view of your subscription registration information. If you
-          need to update any details, please contact system administration.
-        </p>
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold">User Profile</h1>
+          <p className="text-sm text-muted-foreground">
+            {isEditing ? "Edit your profile details below." : "Read-only view of your profile information."}
+          </p>
+        </div>
+        <div>
+          {isEditing ? (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => {
+                setIsEditing(false)
+                form.reset()
+              }}>
+                <X className="mr-2 h-4 w-4" /> Cancel
+              </Button>
+              <Button onClick={form.handleSubmit(onSubmit)} disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="mr-2 h-4 w-4" />
+                )}
+                Save Changes
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => setIsEditing(true)}>
+              <Pencil className="mr-2 h-4 w-4" /> Edit Profile
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {error && (
+        <div className="rounded-md bg-red-500/10 p-4 text-sm text-red-500 border border-red-500/20">
+          {error}
+        </div>
+      )}
+
+      <form className="grid gap-6 lg:grid-cols-2">
         {/* Basic Information */}
         <Card>
           <CardContent>
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-4 mt-6">
               <h2 className="font-semibold text-white">Basic Information</h2>
             </div>
-            <div className="grid gap-4">
+            <div className="grid gap-4 mt-4">
               <div>
                 <label className="text-xs text-slate-400">First Name</label>
-                <p className="mt-1 text-sm text-slate-100">Alexander</p>
+                {isEditing ? (
+                  <Input {...form.register("first_name")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("first_name") || "Not provided"}</p>
+                )}
               </div>
               <div>
-                <label className="text-xs text-slate-400">Surname</label>
-                <p className="mt-1 text-sm text-slate-100">Wright</p>
+                <label className="text-xs text-slate-400">Last Name</label>
+                {isEditing ? (
+                  <Input {...form.register("last_name")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("last_name") || "Not provided"}</p>
+                )}
               </div>
               <div>
                 <label className="text-xs text-slate-400">Email Address</label>
-                <p className="mt-1 text-sm text-slate-100">
-                  alexander.wright@example.com
-                </p>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400">Password</label>
-                <p className="mt-1 text-sm text-slate-100">••••••••</p>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400">
-                  Confirm Password
-                </label>
-                <p className="mt-1 text-sm text-slate-100">••••••••</p>
+                {isEditing ? (
+                  <Input {...form.register("email")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("email")}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -53,132 +246,97 @@ export default function Page() {
         {/* Professional Information */}
         <Card>
           <CardContent>
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-4 mt-6">
               <h2 className="font-semibold text-white">Professional Details</h2>
             </div>
-            <div className="grid gap-4">
+            <div className="grid gap-4 mt-4">
               <div>
-                <label className="text-xs text-slate-400">
-                  Second Categories
-                </label>
-                <p className="mt-1 flex flex-wrap gap-2 text-sm">
-                  <span className="inline-flex rounded bg-blue-500/20 px-2 py-1 text-blue-300">
-                    Electrical
-                  </span>
-                  <span className="inline-flex rounded bg-blue-500/20 px-2 py-1 text-blue-300">
-                    Mechanical
-                  </span>
-                  <span className="inline-flex rounded bg-blue-500/20 px-2 py-1 text-blue-300">
-                    Plumbing
-                  </span>
-                  <span className="inline-flex rounded bg-blue-500/20 px-2 py-1 text-blue-300">
-                    HVAC
-                  </span>
-                  <span className="inline-flex rounded bg-blue-500/20 px-2 py-1 text-blue-300">
-                    Fire Safety
-                  </span>
-                  <span className="inline-flex rounded bg-blue-500/20 px-2 py-1 text-blue-300">
-                    Site
-                  </span>
-                </p>
+                <label className="text-xs text-slate-400">Categories / Profession</label>
+                {isEditing ? (
+                  <Input {...form.register("categories")} className="mt-1" placeholder="e.g. Electrical, Plumbing" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("categories") || "Not provided"}</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Certifications & Compliance */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardContent>
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
-              <h2 className="font-semibold text-white">
-                Certifications & Compliance
-              </h2>
+            <div className="flex items-center gap-2 border-b border-white/10 pb-4 mt-6">
+              <h2 className="font-semibold text-white">Certifications & Compliance</h2>
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2 mt-4">
               <Card>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">
-                      IPAF
-                    </span>
-                    <Badge className="bg-emerald-500/20 text-emerald-300">
-                      Valid
-                    </Badge>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <span className="text-sm font-semibold text-white">IPAF</span>
+                    <div>
+                      <label className="text-xs text-slate-400">Certification Details</label>
+                      {isEditing ? (
+                        <Input {...form.register("ipaf_certification")} className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-100">{form.getValues("ipaf_certification") || "Not provided"}</p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400">
-                    Exp. IN-814644 Expires: 01 Jul 2025
-                  </p>
-                  <Link
-                    href="#"
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
-                    View Certificate
-                  </Link>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">
-                      PASMA
-                    </span>
-                    <Badge className="bg-yellow-500/20 text-yellow-300">
-                      Expiring Soon
-                    </Badge>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <span className="text-sm font-semibold text-white">PASMA</span>
+                    <div>
+                      <label className="text-xs text-slate-400">Certification Details</label>
+                      {isEditing ? (
+                        <Input {...form.register("pasma_certification")} className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-100">{form.getValues("pasma_certification") || "Not provided"}</p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400">
-                    Exp. EN-25048 Expires: 06 May 2024
-                  </p>
-                  <Link
-                    href="#"
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
-                    View Certificate
-                  </Link>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">
-                      SSSTS / SMSTS
-                    </span>
-                    <Badge className="bg-red-500/20 text-red-300">
-                      Expired
-                    </Badge>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <span className="text-sm font-semibold text-white">SSSTS / SMSTS</span>
+                    <div>
+                      <label className="text-xs text-slate-400">Certification Details</label>
+                      {isEditing ? (
+                        <Input {...form.register("sssts_smsts")} className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-100">{form.getValues("sssts_smsts") || "Not provided"}</p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400">
-                    Exp. SN-001708 Expires: 01 Nov 2021
-                  </p>
-                  <Link
-                    href="#"
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
-                    View Certificate
-                  </Link>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">
-                      CSCS / JCR / JIB
-                    </span>
-                    <Badge className="bg-emerald-500/20 text-emerald-300">
-                      Valid
-                    </Badge>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <span className="text-sm font-semibold text-white">CSCS</span>
+                    <div>
+                      <label className="text-xs text-slate-400">Card No.</label>
+                      {isEditing ? (
+                        <Input {...form.register("cscs_card_no")} className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-100">{form.getValues("cscs_card_no") || "Not provided"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400">Expiry Date</label>
+                      {isEditing ? (
+                        <Input type="date" {...form.register("cscs_expiry_date")} className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-100">{form.getValues("cscs_expiry_date") || "Not provided"}</p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400">
-                    Exp. SJ-SA1628 Expires: 12 Jun 2028
-                  </p>
-                  <Link
-                    href="#"
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
-                    View Certificate
-                  </Link>
                 </CardContent>
               </Card>
             </div>
@@ -188,29 +346,33 @@ export default function Page() {
         {/* Company Information */}
         <Card>
           <CardContent>
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-4 mt-6">
               <h2 className="font-semibold text-white">Company Information</h2>
             </div>
-            <div className="grid gap-4">
+            <div className="grid gap-4 mt-4">
               <div>
                 <label className="text-xs text-slate-400">Company Name</label>
-                <p className="mt-1 text-sm text-slate-100">
-                  Wright Construction Ltd
-                </p>
+                {isEditing ? (
+                  <Input {...form.register("company_name")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("company_name") || "Not provided"}</p>
+                )}
               </div>
               <div>
-                <label className="text-xs text-slate-400">
-                  Company House Number
-                </label>
-                <p className="mt-1 text-sm text-slate-100">10348978</p>
+                <label className="text-xs text-slate-400">Company Number</label>
+                {isEditing ? (
+                  <Input {...form.register("company_number")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("company_number") || "Not provided"}</p>
+                )}
               </div>
               <div>
-                <label className="text-xs text-slate-400">Company UTR</label>
-                <p className="mt-1 text-sm text-slate-100">DESC182101</p>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400">VAT Reviewed</label>
-                <p className="mt-1 text-sm text-slate-100">Not provided</p>
+                <label className="text-xs text-slate-400">VAT Number / UTR</label>
+                {isEditing ? (
+                  <Input {...form.register("vat_number")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("vat_number") || "Not provided"}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -219,86 +381,74 @@ export default function Page() {
         {/* Bank Details */}
         <Card>
           <CardContent>
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-4 mt-6">
               <h2 className="font-semibold text-white">Bank Details</h2>
             </div>
-            <div className="rounded border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
-              ✓ Secure Details: Bank information is encrypted and stored
-              securely. Only certain staff and applicants can see it.
-            </div>
-            <div className="grid gap-4">
+            <div className="grid gap-4 mt-4">
               <div>
                 <label className="text-xs text-slate-400">Bank Name</label>
-                <p className="mt-1 text-sm text-slate-100">Barclays Bank PLC</p>
+                {isEditing ? (
+                  <Input {...form.register("bank_name")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("bank_name") || "Not provided"}</p>
+                )}
               </div>
               <div>
                 <label className="text-xs text-slate-400">Bank Address</label>
-                <p className="mt-1 text-sm text-slate-100">
-                  1 Churchill Place, London, E14 5HP
-                </p>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400">
-                  Account Holder Name
-                </label>
-                <p className="mt-1 text-sm text-slate-100">Alexander Wright</p>
+                {isEditing ? (
+                  <Input {...form.register("bank_address")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("bank_address") || "Not provided"}</p>
+                )}
               </div>
               <div>
                 <label className="text-xs text-slate-400">Account Number</label>
-                <p className="mt-1 text-sm text-slate-100">•••• •••• 6049</p>
+                {isEditing ? (
+                  <Input {...form.register("account_number")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("account_number") || "Not provided"}</p>
+                )}
               </div>
               <div>
                 <label className="text-xs text-slate-400">Sort Code</label>
-                <p className="mt-1 text-sm text-slate-100">••-•• 49</p>
+                {isEditing ? (
+                  <Input {...form.register("sort_code")} className="mt-1" />
+                ) : (
+                  <p className="mt-1 text-sm text-slate-100">{form.getValues("sort_code") || "Not provided"}</p>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Insurance & Address */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardContent>
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-4 mt-6">
               <h2 className="font-semibold text-white">Insurance & Address</h2>
             </div>
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 lg:grid-cols-2 mt-4">
               <div className="space-y-4">
                 <h3 className="font-semibold text-white">Insurance Policies</h3>
                 <div className="space-y-3">
                   <Card>
-                    <CardContent>
-                      <label className="text-xs text-slate-400">
-                        Insurance Policies
-                      </label>
-                      <p className="mt-2 text-xs text-slate-100">
-                        Policy Number: PL-387824321
-                        <br />
-                        Expiry Date: 31 Dec 2024
-                      </p>
-                      <Link
-                        href="#"
-                        className="mt-2 text-xs text-blue-400 hover:text-blue-300"
-                      >
-                        View Policy Document
-                      </Link>
+                    <CardContent className="pt-6">
+                      <label className="text-xs text-slate-400">Insurance Policy</label>
+                      {isEditing ? (
+                        <Input {...form.register("insurance_policy")} className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-100">{form.getValues("insurance_policy") || "Not provided"}</p>
+                      )}
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent>
-                      <label className="text-xs text-slate-400">
-                        Employer Liability
-                      </label>
-                      <p className="mt-2 text-xs text-slate-100">
-                        Policy Number: EL-025489698
-                        <br />
-                        Expiry Date: 31 Dec 2024
-                      </p>
-                      <Link
-                        href="#"
-                        className="mt-2 text-xs text-blue-400 hover:text-blue-300"
-                      >
-                        View Policy Document
-                      </Link>
+                    <CardContent className="pt-6">
+                      <label className="text-xs text-slate-400">Employer Liability</label>
+                      {isEditing ? (
+                        <Input {...form.register("employer_liability")} className="mt-1" />
+                      ) : (
+                        <p className="mt-1 text-sm text-slate-100">{form.getValues("employer_liability") || "Not provided"}</p>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -307,26 +457,48 @@ export default function Page() {
               <div className="space-y-4">
                 <h3 className="font-semibold text-white">Registered Address</h3>
                 <Card>
-                  <CardContent>
-                    <div>
-                      <label className="text-xs text-slate-400">
-                        Building / Inferno / Street
-                      </label>
-                      <p className="mt-1 text-sm text-slate-100">
-                        Suite 43, Pine Street
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400">Town</label>
-                      <p className="mt-1 text-sm text-slate-100">London</p>
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400">City</label>
-                      <p className="mt-1 text-sm text-slate-100">London</p>
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400">Postcode</label>
-                      <p className="mt-1 text-sm text-slate-100">SE1 8BQ</p>
+                  <CardContent className="pt-6">
+                    <div className="grid gap-4">
+                      <div>
+                        <label className="text-xs text-slate-400">Building Number</label>
+                        {isEditing ? (
+                          <Input {...form.register("building_number")} className="mt-1" />
+                        ) : (
+                          <p className="mt-1 text-sm text-slate-100">{form.getValues("building_number") || "Not provided"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400">Street</label>
+                        {isEditing ? (
+                          <Input {...form.register("street")} className="mt-1" />
+                        ) : (
+                          <p className="mt-1 text-sm text-slate-100">{form.getValues("street") || "Not provided"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400">Town</label>
+                        {isEditing ? (
+                          <Input {...form.register("town")} className="mt-1" />
+                        ) : (
+                          <p className="mt-1 text-sm text-slate-100">{form.getValues("town") || "Not provided"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400">City</label>
+                        {isEditing ? (
+                          <Input {...form.register("city")} className="mt-1" />
+                        ) : (
+                          <p className="mt-1 text-sm text-slate-100">{form.getValues("city") || "Not provided"}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400">Postcode</label>
+                        {isEditing ? (
+                          <Input {...form.register("postcode")} className="mt-1" />
+                        ) : (
+                          <p className="mt-1 text-sm text-slate-100">{form.getValues("postcode") || "Not provided"}</p>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -336,44 +508,28 @@ export default function Page() {
         </Card>
 
         {/* Terms & Signature */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardContent>
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-4 mt-6">
               <h2 className="font-semibold text-white">Terms & Signature</h2>
             </div>
-            <div className="space-y-4">
-              <div className="flex rounded border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-300">
-                ✓ Terms & Conditions accepted and agreed to
-              </div>
+            <div className="space-y-4 mt-4">
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card>
-                  <CardContent>
-                    <p className="text-xs text-slate-400">Digital Signature</p>
-                    <p className="font-semibold text-white">Alexander Wright</p>
-                    <p className="text-xs text-slate-400">Signed Digitally</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent>
-                    <p className="text-xs text-slate-400">Typed Full Name</p>
-                    <p className="text-sm text-slate-100">
-                      Alexander James Wright
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-slate-400">Signature Date</p>
-                        <p className="mt-1 text-sm text-slate-100">
-                          24 October 2023, 14:32 GMT
-                        </p>
-                      </div>
-                    </div>
+                  <CardContent className="pt-6">
+                    <p className="text-xs text-slate-400">Digital Signature / Typed Name</p>
+                    {isEditing ? (
+                      <Input {...form.register("digital_signature")} className="mt-1" />
+                    ) : (
+                      <p className="font-semibold text-white mt-1">{form.getValues("digital_signature") || "Not provided"}</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      </form>
     </div>
   )
 }
