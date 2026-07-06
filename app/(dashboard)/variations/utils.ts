@@ -14,7 +14,8 @@ export const ALL_USERS = [
 export const initialRows: VariationRow[] = [
   {
     id: "1", voNo: "VO-001", date: "2024-01-12", variationSheetNumber: "A",
-    project: "Project A", siteInstructionNo: "SI21654321012",
+    project: "Project A", projectId: "",
+    siteInstructionNo: "SI21654321012",
     descriptionOfWorks: "Additional steelwork to level 3",
     createdBy: "John Watson", lines: [], totalAmount: 4500,
     evidence: "", comments: "Approved by site manager",
@@ -23,7 +24,8 @@ export const initialRows: VariationRow[] = [
   },
   {
     id: "2", voNo: "VO-002", date: "2024-01-12", variationSheetNumber: "B",
-    project: "Project B", siteInstructionNo: "SI24654321019",
+    project: "Project B", projectId: "",
+    siteInstructionNo: "SI24654321019",
     descriptionOfWorks: "Revised drainage layout",
     createdBy: "Emily Rose", lines: [], totalAmount: 2800,
     evidence: "", comments: "",
@@ -32,7 +34,8 @@ export const initialRows: VariationRow[] = [
   },
   {
     id: "3", voNo: "VO-003", date: "2024-01-12", variationSheetNumber: "C",
-    project: "Project C", siteInstructionNo: "SI24654321070",
+    project: "Project C", projectId: "",
+    siteInstructionNo: "SI24654321070",
     descriptionOfWorks: "Extra cabling runs to plant room",
     createdBy: "Mark Jones", lines: [], totalAmount: 1200,
     evidence: "", comments: "Awaiting client sign-off",
@@ -41,7 +44,8 @@ export const initialRows: VariationRow[] = [
   },
   {
     id: "4", voNo: "VO-004", date: "2024-01-12", variationSheetNumber: "D",
-    project: "Project A", siteInstructionNo: "SI24659091030",
+    project: "Project A", projectId: "",
+    siteInstructionNo: "SI24659091030",
     descriptionOfWorks: "Temporary works for access platform",
     createdBy: "Alex Wanchis", lines: [], totalAmount: 3600,
     evidence: "", comments: "",
@@ -49,6 +53,7 @@ export const initialRows: VariationRow[] = [
     approvedBy: "Commercial Manager", submittedToClient: false, signedByClient: false,
   },
 ]
+
 
 export const summaryMetrics = [
   { label: "Variations", value: "£12,100" },

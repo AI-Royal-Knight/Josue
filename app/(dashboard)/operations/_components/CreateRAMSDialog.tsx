@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -17,12 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Save } from "lucide-react"
+import { Save, Loader2 } from "lucide-react"
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (data: RAMSFormData) => void
+  onSave: (data: RAMSFormData) => Promise<boolean> | boolean
+  projects: { id: string; name: string }[]
+  defaultProjectId: string
 }
 
 export type RAMSFormData = {
@@ -33,23 +35,34 @@ export type RAMSFormData = {
   attachment: File | null
 }
 
-const PROJECTS = ["Project A", "Project B", "Project C"]
 
-export default function CreateRAMSDialog({ open, onOpenChange, onSave }: Props) {
+
+export default function CreateRAMSDialog({ open, onOpenChange, onSave, projects, defaultProjectId }: Props) {
   const [form, setForm] = useState<RAMSFormData>({
     title: "",
     date: "",
     reviewDate: "",
-    assignToProject: "Project A",
+    assignToProject: defaultProjectId || "",
     attachment: null,
   })
+
+  useEffect(() => {
+    if (open) {
+      setForm((p) => ({ ...p, assignToProject: defaultProjectId || "" }))
+    }
+  }, [open, defaultProjectId])
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const handleSave = () => {
-    if (!form.title.trim()) return
-    onSave(form)
-    setForm({ title: "", date: "", reviewDate: "", assignToProject: "Project A", attachment: null })
-    onOpenChange(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSave = async () => {
+    setIsSubmitting(true)
+    const success = await onSave(form)
+    setIsSubmitting(false)
+    if (success) {
+      setForm({ title: "", date: "", reviewDate: "", assignToProject: defaultProjectId || "", attachment: null })
+      onOpenChange(false)
+    }
   }
 
   return (
@@ -105,9 +118,9 @@ export default function CreateRAMSDialog({ open, onOpenChange, onSave }: Props) 
               <SelectTrigger className="border-white/10 bg-white/5">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                {PROJECTS.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
+              <SelectContent className="border-white/10 bg-slate-900">
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -147,8 +160,9 @@ export default function CreateRAMSDialog({ open, onOpenChange, onSave }: Props) 
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!form.title.trim()}>
-            <Save className="mr-2 size-4" /> Save RAMS
+          <Button onClick={handleSave} disabled={!form.title.trim() || isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
+            {isSubmitting ? "Saving..." : "Save RAMS"}
           </Button>
         </div>
       </DialogContent>

@@ -2,8 +2,6 @@
 
 import { useCallback, useMemo, useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
-import Box from "@mui/material/Box"
-import Button from "@mui/material/Button"
 
 import {
   DataGrid,
@@ -11,7 +9,8 @@ import {
   type GridColumnGroupingModel,
 } from "@mui/x-data-grid"
 
-import { Plus, Save, Lock, Unlock, FolderPlus } from "lucide-react"
+import { Plus, Save, Lock, Unlock, FolderPlus, Briefcase, UserPlus } from "lucide-react"
+import { toast } from "sonner"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 import { colors } from "@/constants/colors"
 
@@ -33,6 +32,8 @@ import {
 } from "@/components/ui/context-menu"
 
 import { SubfolderModal } from "@/app/(dashboard)/labour-target/subfolder-modal"
+import { AssignFolderModal } from "@/app/(dashboard)/labour-target/assign-folder-modal"
+import type { SubfolderAssignment } from "@/lib/api/project-admin"
 import type {
   FolderType,
   ModalState,
@@ -62,25 +63,72 @@ const DEFAULT_FOLDERS: FolderType[] = [
   },
 ]
 
+// Custom column group header for subfolders — uses Radix ContextMenu (same as folder)
+// so right-click behaviour is identical and reliable inside MUI DataGrid.
+function SubfolderGroupHeader(props: any) {
+  const { headerName, groupId, onSubfolderAssign } = props
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          style={{
+            width: '100%',
+            textAlign: 'center',
+            cursor: 'context-menu',
+            userSelect: 'none',
+            padding: '0 4px',
+          }}
+          title="Right-click to assign employee"
+        >
+          {headerName}
+        </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="w-52 border-white/10 bg-slate-900">
+        {/* Section label */}
+        <div className="px-2 py-1 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
+          {headerName}
+        </div>
+
+        {/* Assign Employee */}
+        <ContextMenuItem
+          className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+          onSelect={() => onSubfolderAssign?.(groupId)}
+        >
+          <UserPlus size={14} className="shrink-0 text-indigo-400" />
+          Assign Employee
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
+
+
 // Per-folder DataGrid
 function FolderGrid({
   folder,
   isLocked,
   sx,
+  onChange,
+  onSubfolderAssign,
 }: {
   folder: FolderType
   isLocked: boolean
   sx?: object
+  onChange?: (newFolder: FolderType) => void
+  onSubfolderAssign?: (subfolderId: string) => void
 }) {
   const rows = useMemo(
     () =>
-      Array.from({ length: ROWS_PER_FOLDER }, (_, i) => {
+      Array.from({ length: Math.max(ROWS_PER_FOLDER, ...folder.subfolders.map(s => s.rows?.length || 0)) }, (_, i) => {
         const row: Record<string, unknown> = { id: i + 1 }
         folder.subfolders.forEach((sub) => {
-          row[`${sub.id}_ws`] = ""
-          row[`${sub.id}_wa`] = ""
-          row[`${sub.id}_pv`] = ""
-          row[`${sub.id}_lt`] = ""
+          row[`${sub.id}_ws`] = sub.rows[i]?.workSection || ""
+          row[`${sub.id}_wa`] = sub.rows[i]?.workArea || ""
+          row[`${sub.id}_pv`] = sub.rows[i]?.projectValue || ""
+          row[`${sub.id}_lt`] = sub.rows[i]?.labourTarget || ""
         })
         return row
       }),
@@ -89,52 +137,90 @@ function FolderGrid({
 
   const columns: GridColDef[] = useMemo(
     () =>
-      folder.subfolders.flatMap((sub) => [
-        {
-          field: `${sub.id}_ws`,
-          headerName: "Work Section",
-          flex: 1,
-          minWidth: 150,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_wa`,
-          headerName: "Work Area",
-          flex: 1,
-          minWidth: 150,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_pv`,
-          headerName: "Project Value",
-          flex: 1,
-          minWidth: 140,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_lt`,
-          headerName: "Labour Target",
-          flex: 1,
-          minWidth: 140,
-          editable: true,
-        },
-      ]),
+      folder.subfolders.flatMap((sub) => {
+        const cols: GridColDef[] = [
+          {
+            field: `${sub.id}_ws`,
+            headerName: "Work Section",
+            flex: 1,
+            minWidth: 150,
+            editable: true,
+          },
+          {
+            field: `${sub.id}_wa`,
+            headerName: "Work Area",
+            flex: 1,
+            minWidth: 150,
+            editable: true,
+          },
+          {
+            field: `${sub.id}_pv`,
+            headerName: "Project Value",
+            flex: 1,
+            minWidth: 140,
+            editable: true,
+          },
+          {
+            field: `${sub.id}_lt`,
+            headerName: "Labour Target",
+            flex: 1,
+            minWidth: 140,
+            editable: true,
+          }
+        ]
+        return cols
+      }),
     [folder]
   )
 
   const columnGroupingModel: GridColumnGroupingModel = useMemo(
     () =>
-      folder.subfolders.map((sub) => ({
-        groupId: sub.id,
-        headerName: sub.name.toUpperCase(),
-        children: [
+      folder.subfolders.map((sub) => {
+        const children = [
           { field: `${sub.id}_ws` },
           { field: `${sub.id}_wa` },
           { field: `${sub.id}_pv` },
-          { field: `${sub.id}_lt` },
-        ],
-      })),
-    [folder]
+          { field: `${sub.id}_lt` }
+        ]
+        return {
+          groupId: sub.id,
+          headerName: sub.name.toUpperCase(),
+          children,
+          renderHeaderGroup: () => (
+            <SubfolderGroupHeader
+              headerName={sub.name.toUpperCase()}
+              groupId={sub.id}
+              onSubfolderAssign={onSubfolderAssign}
+            />
+          ),
+        }
+      }),
+    [folder, onSubfolderAssign]
+  )
+
+  const handleProcessRowUpdate = useCallback(
+    (newRow: Record<string, any>) => {
+      const updatedFolder = { ...folder }
+      updatedFolder.subfolders = folder.subfolders.map((sub) => {
+        const newSubRows = [...(sub.rows || [])]
+        const rowIndex = newRow.id - 1
+        // Make sure we have enough rows up to this index
+        while (newSubRows.length <= rowIndex) {
+          newSubRows.push({ id: uid(), workSection: "", workArea: "", projectValue: "", labourTarget: "" })
+        }
+        newSubRows[rowIndex] = {
+          ...newSubRows[rowIndex],
+          workSection: newRow[`${sub.id}_ws`] || "",
+          workArea: newRow[`${sub.id}_wa`] || "",
+          projectValue: newRow[`${sub.id}_pv`] || "",
+          labourTarget: newRow[`${sub.id}_lt`] || "",
+        }
+        return { ...sub, rows: newSubRows }
+      })
+      onChange?.(updatedFolder)
+      return newRow
+    },
+    [folder, onChange]
   )
 
   const fg = colors.foreground ?? "#e2e8f0"
@@ -144,6 +230,8 @@ function FolderGrid({
       rows={rows}
       columns={columns}
       columnGroupingModel={columnGroupingModel}
+      slots={undefined}
+      processRowUpdate={handleProcessRowUpdate}
       hideFooter
       disableRowSelectionOnClick
       showCellVerticalBorder
@@ -199,26 +287,33 @@ export default function DynamicFolderTable() {
           if (data && data.length > 0) {
             setFolders(data as unknown as FolderType[])
           } else {
-            setFolders(DEFAULT_FOLDERS)
+            setFolders([])
           }
         })
         .catch(() => {
-          setFolders(DEFAULT_FOLDERS)
+          setFolders([])
         })
         .finally(() => setLoading(false))
     })
   }, [projectId])
 
-  const [isLocked, setIsLocked] = useState(() => {
-    if (typeof window === "undefined") return false
-    try {
-      return window.localStorage.getItem(lockKey) === "true"
-    } catch {
-      return false
-    }
-  })
+  const [isLocked, setIsLocked] = useState(false)
 
-  const [modal, setModal] = useState<ModalState>(null)
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(lockKey) === "true") {
+        setIsLocked(true)
+      }
+    } catch {
+      // ignore
+    }
+  }, [lockKey])
+
+  const [modalState, setModalState] = useState<ModalState>(null)
+
+  // State for Assign Folder Modal
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [assignTarget, setAssignTarget] = useState<{ folderId: string, subfolderId?: string, targetName: string } | null>(null)
   const [copiedValue, setCopiedValue] = useState("")
 
   // ── Add-folder wizard ────────────────────────────────────────────────────
@@ -278,9 +373,9 @@ export default function DynamicFolderTable() {
     try {
       const { updateProjectFolders } = await import("@/lib/api/project-admin")
       await updateProjectFolders(projectId, folders as any)
-      alert("Progress saved successfully!")
+      toast.success("Progress saved successfully!")
     } catch (err) {
-      alert("Failed to save progress")
+      toast.error("Failed to save progress")
     }
   }, [folders, projectId])
 
@@ -310,7 +405,7 @@ export default function DynamicFolderTable() {
           ],
         },
       ])
-      setModal({ folderId, subfolderId })
+      setModalState({ folderId, subfolderId })
       resetCreateDialog()
     },
     [resetCreateDialog]
@@ -323,44 +418,123 @@ export default function DynamicFolderTable() {
         prev.map((f) =>
           f.id === folderId
             ? {
-                ...f,
-                subfolders: [
-                  ...f.subfolders,
-                  { id: subfolderId, name: subfolderName, rows: defaultRows() },
-                ],
-              }
+              ...f,
+              subfolders: [
+                ...f.subfolders,
+                { id: subfolderId, name: subfolderName, rows: defaultRows() },
+              ],
+            }
             : f
         )
       )
-      setModal({ folderId, subfolderId })
+      setModalState({ folderId, subfolderId })
     },
     []
   )
+
+  const handleDeleteSubfolder = useCallback((folderId: string, subId: string) => {
+    setFolders((prev) =>
+      prev.map((f) => {
+        if (f.id === folderId) {
+          return {
+            ...f,
+            subfolders: f.subfolders.filter((s) => s.id !== subId),
+          }
+        }
+        return f
+      })
+    )
+  }, [])
+
+  const handleAssignSubfolder = useCallback((folderId: string, subId?: string) => {
+    const folder = folders.find(f => f.id === folderId)
+    const targetName = subId
+      ? folder?.subfolders.find(s => s.id === subId)?.name ?? 'Subfolder'
+      : folder?.name ?? 'Folder'
+    setAssignTarget({ folderId, subfolderId: subId, targetName })
+    setAssignModalOpen(true)
+  }, [folders])
+
+  const onAssignConfirm = useCallback((newAssignments: SubfolderAssignment[]) => {
+    if (!assignTarget) return
+
+    setFolders((prev) =>
+      prev.map((f) => {
+        if (f.id === assignTarget.folderId) {
+          if (assignTarget.subfolderId) {
+            // Assign to single subfolder
+            return {
+              ...f,
+              subfolders: f.subfolders.map((s) =>
+                s.id === assignTarget.subfolderId
+                  ? { ...s, assignments: newAssignments }
+                  : s
+              ),
+            }
+          } else {
+            // Assign to ALL subfolders
+            return {
+              ...f,
+              subfolders: f.subfolders.map((s) => ({
+                ...s,
+                assignments: newAssignments,
+              })),
+            }
+          }
+        }
+        return f
+      })
+    )
+  }, [assignTarget])
 
   const saveSubfolder = useCallback(
-    (folderId: string, subfolderId: string, rows: Row[]) => {
-      setFolders((prev) =>
-        prev.map((f) =>
-          f.id === folderId
-            ? {
-                ...f,
-                subfolders: f.subfolders.map((sf) =>
-                  sf.id === subfolderId ? { ...sf, rows } : sf
-                ),
-              }
-            : f
-        )
+    (folderId: string, subfolderId: string, rows: Row[], assignments?: any[]) => {
+      // Calculate new folders state first to avoid side effects inside setFolders updater
+      const newFolders = folders.map((f) =>
+        f.id === folderId
+          ? {
+            ...f,
+            subfolders: f.subfolders.map((sf) =>
+              sf.id === subfolderId ? { ...sf, rows, assignments: assignments || sf.assignments || [] } : sf
+            ),
+          }
+          : f
       )
-      setModal(null)
+      setFolders(newFolders)
+      setModalState(null)
+
+      // Auto-save to backend
+      if (projectId) {
+        import("@/lib/api/project-admin").then(({ updateProjectFolders }) => {
+          updateProjectFolders(projectId, newFolders as any).catch(console.error)
+        })
+      }
     },
-    []
+    [folders, projectId]
   )
 
-  const activeFolder = modal
-    ? folders.find((f) => f.id === modal.folderId)
+  const toggleManagementFolder = useCallback((folderId: string) => {
+    const newFolders = folders.map((f) => {
+      if (f.id === folderId) {
+        return { ...f, is_management: !f.is_management }
+      }
+      return { ...f, is_management: false }
+    })
+    setFolders(newFolders)
+
+    // Auto-save to backend
+    if (projectId) {
+      import("@/lib/api/project-admin").then(({ updateProjectFolders }) => {
+        updateProjectFolders(projectId, newFolders as any).catch(console.error)
+      })
+    }
+  }, [folders, projectId])
+
+  const activeFolder = modalState
+    ? folders.find((f) => f.id === modalState.folderId)
     : null
   const activeSubfolder = activeFolder?.subfolders.find(
-    (sf) => sf.id === modal?.subfolderId
+    (sf) => sf.id === modalState?.subfolderId
   )
 
   const borderColor = colors.border ?? "rgba(255,255,255,0.12)"
@@ -368,55 +542,52 @@ export default function DynamicFolderTable() {
   const fg = colors.foreground ?? "#e2e8f0"
 
   return (
-    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-      <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
+    <div className="flex h-screen overflow-hidden">
+      <div className="flex-1 overflow-auto p-4">
         {/* Toolbar */}
-        <Box
-          sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mb: 1 }}
-        >
-          <Button
-            variant="outlined"
+        <div className="flex justify-end gap-2 mb-2">
+          <UiButton
+            variant="outline"
             onClick={handleSaveProgress}
-            startIcon={<Save size={16} />}
           >
+            <Save size={16} className="mr-2" />
             Save progress
-          </Button>
-          <Button
-            variant="outlined"
+          </UiButton>
+          <UiButton
+            variant="outline"
             onClick={handleToggleLock}
-            startIcon={isLocked ? <Unlock size={16} /> : <Lock size={16} />}
           >
+            {isLocked ? <Unlock size={16} className="mr-2" /> : <Lock size={16} className="mr-2" />}
             {isLocked ? "Unlock Project Folder" : "Lock Project Folder"}
-          </Button>
-          <Button
-            variant="contained"
+          </UiButton>
+          <UiButton
             disabled={isLocked}
             onClick={() => setCreateDialogOpen(true)}
-            startIcon={<Plus size={16} />}
           >
+            <Plus size={16} className="mr-2" />
             Add folder
-          </Button>
-        </Box>
+          </UiButton>
+        </div>
 
         {/* ── One row per folder: sidebar label + its own DataGrid  */}
-        <Box sx={{ minWidth: 1200 }}>
+        <div className="min-w-[1200px]">
           {folders.map((folder) => {
             const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
             const sectionH = hh + ROWS_PER_FOLDER * ROW_HEIGHT
 
             return (
-              <Box
+              <div
                 key={folder.id}
-                sx={{ display: "flex", alignItems: "stretch" }}
+                className="flex items-stretch"
               >
                 {/* Sidebar label — full height of header + data rows */}
                 <ContextMenu>
                   <ContextMenuTrigger disabled={isLocked} asChild>
-                    <Box
+                    <div
                       title={
                         isLocked ? undefined : "Right-click to add subfolder"
                       }
-                      sx={{
+                      style={{
                         flexShrink: 0,
                         width: 48,
                         height: sectionH,
@@ -434,15 +605,14 @@ export default function DynamicFolderTable() {
                         backgroundColor: sectionBg,
                         border: `1px solid ${borderColor}`,
                         transition: "background-color 140ms",
-                        "&:hover": isLocked
-                          ? {}
-                          : {
-                              backgroundColor: "rgba(251,191,36,0.07)",
-                            },
                       }}
+                      className={!isLocked ? "hover:bg-amber-400/10" : ""}
                     >
-                      {folder.name}
-                    </Box>
+                      <div className="flex items-center gap-1.5">
+                        {folder.is_management && <Briefcase size={12} className="text-blue-400" />}
+                        <span>{folder.name}</span>
+                      </div>
+                    </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent className="w-52 border-white/10 bg-slate-900">
                     <div className="px-2 py-1 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
@@ -464,53 +634,90 @@ export default function DynamicFolderTable() {
                       />
                       Add subfolder
                     </ContextMenuItem>
+                    <ContextMenuItem
+                      className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                      onSelect={() => handleAssignSubfolder(folder.id)}
+                    >
+                      <UserPlus size={14} className="shrink-0 text-indigo-400" />
+                      Assign Folder
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                      onSelect={() => toggleManagementFolder(folder.id)}
+                    >
+                      <Briefcase
+                        size={14}
+                        className={`shrink-0 ${folder.is_management ? "text-red-400" : "text-blue-400"}`}
+                      />
+                      {folder.is_management ? "Remove from Management" : "Assign to Management"}
+                    </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
 
                 {/* This folder's own DataGrid */}
-                <Box
+                <div
                   ref={(el: HTMLDivElement | null) => {
                     if (el) gridRefs.current.set(folder.id, el)
                     else gridRefs.current.delete(folder.id)
                   }}
-                  sx={{ flex: 1, minWidth: 0 }}
+                  className="flex-1 min-w-0"
                 >
                   <FolderGrid
                     folder={folder}
                     isLocked={isLocked}
+                    onChange={(newFolder) => {
+                      setFolders((prev) => prev.map((f) => (f.id === newFolder.id ? newFolder : f)))
+                    }}
+                    onSubfolderAssign={(subId) => handleAssignSubfolder(folder.id, subId)}
                     // Remove top border on grids after the first to avoid double borders
                     sx={
                       folders.indexOf(folder) > 0
                         ? {
-                            "& .MuiDataGrid-root, & .MuiDataGrid-main": {
-                              borderTop: "none",
-                            },
-                          }
+                          "& .MuiDataGrid-root, & .MuiDataGrid-main": {
+                            borderTop: "none",
+                          },
+                        }
                         : undefined
                     }
                   />
-                </Box>
-              </Box>
+                </div>
+              </div>
             )
           })}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* ── Subfolder edit modal ─────────────────────────────────────────────── */}
-      {modal && activeSubfolder && activeFolder && (
+      {modalState && activeSubfolder && activeFolder && (
         <SubfolderModal
           subfolder={activeSubfolder}
           folderName={activeFolder.name}
           copiedValue={copiedValue}
           onCopy={setCopiedValue}
-          onSave={(rows) =>
-            saveSubfolder(modal.folderId, modal.subfolderId, rows)
+          isManagement={activeFolder.is_management}
+          onSave={(rows, assignments) =>
+            saveSubfolder(activeFolder.id, activeSubfolder.id, rows, assignments)
           }
-          onClose={() => setModal(null)}
+          onClose={() => setModalState(null)}
         />
       )}
 
+      {/* ── Assign Folder/Subfolder Modal ─────────────────────────────────────── */}
+      <AssignFolderModal
+        open={assignModalOpen}
+        onOpenChange={setAssignModalOpen}
+        projectId={projectId as string}
+        targetName={assignTarget?.targetName ?? ''}
+        assignments={
+          assignTarget?.subfolderId
+            ? (folders.find(f => f.id === assignTarget.folderId)?.subfolders.find(s => s.id === assignTarget.subfolderId)?.assignments || [])
+            : (folders.find(f => f.id === assignTarget?.folderId)?.subfolders[0]?.assignments || [])
+        }
+        onAssign={onAssignConfirm}
+      />
+
       {/* ── Add folder wizard ────────────────────────────────────────────────── */}
+
       <Dialog
         open={createDialogOpen}
         onOpenChange={(open) =>
@@ -666,6 +873,6 @@ export default function DynamicFolderTable() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Box>
+    </div>
   )
 }

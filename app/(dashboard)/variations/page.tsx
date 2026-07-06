@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import type { ColDef } from "ag-grid-community"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -8,61 +8,185 @@ import {
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Plus, Search, XCircle } from "lucide-react"
+import { CheckCircle2, Plus, XCircle, Loader2 } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
+import { toast } from "sonner"
 
 import { VariationRow, VariationFormData } from "./types"
-import { PROJECTS, formatGBP, ALL_USERS, buildVariationDocHtml, initialRows, summaryMetrics } from "./utils"
+import { formatGBP, buildVariationDocHtml } from "./utils"
 import CreateVariationDialog from "./_components/CreateVariationDialog"
 import AssignUsersDialog from "./_components/AssignUsersDialog"
 import ApprovalDialog from "./_components/ApprovalDialog"
 import ViewVariationDialog from "./_components/ViewVariationDialog"
 import ReminderDialog from "./_components/ReminderDialog"
 
-let _nextId = 5
+import {
+  getVariations,
+  createVariation,
+  approveVariation,
+  submitVariationToClient,
+  type VariationApi,
+} from "@/lib/api/variations"
+import { getMyProjects } from "@/lib/api/project-admin"
+import type { ProjectItem } from "@/constants/projects"
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function apiToRow(v: VariationApi): VariationRow {
+  return {
+    id: v.id,
+    voNo: v.vo_number,
+    date: v.date,
+    variationSheetNumber: v.variation_sheet_number,
+    project: v.project_name,
+    projectId: v.project,
+    siteInstructionNo: v.site_instruction_no,
+    descriptionOfWorks: v.description_of_works,
+    createdBy: v.created_by_name,
+    lines: v.lines.map((l) => ({
+      no: "",
+      siteInstruction: l.site_instruction,
+      workArea: l.work_area,
+      workSection: l.work_section,
+      labour: parseFloat(l.labour),
+      labourTarget: parseFloat(l.labour_target),
+      material: parseFloat(l.material),
+      qty: parseFloat(l.qty),
+    })),
+    totalAmount: parseFloat(v.total_amount),
+    evidence: "",
+    comments: v.comments,
+    assignedUserIds: [],
+    approvalStatus:
+      v.approval_status === "approved"
+        ? "Approved"
+        : v.approval_status === "rejected"
+        ? "Rejected"
+        : "Pending",
+    approvedBy: v.approved_by_name,
+    submittedToClient: v.submitted_to_client,
+    signedByClient: v.signed_by_client,
+  }
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
 
 export default function Page() {
+  const [rows, setRows] = useState<VariationRow[]>([])
+  const [projects, setProjects] = useState<ProjectItem[]>([])
   const [selectedProject, setSelectedProject] = useState("all")
-  const [rows, setRows] = useState<VariationRow[]>(initialRows)
+  const [loading, setLoading] = useState(true)
 
   const role = useRoleStore((state) => state.role)
 
-  // Create variation dialog
+  // ── Fetch data ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const [varData, projData] = await Promise.all([
+          getVariations(),
+          getMyProjects(),
+        ])
+        setRows(varData.variations.map(apiToRow))
+        setProjects(projData.projects)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to load variations"
+        toast.error(msg)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const projectOptions = useMemo(
+    () => projects.map((p) => ({ id: p.id, name: p.projectName })),
+    [projects]
+  )
+
+  // ── Create variation dialog ─────────────────────────────────────────────
   const [formOpen, setFormOpen] = useState(false)
 
-  // Assign users dialog
+  const handleSubmitVariation = useCallback(
+    async (form: VariationFormData, _formTotal: number): Promise<boolean> => {
+      try {
+        const payload = {
+          project_id: form.project,
+          site_instruction_no: form.siteInstructionNo,
+          attention_of: form.attentionOf,
+          description_of_works: form.descriptionOfWorks,
+          comments: form.comments,
+          lines: form.lines.map((l) => ({
+            siteInstruction: l.siteInstruction,
+            workArea: l.workArea,
+            workSection: l.workSection,
+            labour: l.labour,
+            labourTarget: l.labourTarget,
+            material: l.material,
+            qty: l.qty,
+          })),
+        }
+        const created = await createVariation(payload)
+        setRows((prev) => [apiToRow(created), ...prev])
+        toast.success("Variation created successfully.")
+        return true
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to create variation"
+        toast.error(msg)
+        return false
+      }
+    },
+    []
+  )
+
+  // ── Assign users dialog ─────────────────────────────────────────────────
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignRowId, setAssignRowId] = useState<string | null>(null)
   const [assignInitial, setAssignInitial] = useState<string[]>([])
 
-  // Approval confirmation
+  const openAssign = useCallback((rowId: string, currentIds: string[]) => {
+    setAssignRowId(rowId)
+    setAssignInitial(currentIds)
+    setAssignOpen(true)
+  }, [])
+
+  const confirmAssign = (selectedIds: string[]) => {
+    if (!assignRowId) return
+    setRows((prev) =>
+      prev.map((r) => (r.id === assignRowId ? { ...r, assignedUserIds: selectedIds } : r))
+    )
+    setAssignOpen(false)
+  }
+
+  // ── Approval ────────────────────────────────────────────────────────────
   const [pendingApproval, setPendingApproval] = useState<{
     id: string; voNo: string; action: "approve" | "reject"
   } | null>(null)
 
-  // Variation View/Download/Submit
+  const confirmApproval = useCallback(async () => {
+    if (!pendingApproval) return
+    try {
+      const updated = await approveVariation(pendingApproval.id, pendingApproval.action)
+      setRows((prev) => prev.map((r) => (r.id === updated.id ? apiToRow(updated) : r)))
+      toast.success(
+        pendingApproval.action === "approve"
+          ? "Variation approved."
+          : "Variation rejected."
+      )
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update approval"
+      toast.error(msg)
+    } finally {
+      setPendingApproval(null)
+    }
+  }, [pendingApproval])
+
+  // ── Variation View / Download / Submit ──────────────────────────────────
   const [variationDialogOpen, setVariationDialogOpen] = useState(false)
   const [selectedVariation, setSelectedVariation] = useState<VariationRow | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Reminder Dialog
-  const [reminderDialogOpen, setReminderDialogOpen] = useState(false)
-  const [selectedReminder, setSelectedReminder] = useState<VariationRow | null>(null)
-  const [isSendingReminder, setIsSendingReminder] = useState(false)
-
-  const openReminder = useCallback((row: VariationRow) => {
-    setSelectedReminder(row)
-    setReminderDialogOpen(true)
-  }, [])
-
-  const handleSendReminder = useCallback(() => {
-    if (!selectedReminder) return
-    setIsSendingReminder(true)
-    setTimeout(() => {
-      setIsSendingReminder(false)
-      setReminderDialogOpen(false)
-    }, 1000)
-  }, [selectedReminder])
 
   const openVariation = useCallback((row: VariationRow) => {
     setSelectedVariation(row)
@@ -80,78 +204,63 @@ export default function Page() {
     URL.revokeObjectURL(url)
   }, [])
 
-  const submitVariationToClient = useCallback((name: string, email: string) => {
-    if (!selectedVariation || !name || !email) return
-    setIsSubmitting(true)
+  const submitVariationToClientHandler = useCallback(
+    async (_name: string, _email: string) => {
+      if (!selectedVariation) return
+      setIsSubmitting(true)
+      try {
+        const updated = await submitVariationToClient(selectedVariation.id)
+        setRows((prev) => prev.map((r) => (r.id === updated.id ? apiToRow(updated) : r)))
+        toast.success("Variation submitted to client.")
+        setVariationDialogOpen(false)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to submit to client"
+        toast.error(msg)
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [selectedVariation]
+  )
+
+  // ── Reminder dialog ─────────────────────────────────────────────────────
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false)
+  const [selectedReminder, setSelectedReminder] = useState<VariationRow | null>(null)
+  const [isSendingReminder, setIsSendingReminder] = useState(false)
+
+  const openReminder = useCallback((row: VariationRow) => {
+    setSelectedReminder(row)
+    setReminderDialogOpen(true)
+  }, [])
+
+  const handleSendReminder = useCallback(() => {
+    if (!selectedReminder) return
+    setIsSendingReminder(true)
     setTimeout(() => {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === selectedVariation.id ? { ...r, submittedToClient: true } : r
-        )
-      )
-      setIsSubmitting(false)
-      setVariationDialogOpen(false)
+      setIsSendingReminder(false)
+      setReminderDialogOpen(false)
+      toast.success("Reminder sent.")
     }, 1000)
-  }, [selectedVariation])
+  }, [selectedReminder])
 
-  const handleSubmitVariation = useCallback((form: VariationFormData, formTotal: number) => {
-    const today = new Date().toISOString().slice(0, 10)
-    _nextId++
-    const newRow: VariationRow = {
-      id: String(_nextId),
-      voNo: `VO-${String(_nextId).padStart(3, "0")}`,
-      date: today,
-      variationSheetNumber: String.fromCharCode(64 + _nextId),
-      project: form.project || "Project A",
-      siteInstructionNo: form.siteInstructionNo,
-      descriptionOfWorks: form.descriptionOfWorks,
-      createdBy: "Current User",
-      lines: form.lines,
-      totalAmount: formTotal,
-      evidence: "",
-      comments: form.comments,
-      assignedUserIds: [],
-      approvalStatus: "Pending",
-      approvedBy: "",
-      submittedToClient: false,
-      signedByClient: false,
-    }
-    setRows((prev) => [...prev, newRow])
-    setFormOpen(false)
-  }, [])
+  // ── Summary metrics ─────────────────────────────────────────────────────
+  const summaryMetrics = useMemo(() => {
+    const filtered = selectedProject === "all" ? rows : rows.filter((r) => r.projectId === selectedProject)
+    const total = filtered.reduce((s, r) => s + r.totalAmount, 0)
+    const approved = filtered.filter((r) => r.approvalStatus === "Approved").length
+    const pending = filtered.filter((r) => r.approvalStatus === "Pending").length
+    const submitted = filtered.filter((r) => r.submittedToClient).length
+    const signed = filtered.filter((r) => r.signedByClient).length
+    return [
+      { label: "Variations", value: formatGBP(total) },
+      { label: "Approved", value: String(approved), valueColor: "green" as const },
+      { label: "Awaiting Approval", value: String(pending), valueColor: "red" as const },
+      { label: "Submitted to Client", value: String(submitted) },
+      { label: "Signed by Client", value: String(signed) },
+    ]
+  }, [rows, selectedProject])
 
-  const confirmApproval = () => {
-    if (!pendingApproval) return
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === pendingApproval.id
-          ? {
-              ...r,
-              approvalStatus: pendingApproval.action === "approve" ? "Approved" : "Rejected",
-              approvedBy: pendingApproval.action === "approve" ? "Commercial Manager" : "",
-            }
-          : r
-      )
-    )
-    setPendingApproval(null)
-  }
-
-  const openAssign = useCallback((rowId: string, currentIds: string[]) => {
-    setAssignRowId(rowId)
-    setAssignInitial(currentIds)
-    setAssignOpen(true)
-  }, [])
-
-  const confirmAssign = (selectedIds: string[]) => {
-    if (!assignRowId) return
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === assignRowId ? { ...r, assignedUserIds: selectedIds } : r
-      )
-    )
-    setAssignOpen(false)
-  }
-
+  // ── Table columns ───────────────────────────────────────────────────────
   const columns = useMemo<ColDef<VariationRow>[]>(() => {
     const base: ColDef<VariationRow>[] = [
       {
@@ -174,24 +283,14 @@ export default function Page() {
       { headerName: "Date", field: "date", minWidth: 120 },
       { headerName: "Variation No.", field: "variationSheetNumber" },
       { headerName: "Project", field: "project" },
-      {
-        headerName: "Site Instruction No.",
-        field: "siteInstructionNo",
-        minWidth: 180,
-      },
-      {
-        headerName: "Description of Works",
-        field: "descriptionOfWorks",
-        minWidth: 220,
-      },
+      { headerName: "Site Instruction No.", field: "siteInstructionNo", minWidth: 180 },
+      { headerName: "Description of Works", field: "descriptionOfWorks", minWidth: 220 },
       {
         headerName: "Total Amount",
         field: "totalAmount",
         minWidth: 140,
         cellRenderer: (params: { value: number }) => (
-          <span className="font-medium text-slate-100">
-            {formatGBP(params.value)}
-          </span>
+          <span className="font-medium text-slate-100">{formatGBP(params.value)}</span>
         ),
       },
       {
@@ -203,11 +302,7 @@ export default function Page() {
           const lines = params.data?.lines ?? []
           const total = lines.reduce((s, l) => s + (l.labourTarget ?? 0), 0)
           if (total === 0) return <span className="text-slate-500">—</span>
-          return (
-            <span className="font-medium text-amber-300">
-              {formatGBP(total)}
-            </span>
-          )
+          return <span className="font-medium text-amber-300">{formatGBP(total)}</span>
         },
       },
       { headerName: "Created By", field: "createdBy" },
@@ -238,25 +333,13 @@ export default function Page() {
             <div className="flex gap-1">
               <Button
                 className="h-7 rounded-none bg-emerald-600 px-2 text-xs text-white hover:bg-emerald-500"
-                onClick={() =>
-                  setPendingApproval({
-                    id: row.id,
-                    voNo: row.voNo,
-                    action: "approve",
-                  })
-                }
+                onClick={() => setPendingApproval({ id: row.id, voNo: row.voNo, action: "approve" })}
               >
                 Approve
               </Button>
               <Button
                 className="h-7 rounded-none bg-red-600 px-2 text-xs text-white hover:bg-red-500"
-                onClick={() =>
-                  setPendingApproval({
-                    id: row.id,
-                    voNo: row.voNo,
-                    action: "reject",
-                  })
-                }
+                onClick={() => setPendingApproval({ id: row.id, voNo: row.voNo, action: "reject" })}
               >
                 Reject
               </Button>
@@ -272,9 +355,7 @@ export default function Page() {
         headerName: "Submitted to Client",
         field: "submittedToClient",
         cellRenderer: (params: { value: boolean }) => (
-          <span
-            className={params.value ? "text-emerald-400" : "text-slate-500"}
-          >
+          <span className={params.value ? "text-emerald-400" : "text-slate-500"}>
             {params.value ? "Yes" : "No"}
           </span>
         ),
@@ -298,50 +379,28 @@ export default function Page() {
           )
         },
       },
-      {
-        headerName: "Assigned Users",
-        field: "assignedUserIds",
-        maxWidth: 160,
-        cellRenderer: (params: { data?: VariationRow }) => {
-          const row = params.data
-          if (!row) return null
-          const ids = row.assignedUserIds
-          const shown = ids.slice(0, 3)
-          return (
-            <button
-              data-cell-click-ignore="true"
-              className="flex h-full items-center -space-x-1.5 hover:opacity-80"
-              onClick={() => openAssign(row.id, ids)}
-            >
-              {shown.map((id, i) => {
-                const u = ALL_USERS.find((x) => x.id === id)
-                return (
-                  <div
-                    key={id}
-                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#10183a] text-[10px] font-bold ${u?.color ?? "bg-slate-600 text-white"}`}
-                    style={{ zIndex: 10 - i }}
-                  >
-                    {u?.initials ?? id.slice(0, 2).toUpperCase()}
-                  </div>
-                )
-              })}
-              {ids.length > 3 && (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#10183a] bg-slate-700 text-[10px] font-bold text-slate-300">
-                  +{ids.length - 3}
-                </div>
-              )}
-              {ids.length === 0 && (
-                <span className="text-xs text-slate-500">Assign</span>
-              )}
-            </button>
-          )
-        },
-      },
       { headerName: "Comments", field: "comments", minWidth: 180 }
     )
 
     return base
-  }, [openAssign, role])
+  }, [openAssign, openReminder, openVariation, role])
+
+  // ── Filtered rows ───────────────────────────────────────────────────────
+  const filteredRows = useMemo(
+    () => (selectedProject === "all" ? rows : rows.filter((r) => r.projectId === selectedProject)),
+    [rows, selectedProject]
+  )
+
+  // ── Render ──────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-slate-400" />
+        <span className="ml-2 text-slate-400">Loading variations…</span>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full space-y-6 p-6">
@@ -361,7 +420,9 @@ export default function Page() {
           <SelectTrigger className="border-white/10 bg-slate-900"><SelectValue /></SelectTrigger>
           <SelectContent className="border-white/10 bg-slate-900">
             <SelectItem value="all">All Projects</SelectItem>
-            {PROJECTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.projectName}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -369,7 +430,7 @@ export default function Page() {
       <TableStat summaryRows={summaryMetrics} />
 
       <AgTable
-        rowData={selectedProject === "all" ? rows : rows.filter((r) => r.project === selectedProject)}
+        rowData={filteredRows}
         columnDefs={columns}
         suppressCellClickAction
         height="auto"
@@ -377,7 +438,12 @@ export default function Page() {
         gridOptions={{ rowHeight: 48 }}
       />
 
-      <CreateVariationDialog open={formOpen} onOpenChange={setFormOpen} onSubmit={handleSubmitVariation} />
+      <CreateVariationDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSubmit={handleSubmitVariation}
+        projects={projectOptions}
+      />
 
       <AssignUsersDialog
         open={assignOpen}
@@ -397,7 +463,7 @@ export default function Page() {
         onOpenChange={setVariationDialogOpen}
         variation={selectedVariation}
         onDownload={downloadVariationDoc}
-        onSubmitToClient={submitVariationToClient}
+        onSubmitToClient={submitVariationToClientHandler}
         isSubmitting={isSubmitting}
       />
 

@@ -1,107 +1,143 @@
 "use client"
 
-import type { ColDef } from "ag-grid-community"
+import type { ColDef, ICellRendererParams } from "ag-grid-community"
 
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
-import SelectProject from "@/components/shared/select-project"
+import { useState, useEffect } from "react"
+import { getDailyRegister, type DailyRegisterRow } from "@/lib/api/daily-register"
+import { getMyProjects } from "@/lib/api/project-admin"
+import type { ProjectItem } from "@/constants/projects"
+import { format } from "date-fns"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
 
-type DailyRegisterRow = {
-  no: number
-  name: string
-  surname: string
-  project: string
-  date: string
-  clockInTime: string
-  clockInGps: string
-  clockOut: string
-  clockOutGps: string
-  profession: string
-  management: string
-}
-
-const summaryRows = [
-  { label: "Todays Clock In Users", qty: "1000" },
-  { label: "Todays Clock out Users", qty: "400" },
-  { label: "This Weeks Users", qty: "200" },
-  { label: "This Months Users", qty: "200" },
-]
-
-const rows: DailyRegisterRow[] = [
-  {
-    no: 1,
-    name: "Alex watson",
-    surname: "",
-    project: "",
-    date: "",
-    clockInTime: "",
-    clockInGps: "",
-    clockOut: "",
-    clockOutGps: "",
-    profession: "",
-    management: "",
-  },
-  {
-    no: 2,
-    name: "Watson Wanches",
-    surname: "",
-    project: "",
-    date: "",
-    clockInTime: "",
-    clockInGps: "",
-    clockOut: "",
-    clockOutGps: "",
-    profession: "",
-    management: "",
-  },
-  {
-    no: 3,
-    name: "Lipo Lion",
-    surname: "",
-    project: "",
-    date: "",
-    clockInTime: "",
-    clockInGps: "",
-    clockOut: "",
-    clockOutGps: "",
-    profession: "",
-    management: "",
-  },
-  {
-    no: 4,
-    name: "Chaikeo",
-    surname: "",
-    project: "",
-    date: "",
-    clockInTime: "",
-    clockInGps: "",
-    clockOut: "",
-    clockOutGps: "",
-    profession: "",
-    management: "",
-  },
-]
-
 const columns: ColDef<DailyRegisterRow>[] = [
-  { headerName: "No.", field: "no", maxWidth: 60, filter: false },
+  { headerName: "No.", valueGetter: "node.rowIndex + 1", maxWidth: 60, filter: false },
   { headerName: "Name", field: "name" },
   { headerName: "Surname", field: "surname" },
-  { headerName: "Project", field: "project" },
-  { headerName: "Date", field: "date" },
-  { headerName: "Clock in Time", field: "clockInTime" },
-  { headerName: "Clock in GPS", field: "clockInGps" },
-  { headerName: "Clock out", field: "clockOut" },
-  { headerName: "Clock out GPS", field: "clockOutGps" },
+  { headerName: "Project", field: "project_name" },
+  { headerName: "Date", field: "date", valueFormatter: (params) => params.value ? format(new Date(params.value), "yyyy-MM-dd") : "" },
+  { headerName: "Clock in Time", field: "check_in_time", valueFormatter: (params) => params.value ? format(new Date(params.value), "HH:mm:ss") : "" },
+  { 
+    headerName: "Clock in GPS", 
+    cellRenderer: (params: ICellRendererParams<DailyRegisterRow>) => {
+      if (params.data?.check_in_lat && params.data?.check_in_long) {
+        const coords = `${params.data.check_in_lat}, ${params.data.check_in_long}`
+        return (
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${coords}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {coords}
+          </a>
+        )
+      }
+      return ""
+    }
+  },
+  { headerName: "Clock out", field: "check_out_time", valueFormatter: (params) => params.value ? format(new Date(params.value), "HH:mm:ss") : "" },
+  { 
+    headerName: "Clock out GPS", 
+    cellRenderer: (params: ICellRendererParams<DailyRegisterRow>) => {
+      if (params.data?.check_out_lat && params.data?.check_out_long) {
+        const coords = `${params.data.check_out_lat}, ${params.data.check_out_long}`
+        return (
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${coords}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {coords}
+          </a>
+        )
+      }
+      return ""
+    }
+  },
   { headerName: "Profession", field: "profession" },
   { headerName: "Management", field: "management" },
 ]
 
 export default function Page() {
+  const [rows, setRows] = useState<DailyRegisterRow[]>([])
+  const [projects, setProjects] = useState<ProjectItem[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const { projects } = await getMyProjects()
+        setProjects(projects)
+      } catch (e) {
+        console.error("Failed to load projects", e)
+      }
+    }
+    fetchProjects()
+  }, [])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const data = await getDailyRegister(selectedProjectId)
+        setRows(data)
+      } catch (error) {
+        console.error("Failed to load daily register", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [selectedProjectId])
+
+  const today = new Date().toISOString().split("T")[0]
+  
+  // Calculate summary stats
+  const todaysClockInCount = rows.filter(r => r.date === today && r.check_in_time).length
+  const todaysClockOutCount = rows.filter(r => r.date === today && r.check_out_time).length
+
+  // Simplified week/month filtering
+  const thisMonthCount = rows.filter(r => r.date.startsWith(today.slice(0, 7))).length
+
+  const summaryRows = [
+    { label: "Todays Clock In Users", qty: todaysClockInCount.toString() },
+    { label: "Todays Clock out Users", qty: todaysClockOutCount.toString() },
+    { label: "This Months Users", qty: thisMonthCount.toString() },
+  ]
+
   return (
     <div className="w-full min-w-0 space-y-6 p-6">
       <h1 className="text-2xl font-semibold">Daily Register</h1>
-      <SelectProject />
+      
+      <div className="w-1/3">
+        <label className="mb-2 block text-sm font-medium text-slate-300">
+          Select Project
+        </label>
+        <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+          <SelectTrigger className="border-white/10 bg-slate-900">
+            <SelectValue placeholder="All Projects" />
+          </SelectTrigger>
+          <SelectContent className="border-white/10 bg-slate-900">
+            <SelectItem value="all">All Projects</SelectItem>
+            {projects.map(p => (
+              <SelectItem key={p.id} value={p.id}>{p.projectName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="flex items-end justify-between">
         <TableStat summaryRows={summaryRows} />
@@ -115,7 +151,7 @@ export default function Page() {
           fileName="daily-register.csv"
         />
       </div>
-      <AgTable rowData={rows} columnDefs={columns} height="auto" />
+      <AgTable rowData={rows} columnDefs={columns} height="60vh" loading={loading} />
     </div>
   )
 }

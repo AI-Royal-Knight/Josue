@@ -89,9 +89,19 @@ export default function Page() {
   const confirmToggle = useCallback(async () => {
     if (!pending) return
     try {
-      const res = await fetch("http://localhost:8000/api/v1/account/users/", {
+      const endpoint = isDocumentController
+        ? "http://localhost:8000/api/v1/document-controller/approve-employee/"
+        : "http://localhost:8000/api/v1/account/users/";
+        
+      const token = localStorage.getItem("tresta:accessToken");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ user_id: pending.userId, approved: pending.nextValue }),
       })
       if (res.ok) {

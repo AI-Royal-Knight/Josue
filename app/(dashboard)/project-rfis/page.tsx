@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { type ColDef, type ICellRendererParams } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
@@ -16,121 +16,12 @@ import { cn } from "@/lib/utils"
 import { Send, Paperclip, X, CheckCircle2, Lock } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type RFIStatus = "open" | "closed"
-
-type ChatMessage = {
-  id: string
-  author: string
-  role: string
-  text: string
-  attachments: { name: string; url: string }[]
-  timestamp: string
-}
-
-type RFI = {
-  id: string
-  rfiRef: string
-  date: string
-  project: string
-  description: string
-  createdBy: string
-  trade: string
-  open: string
-  closed: string
-  dateRfiClosed: string
-  status: RFIStatus
-  messages: ChatMessage[]
-}
-
-// ─── Seed data ────────────────────────────────────────────────────────────────
-
-const SEED_RFIS: RFI[] = [
-  {
-    id: "rfi-001",
-    rfiRef: "RFI-001",
-    date: "2024-11-04",
-    project: "Tresta Phase 1",
-    description: "Clarification on electrical conduit routing through Level 3 slab",
-    createdBy: "James Hartley",
-    trade: "Electrical",
-    open: "2024-11-04",
-    closed: "",
-    dateRfiClosed: "",
-    status: "open",
-    messages: [
-      {
-        id: "m1",
-        author: "James Hartley",
-        role: "Supervisor",
-        text: "Please clarify the conduit routing through the Level 3 slab — current drawings conflict with structural details on grid C4.",
-        attachments: [],
-        timestamp: "2024-11-04 09:12",
-      },
-    ],
-  },
-  {
-    id: "rfi-002",
-    rfiRef: "RFI-002",
-    date: "2024-11-06",
-    project: "Tresta Phase 1",
-    description: "Plumbing waste pipe fall confirmation for Block B",
-    createdBy: "Sara Mitchell",
-    trade: "Plumbing",
-    open: "2024-11-06",
-    closed: "2024-11-10",
-    dateRfiClosed: "2024-11-10",
-    status: "closed",
-    messages: [
-      {
-        id: "m2",
-        author: "Sara Mitchell",
-        role: "Supervisor",
-        text: "Can you confirm the required fall ratio for the waste pipes in Block B corridor?",
-        attachments: [],
-        timestamp: "2024-11-06 10:45",
-      },
-      {
-        id: "m3",
-        author: "Alex Johnson",
-        role: "Contracts Manager",
-        text: "Confirmed 1:80 fall. Updated drawing attached.",
-        attachments: [{ name: "blockB-waste-revised.pdf", url: "#" }],
-        timestamp: "2024-11-08 14:20",
-      },
-    ],
-  },
-  {
-    id: "rfi-003",
-    rfiRef: "RFI-003",
-    date: "2024-11-12",
-    project: "Tresta Phase 1",
-    description: "Fire stopping specification at service penetrations",
-    createdBy: "Tom Reeves",
-    trade: "General",
-    open: "2024-11-12",
-    closed: "",
-    dateRfiClosed: "",
-    status: "open",
-    messages: [
-      {
-        id: "m4",
-        author: "Tom Reeves",
-        role: "Supervisor",
-        text: "Which fire stopping product is specified for the 150mm service penetrations on the 2hr fire-rated walls?",
-        attachments: [],
-        timestamp: "2024-11-12 08:30",
-      },
-    ],
-  },
-]
+import { getRFIs, closeRFI, sendRFIMessage } from "@/lib/api/rfis"
+import type { RFI, ChatMessage } from "@/lib/api/rfis"
+import { useAuthStore } from "@/lib/auth-store"
+import { format } from "date-fns"
 
 // ─── RFI Detail Dialog ────────────────────────────────────────────────────────
-
-const CURRENT_USER = { name: "Alex Johnson", role: "Contracts Manager" }
-// In a real app this would come from auth context.
-// Set role to "Project Director" to enable override close.
 
 function RFIDetailDialog({
   rfi,
@@ -148,10 +39,11 @@ function RFIDetailDialog({
   const fileRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const isClosed = rfi.status === "closed"
+  const { user } = useAuthStore()
+  const isClosed = rfi.status === "CLOSED"
   const canClose =
     !isClosed &&
-    (CURRENT_USER.role === "Project Director" || CURRENT_USER.role === "Contracts Manager")
+    (user?.role === "project_director" || user?.role === "project_admin" || user?.role === "admin" || user?.role === "contracts_manager")
 
   const handleSend = () => {
     const trimmed = message.trim()
@@ -180,12 +72,12 @@ function RFIDetailDialog({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-base font-semibold text-slate-100">
-                  {rfi.rfiRef}
+                  {rfi.rfi_number}
                 </DialogTitle>
                 <Badge
                   className={cn(
                     "rounded-sm text-[11px] font-semibold uppercase",
-                    rfi.status === "open"
+                    rfi.status === "OPEN"
                       ? "bg-emerald-500/20 text-emerald-400"
                       : "bg-slate-500/20 text-slate-400"
                   )}
@@ -195,12 +87,12 @@ function RFIDetailDialog({
               </div>
               <p className="mt-1 text-[13px] text-slate-400">{rfi.description}</p>
               <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-slate-500">
-                <span><span className="text-slate-400">Date:</span> {rfi.date}</span>
-                <span><span className="text-slate-400">Project:</span> {rfi.project}</span>
+                <span><span className="text-slate-400">Date:</span> {format(new Date(rfi.created_at), "yyyy-MM-dd")}</span>
+                <span><span className="text-slate-400">Project:</span> {rfi.project_name}</span>
                 <span><span className="text-slate-400">Trade:</span> {rfi.trade}</span>
-                <span><span className="text-slate-400">Created by:</span> {rfi.createdBy}</span>
-                {rfi.dateRfiClosed && (
-                  <span><span className="text-slate-400">Closed:</span> {rfi.dateRfiClosed}</span>
+                <span><span className="text-slate-400">Created by:</span> {rfi.created_by_name}</span>
+                {rfi.closed_at && (
+                  <span><span className="text-slate-400">Closed:</span> {format(new Date(rfi.closed_at), "yyyy-MM-dd")}</span>
                 )}
               </div>
             </div>
@@ -233,9 +125,9 @@ function RFIDetailDialog({
           {rfi.messages.map((msg) => (
             <div key={msg.id} className="flex flex-col gap-1">
               <div className="flex items-baseline gap-2">
-                <span className="text-[13px] font-semibold text-slate-200">{msg.author}</span>
-                <span className="text-[11px] text-slate-500">{msg.role}</span>
-                <span className="ml-auto text-[11px] text-slate-600">{msg.timestamp}</span>
+                <span className="text-[13px] font-semibold text-slate-200">{msg.author_name}</span>
+                <span className="text-[11px] text-slate-500 capitalize">{msg.author_role.replace(/_/g, ' ')}</span>
+                <span className="ml-auto text-[11px] text-slate-600">{format(new Date(msg.created_at), "yyyy-MM-dd HH:mm")}</span>
               </div>
               {msg.text && (
                 <p className="rounded bg-[#0e1a30] px-3 py-2 text-[13px] text-slate-300 leading-relaxed border border-[#1e3a5f]">
@@ -326,86 +218,115 @@ function RFIDetailDialog({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProjectRFIsPage() {
-  const [rfis, setRfis] = useState<RFI[]>(SEED_RFIS)
+  const [rfis, setRfis] = useState<RFI[]>([])
   const [selectedRFI, setSelectedRFI] = useState<RFI | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [viewDocumentUrl, setViewDocumentUrl] = useState<string | null>(null)
 
-  const totalCount = rfis.length
-  const openCount = rfis.filter((r) => r.status === "open").length
-  const closedCount = rfis.filter((r) => r.status === "closed").length
-
-  const handleCloseRFI = (id: string) => {
-    const now = new Date().toISOString().slice(0, 10)
-    setRfis((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, status: "closed", closed: now, dateRfiClosed: now }
-          : r
-      )
-    )
-    setSelectedRFI((prev) =>
-      prev?.id === id
-        ? { ...prev, status: "closed", closed: now, dateRfiClosed: now }
-        : prev
-    )
+  const fetchRFIs = async () => {
+    setLoading(true)
+    try {
+      const data = await getRFIs()
+      setRfis(data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSendMessage = (rfiId: string, text: string, files: File[]) => {
-    const now = new Date()
-    const timestamp = now.toISOString().slice(0, 16).replace("T", " ")
-    const newMsg: ChatMessage = {
-      id: `m-${Date.now()}`,
-      author: CURRENT_USER.name,
-      role: CURRENT_USER.role,
-      text,
-      attachments: files.map((f) => ({ name: f.name, url: "#" })),
-      timestamp,
+  useEffect(() => {
+    fetchRFIs()
+  }, [])
+
+  const totalCount = rfis.length
+  const openCount = rfis.filter((r) => r.status === "OPEN").length
+  const closedCount = rfis.filter((r) => r.status === "CLOSED").length
+
+  const handleCloseRFI = async (id: string) => {
+    try {
+      const updatedRfi = await closeRFI(id)
+      setRfis((prev) => prev.map((r) => (r.id === id ? updatedRfi : r)))
+      setSelectedRFI((prev) => (prev?.id === id ? updatedRfi : prev))
+    } catch (e) {
+      console.error("Failed to close RFI", e)
     }
-    setRfis((prev) =>
-      prev.map((r) =>
-        r.id === rfiId ? { ...r, messages: [...r.messages, newMsg] } : r
+  }
+
+  const handleSendMessage = async (rfiId: string, text: string, files: File[]) => {
+    try {
+      const newMsg = await sendRFIMessage(rfiId, text, files)
+      setRfis((prev) =>
+        prev.map((r) =>
+          r.id === rfiId ? { ...r, messages: [...r.messages, newMsg] } : r
+        )
       )
-    )
-    setSelectedRFI((prev) =>
-      prev?.id === rfiId
-        ? { ...prev, messages: [...prev.messages, newMsg] }
-        : prev
-    )
+      setSelectedRFI((prev) =>
+        prev?.id === rfiId
+          ? { ...prev, messages: [...prev.messages, newMsg] }
+          : prev
+      )
+    } catch (e) {
+      console.error("Failed to send message", e)
+    }
   }
 
   const columnDefs: ColDef<RFI>[] = [
-    { field: "rfiRef", headerName: "RFI ref", width: 110, minWidth: 90 },
-    { field: "date", headerName: "Date", width: 120, minWidth: 100 },
-    { field: "project", headerName: "Project", flex: 1, minWidth: 140 },
+    { field: "rfi_number", headerName: "RFI ref", width: 110, minWidth: 90 },
+    { field: "created_at", headerName: "Date", width: 120, minWidth: 100, valueFormatter: (params) => params.value ? format(new Date(params.value), "yyyy-MM-dd") : "" },
+    { field: "project_name", headerName: "Project", flex: 1, minWidth: 140 },
     { field: "description", headerName: "Description", flex: 2, minWidth: 200 },
-    { field: "createdBy", headerName: "Created by", minWidth: 130 },
+    {
+      field: "document_url",
+      headerName: "Attachment",
+      width: 110,
+      minWidth: 90,
+      cellRenderer: (params: ICellRendererParams<RFI>) =>
+        params.value ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+            onClick={(e) => {
+              e.stopPropagation()
+              setViewDocumentUrl(params.value)
+            }}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+        ) : (
+          <span className="text-slate-600">—</span>
+        ),
+    },
+    { field: "created_by_name", headerName: "Created by", minWidth: 130 },
     { field: "trade", headerName: "Trade", minWidth: 110 },
     {
-      field: "open",
+      field: "created_at",
       headerName: "Open",
       minWidth: 110,
       cellRenderer: (params: ICellRendererParams<RFI>) =>
         params.value ? (
-          <span className="text-emerald-400">{params.value}</span>
+          <span className="text-emerald-400">{format(new Date(params.value), "yyyy-MM-dd")}</span>
         ) : null,
     },
     {
-      field: "closed",
+      field: "closed_at",
       headerName: "Closed",
       minWidth: 110,
       cellRenderer: (params: ICellRendererParams<RFI>) =>
         params.value ? (
-          <span className="text-slate-400">{params.value}</span>
+          <span className="text-slate-400">{format(new Date(params.value), "yyyy-MM-dd")}</span>
         ) : (
           <span className="text-slate-600">—</span>
         ),
     },
     {
-      field: "dateRfiClosed",
+      field: "closed_at",
       headerName: "Date RFI closed",
       minWidth: 140,
       cellRenderer: (params: ICellRendererParams<RFI>) =>
         params.value ? (
-          <span className="text-slate-400">{params.value}</span>
+          <span className="text-slate-400">{format(new Date(params.value), "yyyy-MM-dd")}</span>
         ) : (
           <span className="text-slate-600">—</span>
         ),
@@ -419,7 +340,7 @@ export default function ProjectRFIsPage() {
         <span
           className={cn(
             "inline-flex items-center rounded-sm px-2 py-0.5 text-[11px] font-semibold uppercase",
-            params.value === "open"
+            params.value === "OPEN"
               ? "bg-emerald-500/20 text-emerald-400"
               : "bg-slate-500/20 text-slate-400"
           )}
@@ -454,12 +375,16 @@ export default function ProjectRFIsPage() {
         pagination
         pageSize={20}
         suppressCellClickAction
-        onRowClicked={(row) => setSelectedRFI(row)}
         gridOptions={{
           rowClass: "cursor-pointer",
+          onRowClicked: (event) => {
+            if (event.data) {
+              setSelectedRFI(event.data as RFI)
+            }
+          },
           getRowStyle: (params) => {
             const data = params.data as RFI | undefined
-            if (data?.status === "closed") return { opacity: "0.65" }
+            if (data?.status === "CLOSED") return { opacity: "0.65" }
             return undefined
           },
         }}
@@ -472,6 +397,23 @@ export default function ProjectRFIsPage() {
           onCloseRFI={handleCloseRFI}
           onSendMessage={handleSendMessage}
         />
+      )}
+
+      {viewDocumentUrl && (
+        <Dialog open={!!viewDocumentUrl} onOpenChange={() => setViewDocumentUrl(null)}>
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden bg-[#0a1428] border-[#1e3a5f]" showCloseButton>
+            <DialogHeader className="px-4 py-3 border-b border-[#1e3a5f] flex flex-row items-center justify-between shrink-0">
+              <DialogTitle className="text-sm font-semibold text-slate-200">View Document</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden bg-white/5">
+              <iframe 
+                src={viewDocumentUrl} 
+                className="w-full h-full border-0" 
+                title="Document Viewer"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

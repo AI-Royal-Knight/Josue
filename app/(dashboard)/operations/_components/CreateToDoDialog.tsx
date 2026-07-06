@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -17,12 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Save, User } from "lucide-react"
+import { Save, User, Loader2 } from "lucide-react"
+import { getCompanyEmployees, type EmployeeOption } from "@/lib/api/operations"
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (data: ToDoFormData) => void
+  onSave: (data: ToDoFormData) => Promise<boolean> | boolean
+  projects: { id: string; name: string }[]
+  defaultProjectId: string
 }
 
 export type ToDoFormData = {
@@ -33,22 +36,41 @@ export type ToDoFormData = {
   assignUser: string
 }
 
-const PROJECTS = ["Project A", "Project B", "Project C"]
-
-export default function CreateToDoDialog({ open, onOpenChange, onSave }: Props) {
+export default function CreateToDoDialog({ open, onOpenChange, onSave, projects, defaultProjectId }: Props) {
   const [form, setForm] = useState<ToDoFormData>({
     title: "",
     date: "",
     completionDate: "",
-    project: "",
+    project: defaultProjectId || "",
     assignUser: "",
   })
 
-  const handleSave = () => {
-    if (!form.title.trim()) return
-    onSave(form)
-    setForm({ title: "", date: "", completionDate: "", project: "", assignUser: "" })
-    onOpenChange(false)
+  useEffect(() => {
+    if (open) {
+      setForm((p) => ({ ...p, project: defaultProjectId || "" }))
+    }
+  }, [open, defaultProjectId])
+
+  const [employees, setEmployees] = useState<EmployeeOption[]>([])
+  useEffect(() => {
+    if (open) {
+      getCompanyEmployees().then((res) => {
+        setEmployees(res.users || [])
+      }).catch(err => console.error(err))
+    }
+  }, [open])
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+
+  const handleSave = async () => {
+    setIsSubmitting(true)
+    const success = await onSave(form)
+    setIsSubmitting(false)
+    if (success) {
+      setForm({ title: "", date: "", completionDate: "", project: defaultProjectId || "", assignUser: "" })
+      onOpenChange(false)
+    }
   }
 
   return (
@@ -105,9 +127,9 @@ export default function CreateToDoDialog({ open, onOpenChange, onSave }: Props) 
               <SelectTrigger className="border-white/10 bg-white/5">
                 <SelectValue placeholder="Select Project" />
               </SelectTrigger>
-              <SelectContent>
-                {PROJECTS.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
+              <SelectContent className="border-white/10 bg-slate-900">
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -120,11 +142,36 @@ export default function CreateToDoDialog({ open, onOpenChange, onSave }: Props) 
               <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <Input
                 id="todo-user"
+                autoComplete="off"
                 placeholder="Enter username or email"
                 value={form.assignUser}
-                onChange={(e) => setForm((p) => ({ ...p, assignUser: e.target.value }))}
+                onChange={(e) => {
+                  setForm((p) => ({ ...p, assignUser: e.target.value }))
+                  setShowDropdown(true)
+                }}
+                onFocus={() => setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
                 className="border-white/10 bg-white/5 pl-9"
               />
+              {showDropdown && employees.filter(e => e.name.toLowerCase().includes(form.assignUser.toLowerCase())).length > 0 && (
+                <ul className="absolute z-50 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-white/10 bg-slate-900 shadow-md">
+                  {employees
+                    .filter(e => e.name.toLowerCase().includes(form.assignUser.toLowerCase()))
+                    .map(emp => (
+                      <li
+                        key={emp.id}
+                        className="cursor-pointer px-3 py-2 text-sm text-slate-200 hover:bg-white/10"
+                        onMouseDown={(e) => {
+                          e.preventDefault() // prevent onBlur
+                          setForm(p => ({ ...p, assignUser: emp.name }))
+                          setShowDropdown(false)
+                        }}
+                      >
+                        {emp.name}
+                      </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
@@ -134,8 +181,9 @@ export default function CreateToDoDialog({ open, onOpenChange, onSave }: Props) 
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!form.title.trim()}>
-            <Save className="mr-2 size-4" /> Save Task
+          <Button onClick={handleSave} disabled={!form.title.trim() || isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
+            {isSubmitting ? "Saving..." : "Save To Do"}
           </Button>
         </div>
       </DialogContent>

@@ -19,7 +19,7 @@ export default function AcceptInvitePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [details, setDetails] = useState<InvitationDetails | null>(null)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [password, setPassword] = useState("")

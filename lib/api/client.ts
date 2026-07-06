@@ -40,15 +40,16 @@ export async function apiRequest<T>(
   const { body, headers, public: isPublic, ...rest } = options
 
   const token = getToken()
+  const isFormData = body instanceof FormData
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: rest.method ?? (body ? "POST" : "GET"),
     headers: {
-      "Content-Type": "application/json",
+      ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(token && !isPublic ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: isFormData ? (body as FormData) : (body ? JSON.stringify(body) : undefined),
     ...rest,
   })
 

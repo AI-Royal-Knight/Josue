@@ -12,7 +12,7 @@ import {
 import {
   Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Loader2 } from "lucide-react"
 
 import { VariationFormData, VariationLine } from "../types"
 import { PROJECTS, emptyLine, defaultForm, lineTotal, formatGBP } from "../utils"
@@ -22,7 +22,8 @@ import { Textarea } from "@/components/ui/textarea"
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (form: VariationFormData, formTotal: number) => void
+  onSubmit: (form: VariationFormData, formTotal: number) => Promise<boolean> | boolean
+  projects: { id: string; name: string }[]
 }
 
 const COLUMNS = [
@@ -38,8 +39,9 @@ const COLUMNS = [
   { key: "actions",       label: "",                   width: "w-8"  },
 ]
 
-export default function CreateVariationDialog({ open, onOpenChange, onSubmit }: Props) {
+export default function CreateVariationDialog({ open, onOpenChange, onSubmit, projects }: Props) {
   const [form, setForm] = useState<VariationFormData>(defaultForm())
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (open) setForm(defaultForm())
@@ -64,7 +66,12 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit }: 
   const removeLine = (i: number) =>
     setForm((f) => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))
 
-  const handleSubmit = () => onSubmit(form, formTotal)
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    const success = await onSubmit(form, formTotal)
+    setIsSubmitting(false)
+    if (success) onOpenChange(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,8 +96,8 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit }: 
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent className="border-white/10 bg-slate-900">
-                  {PROJECTS.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -326,14 +333,15 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit }: 
           </div>
 
           <div className="flex items-center justify-end gap-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button
-              disabled={!form.project || !form.descriptionOfWorks}
+              disabled={!form.project || !form.descriptionOfWorks || isSubmitting}
               onClick={handleSubmit}
             >
-              Create
+              {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              {isSubmitting ? "Saving..." : "Create"}
             </Button>
           </div>
         </div>

@@ -20,7 +20,17 @@ type PageState =
   | { status: "invite"; invitation: InvitationDetails }
   | { status: "wizard"; invitation: InvitationDetails; resumeDraft: boolean }
 
+import { Suspense } from "react"
+
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>}>
+      <OnboardingContent />
+    </Suspense>
+  )
+}
+
+function OnboardingContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
 

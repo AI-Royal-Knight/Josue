@@ -45,11 +45,12 @@ export function AssignUserModal({
         setLoading(true)
         setError(null)
         try {
-          const res = await getCompanyUsers()
-          // Mark users as checked if they are already in currentUsers
-          const mapped = res.users.map(u => ({
+          const res = await getCompanyUsers(roleKey)
+          // Filter out users that are already assigned
+          const availableUsers = res.users.filter(u => !currentUsers.some(cu => cu.id === u.id))
+          const mapped = availableUsers.map(u => ({
             ...u,
-            checked: currentUsers.some(cu => cu.id === u.id)
+            checked: false
           }))
           setLocalUsers(mapped)
         } catch (err) {
@@ -65,7 +66,8 @@ export function AssignUserModal({
   }, [open, currentUsers])
 
   const filteredUsers = localUsers.filter((user) =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   const handleToggleUser = (userId: string) => {
@@ -79,29 +81,22 @@ export function AssignUserModal({
   }
 
   const handleAssign = async () => {
-    // For now, we take the checked users and assign them.
-    // The backend API expects a single user_id right now.
-    // Let's just assign the first newly checked user that wasn't already in currentUsers.
-    const selectedUsers = localUsers.filter(u => u.checked)
-    const newUsers = selectedUsers.filter(u => !currentUsers.some(cu => cu.id === u.id))
+    // Combine existing user IDs with newly checked user IDs for bulk sync
+    const existingIds = currentUsers.map(u => u.id)
+    const newSelectedIds = localUsers.filter(u => u.checked).map(u => u.id)
+    const combinedUserIds = [...existingIds, ...newSelectedIds]
     
-    if (newUsers.length === 0) {
-      onOpenChange(false)
-      return
-    }
-
     setIsSubmitting(true)
     setError(null)
     try {
-      // Assign the first one
       await assignProjectRole(projectId, {
         role_key: roleKey,
-        user_id: newUsers[0].id
+        user_ids: combinedUserIds
       })
       onSuccess()
       onOpenChange(false)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to assign user.")
+      setError(err instanceof ApiError ? err.message : "Failed to assign users.")
     } finally {
       setIsSubmitting(false)
     }
@@ -151,7 +146,10 @@ export function AssignUserModal({
                     checked={user.checked}
                     onCheckedChange={() => handleToggleUser(user.id)}
                   />
-                  <span className="text-sm text-slate-100">{user.name}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-slate-100">{user.name || "Unknown Name"}</span>
+                    {user.email && <span className="text-xs text-slate-400">{user.email}</span>}
+                  </div>
                 </label>
               ))
             ) : (

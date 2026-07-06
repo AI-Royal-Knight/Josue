@@ -13,115 +13,11 @@ import {
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
-import { getMyProjects } from "@/lib/api/project-admin"
+import { getMyProjects, getProjectFinancialBreakdown, type FinancialBreakdownRow } from "@/lib/api/project-admin"
 import type { ProjectItem } from "@/constants/projects"
 
-type BreakdownRow = {
-  period: string
-  applicationValue: number
-  totalSpent?: number
-  projectValue: number
-  labourTarget: number
-  overspend: number
-  unclaimed: number
-  moneyOnHold: number
-  poCalledOff: number
-  loadingAndClearing: number
-  managementPrelims: number
-  plantHire: number
-  proformaNR: number
-  proformaNRMaterialEstimate: number
-  variationValue: number
-  variationLabourValue: number
-  variationLabourTarget: number
-  variationPoCalledOff: number
-  variationClaimed: number
-}
 
-const mockBreakdownData: BreakdownRow[] = [
-  {
-    period: "January",
-    applicationValue: 100000,
-    projectValue: 100000,
-    labourTarget: 25000,
-    overspend: 40000,
-    unclaimed: 1500,
-    moneyOnHold: 2000,
-    poCalledOff: 3000,
-    loadingAndClearing: 5000,
-    managementPrelims: 2000,
-    plantHire: 3000,
-    proformaNR: 4000,
-    proformaNRMaterialEstimate: 3500,
-    variationValue: 5000,
-    variationLabourValue: 2000,
-    variationLabourTarget: 1500,
-    variationPoCalledOff: 1000,
-    variationClaimed: 2500,
-  },
-  {
-    period: "February",
-    applicationValue: 120000,
-    projectValue: 120000,
-    labourTarget: 28000,
-    overspend: 45000,
-    unclaimed: 1500,
-    moneyOnHold: 2000,
-    poCalledOff: 3000,
-    loadingAndClearing: 5000,
-    managementPrelims: 2000,
-    plantHire: 3000,
-    proformaNR: 4000,
-    proformaNRMaterialEstimate: 3500,
-    variationValue: 5000,
-    variationLabourValue: 2000,
-    variationLabourTarget: 1500,
-    variationPoCalledOff: 1000,
-    variationClaimed: 2500,
-  },
-  {
-    period: "March",
-    applicationValue: 140000,
-    projectValue: 130000,
-    labourTarget: 30000,
-    overspend: 50000,
-    unclaimed: 1500,
-    moneyOnHold: 2000,
-    poCalledOff: 3000,
-    loadingAndClearing: 5000,
-    managementPrelims: 2000,
-    plantHire: 3000,
-    proformaNR: 4000,
-    proformaNRMaterialEstimate: 3500,
-    variationValue: 5000,
-    variationLabourValue: 2000,
-    variationLabourTarget: 1500,
-    variationPoCalledOff: 1000,
-    variationClaimed: 2500,
-  },
-  {
-    period: "April",
-    applicationValue: 140000,
-    projectValue: 130000,
-    labourTarget: 30000,
-    overspend: 50000,
-    unclaimed: 1500,
-    moneyOnHold: 2000,
-    poCalledOff: 3000,
-    loadingAndClearing: 5000,
-    managementPrelims: 2000,
-    plantHire: 3000,
-    proformaNR: 4000,
-    proformaNRMaterialEstimate: 3500,
-    variationValue: 5000,
-    variationLabourValue: 2000,
-    variationLabourTarget: 1500,
-    variationPoCalledOff: 1000,
-    variationClaimed: 2500,
-  },
-]
-
-const columns: ColDef<BreakdownRow>[] = [
+const columns: ColDef<FinancialBreakdownRow>[] = [
   { headerName: "Date 15th to 15th", field: "period", minWidth: 180 },
   {
     headerName: "Application Value",
@@ -133,7 +29,7 @@ const columns: ColDef<BreakdownRow>[] = [
     field: "totalSpent",
     headerClass: "text-green-500",
     valueGetter: (params) => {
-      const data = params.data as BreakdownRow
+      const data = params.data as FinancialBreakdownRow
       return (
         data.projectValue +
         data.overspend +
@@ -152,7 +48,6 @@ const columns: ColDef<BreakdownRow>[] = [
       )
     },
   },
-  { headerName: "Project Value", field: "projectValue", headerClass: "text-green-400" },
   { headerName: "Labour Target", field: "labourTarget", headerClass: "text-green-400" },
   {
     headerName: "Overspend",
@@ -210,19 +105,6 @@ const columns: ColDef<BreakdownRow>[] = [
       )
     },
   },
-  {
-    headerName: "Proforma NR Material Estimate",
-    field: "proformaNRMaterialEstimate",
-    headerClass: "text-red-500",
-    cellRenderer: (params: { value: number }) => {
-      const value = params.value as number
-      return (
-        <span className="text-red-500">
-          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
-        </span>
-      )
-    },
-  },
   { headerName: "Variation Value", field: "variationValue", headerClass: "text-orange-400" },
   { headerName: "Variations Labour Value", field: "variationLabourValue", headerClass: "text-orange-400" },
   { headerName: "Variation Labour Target", field: "variationLabourTarget", headerClass: "text-orange-400" },
@@ -232,16 +114,24 @@ const columns: ColDef<BreakdownRow>[] = [
 
 function fmt(value: number | string | undefined): string {
   if (value === undefined || value === null) return "£0"
-  const num = typeof value === "string" ? parseFloat(value) : (value as number)
+  let num: number;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^0-9.-]+/g, "");
+    num = parseFloat(cleaned);
+  } else {
+    num = value as number;
+  }
   if (isNaN(num)) return "£0"
   return num.toLocaleString("en-GB", { style: "currency", currency: "GBP" })
 }
 
 export default function Page() {
-  const gridApiRef = useRef<GridApi<BreakdownRow> | null>(null)
+  const gridApiRef = useRef<GridApi<FinancialBreakdownRow> | null>(null)
   const [projects, setProjects] = useState<ProjectItem[]>([])
   const [selectedId, setSelectedId] = useState<string>("")
   const [loading, setLoading] = useState(true)
+  const [breakdownData, setBreakdownData] = useState<FinancialBreakdownRow[]>([])
+  const [loadingBreakdown, setLoadingBreakdown] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -260,11 +150,25 @@ export default function Page() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (selectedId) {
+      setLoadingBreakdown(true)
+      getProjectFinancialBreakdown(selectedId)
+        .then((res) => {
+          setBreakdownData(res.breakdown)
+        })
+        .catch((err) => console.error("Failed to fetch breakdown:", err))
+        .finally(() => setLoadingBreakdown(false))
+    } else {
+      setBreakdownData([])
+    }
+  }, [selectedId])
+
   const selectedProject = projects.find((p) => p.id === selectedId)
 
   const handleDownload = useCallback(() => {
     if (!gridApiRef.current) return
-    const rows: BreakdownRow[] = []
+    const rows: FinancialBreakdownRow[] = []
     gridApiRef.current.forEachNode((node) => {
       if (node.data) rows.push(node.data)
     })
@@ -294,7 +198,7 @@ export default function Page() {
                 row.proformaNR
               return csvEscape(`£${total.toLocaleString("en-GB")}`)
             }
-            return csvEscape((row as Record<string, unknown>)[String(c.field)])
+            return csvEscape((row as unknown as Record<string, unknown>)[String(c.field)])
           })
           .join(",")
       )
@@ -358,25 +262,29 @@ export default function Page() {
             { label: "Labour Estimate", value: selectedProject ? fmt(selectedProject.labourEstimate) : "—" },
             { label: "Prelims Estimate", value: selectedProject ? fmt(selectedProject.prelimsEstimate) : "—" },
             { label: "Estimate Profit", value: selectedProject ? fmt(selectedProject.estimateProfit) : "—" },
+            { label: "Total Invoiced", value: fmt(breakdownData.reduce((acc, r) => acc + r.applicationValue, 0)) },
+            { label: "Total Spend", value: fmt(breakdownData.reduce((acc, r) => {
+                const rowSpend = r.projectValue + r.overspend + r.poCalledOff + r.managementPrelims + r.loadingAndClearing + r.proformaNR;
+                return acc + rowSpend;
+              }, 0)) 
+            },
           ]}
         />
         <TableStat
           summaryRows={[
-            { label: "Total PO Raised", value: "£1,000,000" },
-            { label: "Proforma NR", value: "£320", valueColor: "red" },
-            { label: "Proforma NR Material Estimate", value: "£50,000", valueColor: "red" },
-            { label: "Total Unclaimed", value: "£150,000", valueColor: "green" },
-            { label: "Total Overspend", value: "£150,000", valueColor: "red" },
+            { label: "Total PO Raised", value: fmt(breakdownData.reduce((acc, r) => acc + r.poCalledOff, 0)) },
+            { label: "Proforma NR", value: fmt(breakdownData.reduce((acc, r) => acc + r.proformaNR, 0)), valueColor: "red" },
+            { label: "Total Unclaimed", value: fmt(breakdownData.reduce((acc, r) => acc + r.unclaimed, 0)), valueColor: "green" },
+            { label: "Total Overspend", value: fmt(breakdownData.reduce((acc, r) => acc + r.overspend, 0)), valueColor: "red" },
           ]}
         />
         <TableStat
           summaryRows={[
-            { label: "Variations Value", value: "£250,000" },
-            { label: "Variation Labour value", value: "£150,000" },
-            { label: "Variation Labour target", value: "£150,000" },
-            { label: "Variations Total PO", value: "£150,000" },
-            { label: "Variations PO Call off", value: "£150,000" },
-            { label: "Variations Claimed", value: "£320", valueColor: "red" },
+            { label: "Variations Value", value: fmt(breakdownData.reduce((acc, r) => acc + r.variationValue, 0)) },
+            { label: "Variation Labour value", value: fmt(breakdownData.reduce((acc, r) => acc + r.variationLabourValue, 0)) },
+            { label: "Variation Labour target", value: fmt(breakdownData.reduce((acc, r) => acc + r.variationLabourTarget, 0)) },
+            { label: "Variations Total PO", value: fmt(breakdownData.reduce((acc, r) => acc + r.variationPoCalledOff, 0)) },
+            { label: "Variations Claimed", value: fmt(breakdownData.reduce((acc, r) => acc + r.variationClaimed, 0)), valueColor: "red" },
           ]}
         />
       </div>
@@ -395,7 +303,8 @@ export default function Page() {
           </Button>
         </div>
         <AgTable
-          rowData={mockBreakdownData}
+          loading={loadingBreakdown}
+          rowData={breakdownData}
           columnDefs={columns}
           height="auto"
           suppressCellClickAction

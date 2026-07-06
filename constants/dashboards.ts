@@ -41,6 +41,7 @@ export const DASHBOARD_NAV = {
   managing_director: [
     { title: "Projects Overview", url: "/project-overview" },
     { title: "Variations", url: "/variations" },
+    { title: "Management Timesheets", url: "/management-timesheets" },
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Daily Register", url: "/daily-register" },
     { title: "Project RFI's", url: "/project-rfis" },
@@ -49,6 +50,7 @@ export const DASHBOARD_NAV = {
   project_director: [
     { title: "Project Overview", url: "/project-overview" },
     { title: "Variations", url: "/variations" },
+    { title: "Management Timesheets", url: "/management-timesheets" },
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Daily Register", url: "/daily-register" },
     { title: "Project RFI's", url: "/project-rfis" },
@@ -81,6 +83,7 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   contracts_manager: [
+    { title: "Projects", url: "/projects" },
     { title: "Users", url: "/users" },
     //  { title: "Assign Management", url: "/assign-management" },
     { title: "Variations", url: "/variations" },
@@ -115,6 +118,7 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   supervisor: [
+    { title: "Projects", url: "/projects" },
     { title: "Users", url: "/users" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },

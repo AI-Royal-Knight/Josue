@@ -5,6 +5,7 @@ import { apiRequest } from "./client"
 export interface ProjectUser {
   id: string
   name: string
+  email?: string
   checked: boolean
 }
 
@@ -16,7 +17,7 @@ export interface ProjectRoleData {
 
 export interface AssignRolePayload {
   role_key: string
-  user_id: string
+  user_ids: string[]
 }
 
 // ── API Functions ──────────────────────────────────────────────────────────
@@ -44,6 +45,27 @@ export async function getProjects(): Promise<{ projects: ProjectItem[]; total_co
       overdue: p.is_overdue,
       completed: p.is_completed,
     })),
+  }
+}
+
+export async function getProject(projectId: string): Promise<ProjectItem> {
+  const p = await apiRequest<any>(`/project-admin/projects/${projectId}/`)
+  return {
+    id: p.id,
+    projectName: p.project_name,
+    jobCode: p.job_code,
+    vatRate: p.vat_rate,
+    address: p.address,
+    dateCreated: p.created_at ? new Date(p.created_at).toISOString().split('T')[0] : '',
+    projectValue: p.project_value ? `£${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
+    materialEstimate: p.material_estimate ? `£${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
+    labourEstimate: p.labour_estimate ? `£${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
+    prelimsEstimate: p.prelims_estimate ? `£${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
+    estimateProfit: p.estimate_profit ? `£${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
+    startDate: p.start_date,
+    completionDate: p.completion_date,
+    overdue: p.is_overdue,
+    completed: p.is_completed,
   }
 }
 
@@ -78,8 +100,35 @@ export async function getMyProjects(): Promise<{ projects: ProjectItem[]; total_
   }
 }
 
-export async function getCompanyUsers(): Promise<{ users: ProjectUser[] }> {
-  return apiRequest<{ users: ProjectUser[] }>("/project-admin/users/")
+export interface FinancialBreakdownRow {
+  period: string
+  applicationValue: number
+  totalSpent?: number
+  projectValue: number
+  labourTarget: number
+  overspend: number
+  unclaimed: number
+  moneyOnHold: number
+  poCalledOff: number
+  loadingAndClearing: number
+  managementPrelims: number
+  plantHire: number
+  proformaNR: number
+  proformaNRMaterialEstimate: number
+  variationValue: number
+  variationLabourValue: number
+  variationLabourTarget: number
+  variationPoCalledOff: number
+  variationClaimed: number
+}
+
+export async function getProjectFinancialBreakdown(projectId: string): Promise<{ breakdown: FinancialBreakdownRow[] }> {
+  return apiRequest<{ breakdown: FinancialBreakdownRow[] }>(`/project-admin/projects/${projectId}/financial-breakdown/`)
+}
+
+export async function getCompanyUsers(roleKey?: string): Promise<{ users: ProjectUser[] }> {
+  const url = roleKey ? `/project-admin/users/?role=${roleKey}` : `/project-admin/users/`
+  return apiRequest<{ users: ProjectUser[] }>(url)
 }
 
 export async function getProjectRoles(projectId: string): Promise<ProjectRoleData[]> {
@@ -87,7 +136,7 @@ export async function getProjectRoles(projectId: string): Promise<ProjectRoleDat
 }
 
 export type SubfolderAssignment = {
-  id: string
+  id?: string
   user: ProjectUser
   hide_labour_target: boolean
   is_management_assignment: boolean

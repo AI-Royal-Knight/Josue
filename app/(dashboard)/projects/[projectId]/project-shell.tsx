@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { useState, type ReactNode } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import { ArrowLeftRight, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ProjectLayoutClient } from "./layout-client"
+import { getProject } from "@/lib/api/project-admin"
 
 type ProjectShellProps = {
   children: ReactNode
@@ -16,9 +17,24 @@ type ProjectShellProps = {
 export function ProjectShell({
   children,
   projectId,
-  projectName,
+  projectName: initialProjectName,
 }: ProjectShellProps) {
   const [sidebarHidden, setSidebarHidden] = useState(false)
+  const [projectName, setProjectName] = useState(initialProjectName)
+
+  useEffect(() => {
+    async function fetchProject() {
+      try {
+        const project = await getProject(projectId)
+        if (project && project.projectName) {
+          setProjectName(project.projectName)
+        }
+      } catch (err) {
+        console.error("Failed to fetch project:", err)
+      }
+    }
+    fetchProject()
+  }, [projectId])
 
   return (
     <div className="flex h-full min-h-screen w-full">

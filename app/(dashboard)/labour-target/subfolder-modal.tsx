@@ -12,14 +12,17 @@ import {
 import { Row, Subfolder } from "./types"
 import { defaultRows, uid } from "./utils"
 import { SpreadsheetTable } from "./spreadsheet-table"
+import { SubfolderAssignments } from "./subfolder-assignments"
+import type { SubfolderAssignment } from "@/lib/api/project-admin"
 
 type SubfolderModalProps = {
   subfolder: Subfolder
   folderName: string
   copiedValue: string
   onCopy: (value: string) => void
-  onSave: (rows: Row[]) => void
+  onSave: (rows: Row[], assignments: SubfolderAssignment[]) => void
   onClose: () => void
+  isManagement?: boolean
 }
 
 // Header ~65px + footer ~57px + some breathing room = 140px
@@ -32,9 +35,13 @@ export function SubfolderModal({
   onCopy,
   onSave,
   onClose,
+  isManagement,
 }: SubfolderModalProps) {
   const [rows, setRows] = useState<Row[]>(() =>
     subfolder.rows.map((r) => ({ ...r }))
+  )
+  const [assignments, setAssignments] = useState<SubfolderAssignment[]>(() =>
+    subfolder.assignments ? [...subfolder.assignments] : []
   )
   const [isImporting, setIsImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -90,6 +97,7 @@ export function SubfolderModal({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <SubfolderAssignments assignments={assignments} onChange={setAssignments} />
               <Button
                 variant="outline"
                 disabled={isImporting}
@@ -138,6 +146,7 @@ export function SubfolderModal({
             onChange={setRows}
             copiedValue={copiedValue}
             onCopy={onCopy}
+            isManagement={isManagement}
           />
         </div>
 
@@ -166,7 +175,7 @@ export function SubfolderModal({
             <Button onClick={() => setRows(defaultRows())} variant="outline">
               Clear All
             </Button>
-            <Button onClick={() => onSave(rows)}>
+            <Button onClick={() => onSave(rows, assignments)}>
               <Save className="mr-2 h-4 w-4" />
               Save
             </Button>

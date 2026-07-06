@@ -15,7 +15,7 @@ const profileSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  
+
   // Profile nested fields
   categories: z.string().optional(),
   cscs_card_no: z.string().optional(),
@@ -26,7 +26,7 @@ const profileSchema = z.object({
   insurance_policy: z.string().optional(),
   employer_liability: z.string().optional(),
   digital_signature: z.string().optional(),
-  
+
   // Company nested fields
   company_name: z.string().optional(),
   company_number: z.string().optional(),
@@ -101,7 +101,7 @@ export default function ProfilePage() {
         insurance_policy: data.profile?.insurance_policy || "",
         employer_liability: data.profile?.employer_liability || "",
         digital_signature: data.profile?.digital_signature || "",
-        
+
         company_name: data.company?.company_name || "",
         company_number: data.company?.company_number?.toString() || "",
         vat_number: data.company?.vat_number || "",

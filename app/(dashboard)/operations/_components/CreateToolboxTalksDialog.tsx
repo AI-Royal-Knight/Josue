@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -17,12 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { FileUp, Upload } from "lucide-react"
+import { FileUp, Upload, Loader2, Save } from "lucide-react"
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (data: ToolboxTalksFormData) => void
+  onSave: (data: ToolboxTalksFormData) => Promise<boolean> | boolean
+  projects: { id: string; name: string }[]
+  defaultProjectId: string
 }
 
 export type ToolboxTalksFormData = {
@@ -32,16 +34,22 @@ export type ToolboxTalksFormData = {
   attachment: File | null
 }
 
-const PROJECTS = ["Project A", "Project B", "Project C"]
+
 const MAX_SIZE_MB = 25
 
-export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave }: Props) {
+export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave, projects, defaultProjectId }: Props) {
   const [form, setForm] = useState<ToolboxTalksFormData>({
     title: "",
     date: "",
-    assignToProject: "",
+    assignToProject: defaultProjectId || "",
     attachment: null,
   })
+
+  useEffect(() => {
+    if (open) {
+      setForm((p) => ({ ...p, assignToProject: defaultProjectId || "" }))
+    }
+  }, [open, defaultProjectId])
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -52,11 +60,16 @@ export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave }:
     }
   }
 
-  const handleSave = () => {
-    if (!form.title.trim()) return
-    onSave(form)
-    setForm({ title: "", date: "", assignToProject: "", attachment: null })
-    onOpenChange(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSave = async () => {
+    setIsSubmitting(true)
+    const success = await onSave(form)
+    setIsSubmitting(false)
+    if (success) {
+      setForm({ title: "", date: "", assignToProject: defaultProjectId || "", attachment: null })
+      onOpenChange(false)
+    }
   }
 
   return (
@@ -103,9 +116,9 @@ export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave }:
                 <SelectTrigger className="border-white/10 bg-white/5">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
-                <SelectContent>
-                  {PROJECTS.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                <SelectContent className="border-white/10 bg-slate-900">
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -148,8 +161,9 @@ export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave }:
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!form.title.trim()}>
-            <Upload className="mr-2 size-4" /> Save
+          <Button onClick={handleSave} disabled={!form.title.trim() || isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
+            {isSubmitting ? "Saving..." : "Save Toolbox Talk"}
           </Button>
         </div>
       </DialogContent>

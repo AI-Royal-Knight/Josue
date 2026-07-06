@@ -55,6 +55,20 @@ export default function AssignManagementPage() {
     [selectedRole]
   )
 
+  const handleUnassign = async (roleKey: string, userIdToRemove: string, currentUsers: ProjectUser[]) => {
+    try {
+      const updatedUserIds = currentUsers.filter(u => u.id !== userIdToRemove).map(u => u.id)
+      const { assignProjectRole } = await import("@/lib/api/project-admin")
+      await assignProjectRole(projectId, {
+        role_key: roleKey,
+        user_ids: updatedUserIds
+      })
+      fetchData()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : (err as Error).message)
+    }
+  }
+
   const columns: ColDef<ProjectRoleData>[] = [
     {
       headerName: "Role",
@@ -74,9 +88,16 @@ export default function AssignManagementPage() {
             {displayed.map((user) => (
               <span
                 key={user.id}
-                className="rounded bg-white/10 px-2 py-0.5 text-xs text-slate-200"
+                className="group relative flex items-center rounded bg-white/10 px-2 py-0.5 text-xs text-slate-200"
               >
                 {user.name}
+                <button
+                  onClick={() => handleUnassign(params.data.role_key, user.id, params.data.users)}
+                  className="ml-1 text-slate-400 hover:text-red-400"
+                  title="Unassign user"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
               </span>
             ))}
           </div>

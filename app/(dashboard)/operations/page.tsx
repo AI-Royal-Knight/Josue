@@ -1,107 +1,36 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import SelectProject from "@/components/shared/select-project"
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef } from "ag-grid-community"
+import { getMyProjects } from "@/lib/api/project-admin"
+import type { ProjectItem } from "@/constants/projects"
+import {
+  getOperations,
+  createRAMS,
+  createDailyBriefing,
+  createToolboxTalk,
+  createToDo,
+  type RAMS,
+  type DailyBriefing,
+  type ToolboxTalk,
+  type ToDoList
+} from "@/lib/api/operations"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
 
-import CreateRAMSDialog, {
-  type RAMSFormData,
-} from "./_components/CreateRAMSDialog"
-import CreateDailyBriefingDialog, {
-  type DailyBriefingFormData,
-} from "./_components/CreateDailyBriefingDialog"
-import CreateToolboxTalksDialog, {
-  type ToolboxTalksFormData,
-} from "./_components/CreateToolboxTalksDialog"
-import CreateToDoDialog, {
-  type ToDoFormData,
-} from "./_components/CreateToDoDialog"
-import RowDetailDialog, {
-  type DetailField,
-} from "./_components/RowDetailDialog"
-
-type ProjectTag = "PROJECT A" | "PROJECT B" | "PROJECT C"
-
-type RAMSRow = {
-  rams: string
-  project: ProjectTag
-  date: string
-  revisedDate: string
-}
-
-type BriefingRow = {
-  briefing: string
-  project: ProjectTag
-  date: string
-}
-
-type ToolboxRow = {
-  briefing: string
-  project: ProjectTag
-  date: string
-}
-
-type ToDoRow = {
-  task: string
-  project: ProjectTag
-  date: string
-  completionDate: string
-  user: string
-}
+import CreateRAMSDialog, { type RAMSFormData } from "./_components/CreateRAMSDialog"
+import CreateDailyBriefingDialog, { type DailyBriefingFormData } from "./_components/CreateDailyBriefingDialog"
+import CreateToolboxTalksDialog, { type ToolboxTalksFormData } from "./_components/CreateToolboxTalksDialog"
+import CreateToDoDialog, { type ToDoFormData } from "./_components/CreateToDoDialog"
+import RowDetailDialog, { type DetailField } from "./_components/RowDetailDialog"
 
 type DetailState = {
   title: string
   fields: DetailField[]
   filename: string
-}
-
-const initialRAMS: RAMSRow[] = [
-  {
-    rams: "Excavation Plan v2",
-    project: "PROJECT A",
-    date: "12 Oct 23",
-    revisedDate: "20 Oct 23",
-  },
-  {
-    rams: "Site Logistics Phase 1",
-    project: "PROJECT B",
-    date: "15 Oct 23",
-    revisedDate: "–",
-  },
-]
-
-const initialBriefings: BriefingRow[] = [
-  { briefing: "AM Shift Handoff", project: "PROJECT A", date: "24 Oct 23" },
-  { briefing: "Safety Inductions", project: "PROJECT B", date: "24 Oct 23" },
-]
-
-const initialToolbox: ToolboxRow[] = [
-  { briefing: "Work at Height", project: "PROJECT A", date: "22 Oct 23" },
-]
-
-const initialToDo: ToDoRow[] = [
-  {
-    task: "Review Steel Certs",
-    project: "PROJECT B",
-    date: "24 Oct 2026",
-    completionDate: "–",
-    user: "J. Smith",
-  },
-  {
-    task: "Sign Daily Register",
-    project: "PROJECT A",
-    date: "25 Oct 2026",
-    completionDate: "–",
-    user: "M. Ross",
-  },
-]
-
-const PROJECT_COLORS: Record<ProjectTag, string> = {
-  "PROJECT A": "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40",
-  "PROJECT B": "bg-blue-500/20 text-blue-300 border border-blue-500/40",
-  "PROJECT C": "bg-purple-500/20 text-purple-300 border border-purple-500/40",
+  document_url?: string | null
 }
 
 const SHARED_DEFAULT_COL: ColDef = {
@@ -117,7 +46,7 @@ const SHARED_GRID_OPTIONS = {
   getRowClass: () => "cursor-pointer",
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null): string {
   if (!iso) return "–"
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
@@ -126,11 +55,6 @@ function formatDate(iso: string): string {
     month: "short",
     year: "2-digit",
   })
-}
-
-function toProjectTag(project: string): ProjectTag {
-  const upper = project.toUpperCase() as ProjectTag
-  return upper in PROJECT_COLORS ? upper : "PROJECT A"
 }
 
 function slugify(text: string) {
@@ -144,10 +68,12 @@ function Section({
   title,
   onCreateClick,
   children,
+  disabled = false
 }: {
   title: string
   onCreateClick: () => void
   children: React.ReactNode
+  disabled?: boolean
 }) {
   return (
     <section>
@@ -158,6 +84,7 @@ function Section({
           variant="outline"
           className="border-white/20 text-xs"
           onClick={onCreateClick}
+          disabled={disabled}
         >
           + Create
         </Button>
@@ -170,10 +97,14 @@ function Section({
 }
 
 export default function Page() {
-  const [rams, setRAMS] = useState<RAMSRow[]>(initialRAMS)
-  const [briefings, setBriefings] = useState<BriefingRow[]>(initialBriefings)
-  const [toolbox, setToolbox] = useState<ToolboxRow[]>(initialToolbox)
-  const [todos, setTodos] = useState<ToDoRow[]>(initialToDo)
+  const [projects, setProjects] = useState<ProjectItem[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("")
+  const [loading, setLoading] = useState(true)
+
+  const [rams, setRAMS] = useState<RAMS[]>([])
+  const [briefings, setBriefings] = useState<DailyBriefing[]>([])
+  const [toolbox, setToolbox] = useState<ToolboxTalk[]>([])
+  const [todos, setTodos] = useState<ToDoList[]>([])
 
   const [ramsOpen, setRamsOpen] = useState(false)
   const [briefingOpen, setBriefingOpen] = useState(false)
@@ -183,169 +114,253 @@ export default function Page() {
   // detail dialog
   const [detail, setDetail] = useState<DetailState | null>(null)
 
-  const onRAMSRowClick = useCallback((row: RAMSRow) => {
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const response = await getMyProjects()
+        const projs = response.projects
+        setProjects(projs)
+        if (projs.length > 0) {
+          setSelectedProjectId(projs[0].id)
+        }
+      } catch (err) {
+        console.error("Failed to fetch projects", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProjects()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedProjectId) return
+    async function loadOperations() {
+      try {
+        const data = await getOperations(selectedProjectId)
+        setRAMS(data.rams)
+        setBriefings(data.briefings)
+        setToolbox(data.toolbox_talks)
+        setTodos(data.todos)
+      } catch (err) {
+        console.error("Failed to fetch operations", err)
+      }
+    }
+    loadOperations()
+  }, [selectedProjectId])
+
+  const onRAMSRowClick = useCallback((row: RAMS) => {
     setDetail({
-      title: row.rams,
+      title: row.title,
       fields: [
-        { label: "RAMS", value: row.rams },
-        { label: "Project", value: row.project },
-        { label: "Date", value: row.date },
-        { label: "Revised Date", value: row.revisedDate },
+        { label: "RAMS", value: row.title },
+        { label: "Project", value: row.project_name },
+        { label: "Date", value: formatDate(row.date) },
+        { label: "Revised Date", value: formatDate(row.review_date) },
       ],
-      filename: `rams-${slugify(row.rams)}`,
+      filename: `rams-${slugify(row.title)}`,
+      document_url: row.document_url
     })
   }, [])
 
-  const onBriefingRowClick = useCallback((row: BriefingRow) => {
+  const onBriefingRowClick = useCallback((row: DailyBriefing) => {
     setDetail({
-      title: row.briefing,
+      title: row.title,
       fields: [
-        { label: "Briefing", value: row.briefing },
-        { label: "Project", value: row.project },
-        { label: "Date", value: row.date },
+        { label: "Briefing", value: row.title },
+        { label: "Project", value: row.project_name },
+        { label: "Date", value: formatDate(row.date) },
       ],
-      filename: `briefing-${slugify(row.briefing)}`,
+      filename: `briefing-${slugify(row.title)}`,
+      document_url: row.document_url
     })
   }, [])
 
-  const onToolboxRowClick = useCallback((row: ToolboxRow) => {
+  const onToolboxRowClick = useCallback((row: ToolboxTalk) => {
     setDetail({
-      title: row.briefing,
+      title: row.title,
       fields: [
-        { label: "Toolbox Talk", value: row.briefing },
-        { label: "Project", value: row.project },
-        { label: "Date", value: row.date },
+        { label: "Toolbox Talk", value: row.title },
+        { label: "Project", value: row.project_name },
+        { label: "Date", value: formatDate(row.date) },
       ],
-      filename: `toolbox-${slugify(row.briefing)}`,
+      filename: `toolbox-${slugify(row.title)}`,
+      document_url: row.document_url
     })
   }, [])
 
-  const onToDoRowClick = useCallback((row: ToDoRow) => {
+  const onToDoRowClick = useCallback((row: ToDoList) => {
     setDetail({
-      title: row.task,
+      title: row.title,
       fields: [
-        { label: "Task", value: row.task },
-        { label: "Project", value: row.project },
-        { label: "Date", value: row.date },
-        { label: "Completion Date", value: row.completionDate },
-        { label: "User", value: row.user },
+        { label: "Task", value: row.title },
+        { label: "Project", value: row.project_name },
+        { label: "Date", value: formatDate(row.date) },
+        { label: "Completion Date", value: formatDate(row.completion_date) },
+        { label: "User", value: row.assign_user || "–" },
       ],
-      filename: `todo-${slugify(row.task)}`,
+      filename: `todo-${slugify(row.title)}`,
     })
   }, [])
 
-  const ramsCols = useMemo<ColDef<RAMSRow>[]>(
+  const ramsCols = useMemo<ColDef<RAMS>[]>(
     () => [
-      { headerName: "RAMS", field: "rams", flex: 3 },
-      {
-        headerName: "Project",
-        field: "project",
-        flex: 2,
+      { headerName: "RAMS", field: "title", flex: 3 },
+      { headerName: "Project", field: "project_name", flex: 2 },
+      { headerName: "Date", field: "date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
+      { headerName: "Revised Date", field: "review_date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
+      { 
+        headerName: "Attachment", 
+        field: "document_url", 
+        flex: 1, 
+        cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View</a> : "–"
       },
-      { headerName: "Date", field: "date", flex: 1 },
-      { headerName: "Revised Date", field: "revisedDate", flex: 1 },
     ],
     []
   )
 
-  const briefingCols = useMemo<ColDef<BriefingRow>[]>(
+  const briefingCols = useMemo<ColDef<DailyBriefing>[]>(
     () => [
-      { headerName: "Briefings", field: "briefing", flex: 3 },
-      {
-        headerName: "Project",
-        field: "project",
-        flex: 2,
+      { headerName: "Briefings", field: "title", flex: 3 },
+      { headerName: "Project", field: "project_name", flex: 2 },
+      { headerName: "Date", field: "date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
+      { 
+        headerName: "Attachment", 
+        field: "document_url", 
+        flex: 1, 
+        cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View</a> : "–"
       },
-      { headerName: "Date", field: "date", flex: 1 },
     ],
     []
   )
 
-  const toolboxCols = useMemo<ColDef<ToolboxRow>[]>(
+  const toolboxCols = useMemo<ColDef<ToolboxTalk>[]>(
     () => [
-      { headerName: "Briefings", field: "briefing", flex: 3 },
-      {
-        headerName: "Project",
-        field: "project",
-        flex: 2,
+      { headerName: "Toolbox Talks", field: "title", flex: 3 },
+      { headerName: "Project", field: "project_name", flex: 2 },
+      { headerName: "Date", field: "date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
+      { 
+        headerName: "Attachment", 
+        field: "document_url", 
+        flex: 1, 
+        cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View</a> : "–"
       },
-      { headerName: "Date", field: "date", flex: 1 },
     ],
     []
   )
 
-  const todoCols = useMemo<ColDef<ToDoRow>[]>(
+  const todoCols = useMemo<ColDef<ToDoList>[]>(
     () => [
-      { headerName: "To Do List", field: "task", flex: 3 },
-      {
-        headerName: "Project",
-        field: "project",
-        flex: 2,
-      },
-      { headerName: "Date", field: "date", flex: 1 },
-      { headerName: "Completion Date", field: "completionDate", flex: 1 },
-      { headerName: "User", field: "user", flex: 1 },
+      { headerName: "To Do List", field: "title", flex: 3 },
+      { headerName: "Project", field: "project_name", flex: 2 },
+      { headerName: "Date", field: "date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
+      { headerName: "Completion Date", field: "completion_date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
+      { headerName: "User", field: "assign_user", flex: 1 },
     ],
     []
   )
 
-  const handleSaveRAMS = (data: RAMSFormData) => {
-    setRAMS((prev) => [
-      ...prev,
-      {
-        rams: data.title,
-        project: toProjectTag(data.assignToProject),
-        date: formatDate(data.date),
-        revisedDate: data.reviewDate ? formatDate(data.reviewDate) : "–",
-      },
-    ])
+  const handleSaveRAMS = async (data: RAMSFormData) => {
+    const fd = new FormData()
+    fd.append('project_id', data.assignToProject)
+    fd.append('title', data.title)
+    fd.append('date', data.date)
+    if (data.reviewDate) fd.append('review_date', data.reviewDate)
+    if (data.attachment) fd.append('attachment', data.attachment)
+    try {
+      const created = await createRAMS(fd)
+      if (created.project === selectedProjectId) {
+        setRAMS(prev => [created, ...prev])
+      }
+      return true
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to create RAMS")
+      return false
+    }
   }
 
-  const handleSaveBriefing = (data: DailyBriefingFormData) => {
-    setBriefings((prev) => [
-      ...prev,
-      {
-        briefing: data.title,
-        project: toProjectTag(data.assignToProject || "Project A"),
-        date: formatDate(data.date),
-      },
-    ])
+  const handleSaveBriefing = async (data: DailyBriefingFormData) => {
+    const fd = new FormData()
+    fd.append('project_id', data.assignToProject)
+    fd.append('title', data.title)
+    fd.append('date', data.date)
+    if (data.attachment) fd.append('attachment', data.attachment)
+    try {
+      const created = await createDailyBriefing(fd)
+      if (created.project === selectedProjectId) {
+        setBriefings(prev => [created, ...prev])
+      }
+      return true
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to create Daily Briefing")
+      return false
+    }
   }
 
-  const handleSaveToolbox = (data: ToolboxTalksFormData) => {
-    setToolbox((prev) => [
-      ...prev,
-      {
-        briefing: data.title,
-        project: toProjectTag(data.assignToProject || "Project A"),
-        date: formatDate(data.date),
-      },
-    ])
+  const handleSaveToolbox = async (data: ToolboxTalksFormData) => {
+    const fd = new FormData()
+    fd.append('project_id', data.assignToProject)
+    fd.append('title', data.title)
+    fd.append('date', data.date)
+    if (data.attachment) fd.append('attachment', data.attachment)
+    try {
+      const created = await createToolboxTalk(fd)
+      if (created.project === selectedProjectId) {
+        setToolbox(prev => [created, ...prev])
+      }
+      return true
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to create Toolbox Talk")
+      return false
+    }
   }
 
-  const handleSaveToDo = (data: ToDoFormData) => {
-    setTodos((prev) => [
-      ...prev,
-      {
-        task: data.title,
-        project: toProjectTag(data.project || "Project A"),
-        date: formatDate(data.date),
-        completionDate: data.completionDate
-          ? formatDate(data.completionDate)
-          : "–",
-        user: data.assignUser,
-      },
-    ])
+  const handleSaveToDo = async (data: ToDoFormData) => {
+    try {
+      const created = await createToDo({
+        project_id: data.project,
+        title: data.title,
+        date: data.date,
+        completion_date: data.completionDate,
+        assign_user: data.assignUser
+      })
+      if (created.project === selectedProjectId) {
+        setTodos(prev => [created, ...prev])
+      }
+      return true
+    } catch (e) {
+      toast.error((e as Error).message || "Failed to create To Do")
+      return false
+    }
+  }
+
+  const projectOptions = projects.map(p => ({ id: p.id, name: p.projectName }))
+
+  if (loading) {
+    return <div className="p-6">Loading Operations...</div>
   }
 
   return (
     <div className="w-full space-y-8 p-6">
       <h1 className="text-2xl font-semibold">Operations</h1>
 
-      <SelectProject />
+      <div className="w-1/3">
+        <label className="mb-2 block text-sm font-medium text-slate-300">
+          Select Project
+        </label>
+        <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+          <SelectTrigger className="border-white/10 bg-slate-900">
+            <SelectValue placeholder="Select a project" />
+          </SelectTrigger>
+          <SelectContent className="border-white/10 bg-slate-900">
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.projectName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* RAMS */}
-      <Section title="RAMS" onCreateClick={() => setRamsOpen(true)}>
+      <Section title="RAMS" onCreateClick={() => setRamsOpen(true)} disabled={!selectedProjectId}>
         <AgTable
           rowData={rams}
           columnDefs={ramsCols}
@@ -362,6 +377,7 @@ export default function Page() {
       <Section
         title="Daily Briefings"
         onCreateClick={() => setBriefingOpen(true)}
+        disabled={!selectedProjectId}
       >
         <AgTable
           rowData={briefings}
@@ -376,7 +392,7 @@ export default function Page() {
       </Section>
 
       {/* Toolbox Talks */}
-      <Section title="Toolbox Talks" onCreateClick={() => setToolboxOpen(true)}>
+      <Section title="Toolbox Talks" onCreateClick={() => setToolboxOpen(true)} disabled={!selectedProjectId}>
         <AgTable
           rowData={toolbox}
           columnDefs={toolboxCols}
@@ -390,7 +406,7 @@ export default function Page() {
       </Section>
 
       {/* To Do List */}
-      <Section title="To Do List" onCreateClick={() => setTodoOpen(true)}>
+      <Section title="To Do List" onCreateClick={() => setTodoOpen(true)} disabled={!selectedProjectId}>
         <AgTable
           rowData={todos}
           columnDefs={todoCols}
@@ -408,22 +424,30 @@ export default function Page() {
         open={ramsOpen}
         onOpenChange={setRamsOpen}
         onSave={handleSaveRAMS}
+        projects={projectOptions}
+        defaultProjectId={selectedProjectId}
       />
       <CreateDailyBriefingDialog
         open={briefingOpen}
         onOpenChange={setBriefingOpen}
         onSave={handleSaveBriefing}
         title="Create Daily Briefing"
+        projects={projectOptions}
+        defaultProjectId={selectedProjectId}
       />
       <CreateToolboxTalksDialog
         open={toolboxOpen}
         onOpenChange={setToolboxOpen}
         onSave={handleSaveToolbox}
+        projects={projectOptions}
+        defaultProjectId={selectedProjectId}
       />
       <CreateToDoDialog
         open={todoOpen}
         onOpenChange={setTodoOpen}
         onSave={handleSaveToDo}
+        projects={projectOptions}
+        defaultProjectId={selectedProjectId}
       />
 
       {/* ── Row detail dialog ── */}

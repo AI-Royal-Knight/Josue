@@ -18,6 +18,7 @@ type SpreadsheetTableProps = {
   onChange: (rows: Row[]) => void
   copiedValue: string
   onCopy: (value: string) => void
+  isManagement?: boolean
 }
 
 const COLUMN_WIDTHS: Record<string, string> = {
@@ -33,6 +34,7 @@ export function SpreadsheetTable({
   onChange,
   copiedValue,
   onCopy,
+  isManagement,
 }: SpreadsheetTableProps) {
   const [focused, setFocused] = useState<FocusedCell>(null)
   const [selection, setSelection] = useState<CellSelection | null>(null)
@@ -43,6 +45,8 @@ export function SpreadsheetTable({
   const tableRef = useRef<HTMLTableElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [bodyHeight, setBodyHeight] = useState<number | null>(null)
+
+  const headers = FIELD_HEADERS
 
   // Measure the wrapper so the scroll body fills exactly the right height
   useEffect(() => {
@@ -59,7 +63,7 @@ export function SpreadsheetTable({
   }, [])
 
   const getFieldFromIndex = (index: number) =>
-    FIELD_HEADERS[index]?.field as keyof Omit<Row, "id">
+    headers[index]?.field as keyof Omit<Row, "id">
 
   const updateCell = useCallback(
     (rowIndex: number, field: keyof Omit<Row, "id">, value: string) =>
@@ -147,7 +151,7 @@ export function SpreadsheetTable({
                 if (rowIdx < newRows.length)
                   line.split("\t").forEach((cell, ci) => {
                     const fi = n.startField + ci
-                    if (fi < FIELD_HEADERS.length)
+                    if (fi < headers.length)
                       newRows[rowIdx][getFieldFromIndex(fi)] = cell.trim()
                   })
               })
@@ -181,7 +185,7 @@ export function SpreadsheetTable({
   const colGroup = (
     <colgroup>
       <col style={{ width: "36px" }} />
-      {FIELD_HEADERS.map(({ field }) => (
+      {headers.map(({ field }) => (
         <col key={field} style={{ width: COLUMN_WIDTHS[field] ?? undefined }} />
       ))}
     </colgroup>
@@ -208,7 +212,7 @@ export function SpreadsheetTable({
             <th className="px-2 py-3 text-left text-[12px] font-semibold text-[#6b7280]">
               #
             </th>
-            {FIELD_HEADERS.map(({ label, field }) => (
+            {headers.map(({ label, field }) => (
               <th
                 key={label}
                 className={cn(
@@ -247,10 +251,7 @@ export function SpreadsheetTable({
                 <td className="px-2 py-1.5 text-center text-[12px] text-[#4b5563]">
                   {rowIndex + 1}
                 </td>
-                {FIELD_HEADERS.map(({ field, placeholder }, fieldIndex) => {
-                  const isFocused =
-                    focused?.rowIndex === rowIndex && focused?.field === field
-                  const isSelected = isCellSelected(rowIndex, fieldIndex)
+                {headers.map(({ field, placeholder }, fieldIndex) => {
                   const isNumber = !!COLUMN_WIDTHS[field]
                   return (
                     <td
@@ -272,8 +273,6 @@ export function SpreadsheetTable({
                         onChange={(e) =>
                           updateCell(rowIndex, field, e.target.value)
                         }
-                        // className={cn(
-                        //   "w-full rounded px-2.5 py-1.5 text-[13px] text-[#e2e8f0] transition-colors outline-none placeholder:text-[#374151]",
                         //   isNumber && "text-right tabular-nums",
                         //   isFocused
                         //     ? "border border-blue-500"
@@ -293,28 +292,30 @@ export function SpreadsheetTable({
       </div>
 
       {/* Pinned totals row */}
-      <table
-        className="w-full shrink-0 border-collapse border-t border-[#1f2937] bg-[#0d1525] text-[13px]"
-        style={{ tableLayout: "fixed", height: TOTALS_HEIGHT }}
-      >
-        {colGroup}
-        <tbody>
-          <tr>
-            <td
-              colSpan={3}
-              className="px-3 py-3 text-right text-[13px] font-medium text-[#6b7280]"
-            >
-              Totals:
-            </td>
-            <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
-              ${totals.projectValue}
-            </td>
-            <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
-              {totals.labourTarget}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {!isManagement && (
+        <table
+          className="w-full shrink-0 border-collapse border-t border-[#1f2937] bg-[#0d1525] text-[13px]"
+          style={{ tableLayout: "fixed", height: TOTALS_HEIGHT }}
+        >
+          {colGroup}
+          <tbody>
+            <tr>
+              <td
+                colSpan={3}
+                className="px-3 py-3 text-right text-[13px] font-medium text-[#6b7280]"
+              >
+                Totals:
+              </td>
+              <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
+                ${totals.projectValue}
+              </td>
+              <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
+                {totals.labourTarget}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      )}
     </div>
   )
 }

@@ -18,6 +18,7 @@ export type VariationRow = {
   date: string
   variationSheetNumber: string
   project: string
+  projectId: string
   siteInstructionNo: string
   descriptionOfWorks: string
   createdBy: string

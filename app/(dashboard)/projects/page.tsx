@@ -6,7 +6,7 @@ import CreateProjectDialog from "./_components/create-project-dialog"
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef, ICellRendererParams } from "ag-grid-community"
 import Link from "next/link"
-import { getProjects } from "@/lib/api/project-admin"
+import { getMyProjects } from "@/lib/api/project-admin"
 
 export default function Page() {
   const [projectsData, setProjectsData] = useState<ProjectItem[]>([])
@@ -15,7 +15,7 @@ export default function Page() {
   const fetchProjects = async () => {
     setLoading(true)
     try {
-      const result = await getProjects()
+      const result = await getMyProjects()
       setProjectsData(result.projects)
     } catch (err) {
       console.error("Failed to load projects:", err)
