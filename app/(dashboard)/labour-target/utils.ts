@@ -18,43 +18,43 @@ export const FIELD_HEADERS: {
   label: string;
   placeholder: string;
 }[] = [
-  {
-    field: "workSection",
-    label: "Work Section",
-    placeholder: "e.g. Electrical Rough-in",
-  },
-  {
-    field: "workArea",
-    label: "Work Area",
-    placeholder: "e.g. Level 1 – Unit 101",
-  },
-  {
-    field: "projectValue",
-    label: "Project Value (€)",
-    placeholder: "0.00",
-  },
-  {
-    field: "labourTarget",
-    label: "Labour Target (hrs)",
-    placeholder: "0",
-  },
-];
+    {
+      field: "workSection",
+      label: "Work Section",
+      placeholder: "e.g. Electrical Rough-in",
+    },
+    {
+      field: "workArea",
+      label: "Work Area",
+      placeholder: "e.g. Level 1 – Unit 101",
+    },
+    {
+      field: "projectValue",
+      label: "Project Value (€)",
+      placeholder: "0.00",
+    },
+    {
+      field: "labourTarget",
+      label: "Labour Target (hrs)",
+      placeholder: "0",
+    },
+  ];
 
 export const INITIAL_FOLDERS: FolderType[] = [
   {
     id: "f1",
     name: "APARTMENTS",
     subfolders: [
-      { id: "sf1", name: "electrical",           rows: defaultRows() },
+      { id: "sf1", name: "electrical", rows: defaultRows() },
       { id: "sf2", name: "Electrical First Fix", rows: defaultRows() },
-      { id: "sf3", name: "Plumbing",             rows: defaultRows() },
+      { id: "sf3", name: "Plumbing", rows: defaultRows() },
     ],
   },
   {
     id: "f2",
     name: "CORRIDORS",
     subfolders: [
-      { id: "sf4", name: "electrical",           rows: defaultRows() },
+      { id: "sf4", name: "electrical", rows: defaultRows() },
       { id: "sf5", name: "Electrical First Fix", rows: defaultRows() },
     ],
   },

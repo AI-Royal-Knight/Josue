@@ -1,122 +1,98 @@
 "use client"
 
+import { useEffect, useState, useMemo } from "react"
 import Box from "@mui/material/Box"
 import { DataGrid, type GridColDef } from "@mui/x-data-grid"
 import { colors } from "@/constants/colors"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
+import { getWhiteCard, WhiteCardGroup } from "@/lib/api/monthly-application"
+import { formatGBP } from "../../variations/utils"
 
-const DATA_ROWS = 5
+export default function WhiteCardView({ projectId }: { projectId: string }) {
+  const [groups, setGroups] = useState<WhiteCardGroup[]>([])
+  const [loading, setLoading] = useState(false)
 
-const rows = [
-  ...Array.from({ length: DATA_ROWS }, (_, i) => ({
-    id: i + 1,
-    section: "APARTMENTS",
-    el_ws: "",
-    el_wa: "",
-    el_pv: "",
-    eff_ws: "",
-    eff_wa: "",
-    eff_pv: "",
-    pl_ws: "",
-    pl_wa: "",
-    pl_pv: "",
-  })),
-  ...Array.from({ length: DATA_ROWS }, (_, i) => ({
-    id: i + DATA_ROWS + 1,
-    section: "CORRIDORS",
-    el_ws: "",
-    el_wa: "",
-    el_pv: "",
-    eff_ws: "",
-    eff_wa: "",
-    eff_pv: "",
-    pl_ws: "",
-    pl_wa: "",
-    pl_pv: "", // empty — no Plumbing for Corridors
-  })),
-]
+  useEffect(() => {
+    if (!projectId || projectId === "none") {
+      setGroups([])
+      return
+    }
 
-const columns: GridColDef[] = [
-  {
-    field: "section",
-    headerName: "",
-    width: 130,
-    cellClassName: "cell-section",
-    renderCell: ({ value }) => (
-      <Box
-        sx={{
-          writingMode: "vertical-lr",
-          transform: "rotate(180deg)",
-          height: "100%",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: 700,
-          fontSize: 13,
-          letterSpacing: "0.1em",
-          color: colors.headerText,
-        }}
-      >
-        {value}
-      </Box>
-    ),
-  },
+    async function load() {
+      setLoading(true)
+      try {
+        const data = await getWhiteCard(projectId)
+        setGroups(data.groups)
+      } catch (e) {
+        console.error("Failed to load white card", e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [projectId])
 
-  // electrical group
-  { field: "el_ws", headerName: "Work section", flex: 1, minWidth: 130 },
-  { field: "el_wa", headerName: "Work area", flex: 1, minWidth: 130 },
-  // standalone → spans both header rows automatically
-  {
-    field: "el_pv",
-    headerName: "Project Value",
-    flex: 1,
-    minWidth: 120,
-    cellClassName: "cell-pv",
-  },
+  const { rows, columns, columnGroupingModel } = useMemo(() => {
+    if (!groups.length) return { rows: [], columns: [], columnGroupingModel: [] }
 
-  // Electrical First Fix group
-  { field: "eff_ws", headerName: "Work section", flex: 1, minWidth: 130 },
-  { field: "eff_wa", headerName: "Work area", flex: 1, minWidth: 130 },
-  {
-    field: "eff_pv",
-    headerName: "Project Value",
-    flex: 1,
-    minWidth: 120,
-    cellClassName: "cell-pv",
-  },
+    const subfolderNames = Array.from(new Set(groups.flatMap(g => g.subfolders.map(s => s.name))))
 
-  // Plumbing group
-  { field: "pl_ws", headerName: "Work section", flex: 1, minWidth: 130 },
-  { field: "pl_wa", headerName: "Work area", flex: 1, minWidth: 130 },
-  {
-    field: "pl_pv",
-    headerName: "Project Value",
-    flex: 1,
-    minWidth: 120,
-    cellClassName: "cell-pv",
-  },
-]
+    const cols: GridColDef[] = [
+      {
+        field: "section",
+        headerName: "",
+        width: 130,
+        cellClassName: "cell-section",
+        renderCell: ({ value }) => (
+          <Box
+            sx={{
+              writingMode: "vertical-lr",
+              transform: "rotate(180deg)",
+              height: "100%",
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: "0.1em",
+              color: colors.headerText,
+            }}
+          >
+            {value}
+          </Box>
+        ),
+      }
+    ]
+    const colGroupModel: any[] = []
 
-const columnGroupingModel = [
-  {
-    groupId: "electrical",
-    headerName: "electrical",
-    children: [{ field: "el_ws" }, { field: "el_wa" }],
-  },
-  {
-    groupId: "eff",
-    headerName: "Electrical First Fix",
-    children: [{ field: "eff_ws" }, { field: "eff_wa" }],
-  },
-  {
-    groupId: "plumbing",
-    headerName: "Plumbing",
-    children: [{ field: "pl_ws" }, { field: "pl_wa" }],
-  },
-]
+    groups.forEach(g => {
+      colGroupModel.push({
+        groupId: g.groupId,
+        headerName: g.headerName,
+        children: [{ field: `${g.groupId}_ws` }, { field: `${g.groupId}_wa` }],
+      })
 
-export default function WhiteCardView() {
+      cols.push(
+        { field: `${g.groupId}_ws`, headerName: "Work section", flex: 1, minWidth: 130 },
+        { field: `${g.groupId}_wa`, headerName: "Work area", flex: 1, minWidth: 130 },
+        { field: `${g.groupId}_pv`, headerName: "Project Value", flex: 1, minWidth: 120, cellClassName: "cell-pv" }
+      )
+    })
+
+    const generatedRows = subfolderNames.map((subName, i) => {
+      const row: any = { id: i + 1, section: "ALL AREAS" }
+      groups.forEach(g => {
+        const sub = g.subfolders.find(s => s.name === subName)
+        row[`${g.groupId}_ws`] = g.headerName
+        row[`${g.groupId}_wa`] = subName
+        row[`${g.groupId}_pv`] = sub ? formatGBP(sub.project_value) : ""
+      })
+      return row
+    })
+
+    return { rows: generatedRows, columns: cols, columnGroupingModel: colGroupModel }
+  }, [groups])
   return (
     <Box sx={{ width: "100%", overflowX: "auto" }}>
       <Box sx={{ minWidth: 1200 }}>

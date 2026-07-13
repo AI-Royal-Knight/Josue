@@ -78,7 +78,7 @@ type PendingInvoice = {
 }
 
 export default function AccountsOverviewPage() {
-  const year = new Date().getFullYear() - 1 // Default to previous year as requested
+  const year = new Date().getFullYear() // Default to current year as requested
   const [expanded, setExpanded] = useState(false)
 
   const [rows, setRows] = useState<AccountsRow[]>([])
@@ -193,18 +193,22 @@ export default function AccountsOverviewPage() {
           const companyInvoices = invoices.filter(
             (inv) => inv.company_id === row.id && inv.is_sent
           )
-          
+
           const allSent = months.every(({ key }) =>
             auto ? true : companyInvoices.some((i) => i.month === key)
           )
-          
+
+          const displayAmount = auto
+            ? annualCharge(row)
+            : companyInvoices.reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0)
+
           return (
             <span
               className={
                 allSent ? "font-medium text-emerald-400" : "text-slate-200"
               }
             >
-              {formatGbp(annualCharge(row))}
+              {formatGbp(displayAmount)}
             </span>
           )
         },

@@ -19,53 +19,67 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isClient) {
-      // Also check raw localStorage in case Zustand hasn't hydrated properly yet
+      // Use raw localStorage token as the authoritative "logged in" signal.
+      // Zustand's persisted state may not have hydrated yet when this effect
+      // first fires, so isAuthenticated could still be false even though the
+      // user has a valid token. We must not redirect in that case.
       const rawToken = localStorage.getItem("tresta:accessToken")
-      if (!isAuthenticated && !rawToken) {
+
+      if (!rawToken) {
+        // No token at all — definitely not logged in
         router.push("/sign-in")
         return
       }
 
-      if (isAuthenticated && role && pathname) {
-        // 1. Super Admin checking
-        if (role === "super_admin") {
-          if (!pathname.startsWith("/super-admin")) {
-            router.push("/super-admin")
-          }
-          return
-        }
+      // Token exists — user is logged in. Now enforce role-based routing,
+      // but only once both the auth store AND the role store have hydrated.
+      if (!isAuthenticated || !role) {
+        // Stores haven't hydrated yet — wait for the next render cycle.
+        return
+      }
 
-        // 2. Supplier checking
-        if (role === "supplier") {
-          if (!pathname.startsWith("/supplier")) {
-            router.push("/supplier")
-          }
-          return
+      // 1. Super Admin
+      if (role === "super_admin") {
+        if (!pathname.startsWith("/super-admin")) {
+          router.push("/super-admin")
         }
+        return
+      }
 
-        // 3. Prevent normal roles from accessing super-admin or supplier
-        if (pathname.startsWith("/super-admin") || pathname.startsWith("/supplier")) {
-          router.push("/")
-          return
+      // 2. Supplier
+      if (role === "supplier") {
+        if (pathname !== "/supplier" && !pathname.startsWith("/supplier/")) {
+          router.push("/supplier")
         }
+        return
+      }
 
-        // 4. Role-based Dashboard Checking
-        const allowedNav = DASHBOARD_NAV[role as keyof typeof DASHBOARD_NAV] || []
-        const allowedBaseUrls = allowedNav.map(nav => nav.url)
-        
-        const isAllowed = allowedBaseUrls.some(baseUrl => {
-          return pathname === baseUrl || pathname.startsWith(`${baseUrl}/`)
-        })
+      // 3. Prevent normal roles from accessing super-admin or supplier routes
+      if (
+        pathname.startsWith("/super-admin") ||
+        pathname === "/supplier" ||
+        pathname.startsWith("/supplier/")
+      ) {
+        router.push("/")
+        return
+      }
 
-        if (!isAllowed && pathname !== "/home") {
-          const fallback = allowedBaseUrls.length > 0 ? allowedBaseUrls[0] : "/home"
-          router.push(fallback)
-        }
+      // 4. Role-based nav check
+      const allowedNav = DASHBOARD_NAV[role as keyof typeof DASHBOARD_NAV] || []
+      const allowedBaseUrls = allowedNav.map((nav) => nav.url)
+
+      const isAllowed = allowedBaseUrls.some(
+        (baseUrl) => pathname === baseUrl || pathname.startsWith(`${baseUrl}/`)
+      )
+
+      if (!isAllowed && pathname !== "/home") {
+        const fallback = allowedBaseUrls.length > 0 ? allowedBaseUrls[0] : "/home"
+        router.push(fallback)
       }
     }
   }, [isClient, isAuthenticated, role, pathname, router])
 
   if (!isClient) return null
-  
+
   return <>{children}</>
 }

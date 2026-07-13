@@ -26,6 +26,8 @@ export type UserInvoice = {
   paidBy: string
   financeComments: string
   commercialComments: string
+  companyId?: string
+  supplierEmail?: string
 }
 
 const _invoices: UserInvoice[] = [
@@ -152,6 +154,11 @@ export function updateInvoice(no: string, patch: Partial<UserInvoice>) {
   const idx = _invoices.findIndex((i) => i.no === no)
   if (idx === -1) return
   _invoices[idx] = { ..._invoices[idx], ...patch }
+  _listeners.forEach((fn) => fn())
+}
+
+export function addInvoice(invoice: UserInvoice) {
+  _invoices.push(invoice)
   _listeners.forEach((fn) => fn())
 }
 

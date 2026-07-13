@@ -54,3 +54,19 @@ export async function updateProfile(payload: Partial<ProfileData>): Promise<Prof
     body: payload,
   })
 }
+
+export interface RequestAdminPayload {
+  company_name: string
+  first_name: string
+  last_name: string
+  email: string
+  phone_number: string
+}
+
+export async function requestAdminAccess(payload: RequestAdminPayload): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>("/account/request-admin/", {
+    method: "POST",
+    body: payload,
+    public: true,
+  })
+}

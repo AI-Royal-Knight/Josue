@@ -18,7 +18,6 @@ type SpreadsheetTableProps = {
   onChange: (rows: Row[]) => void
   copiedValue: string
   onCopy: (value: string) => void
-  isManagement?: boolean
 }
 
 const COLUMN_WIDTHS: Record<string, string> = {
@@ -34,7 +33,6 @@ export function SpreadsheetTable({
   onChange,
   copiedValue,
   onCopy,
-  isManagement,
 }: SpreadsheetTableProps) {
   const [focused, setFocused] = useState<FocusedCell>(null)
   const [selection, setSelection] = useState<CellSelection | null>(null)
@@ -45,8 +43,6 @@ export function SpreadsheetTable({
   const tableRef = useRef<HTMLTableElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [bodyHeight, setBodyHeight] = useState<number | null>(null)
-
-  const headers = FIELD_HEADERS
 
   // Measure the wrapper so the scroll body fills exactly the right height
   useEffect(() => {
@@ -63,7 +59,7 @@ export function SpreadsheetTable({
   }, [])
 
   const getFieldFromIndex = (index: number) =>
-    headers[index]?.field as keyof Omit<Row, "id">
+    FIELD_HEADERS[index]?.field as keyof Omit<Row, "id">
 
   const updateCell = useCallback(
     (rowIndex: number, field: keyof Omit<Row, "id">, value: string) =>
@@ -124,16 +120,16 @@ export function SpreadsheetTable({
                 { length: n.endField - n.startField + 1 },
                 (_, fi) =>
                   rows[n.startRow + ri]?.[
-                    getFieldFromIndex(n.startField + fi)
+                  getFieldFromIndex(n.startField + fi)
                   ] ?? ""
               ).join("\t")
           ).join("\n")
-          navigator.clipboard?.writeText(text).catch(() => {})
+          navigator.clipboard?.writeText(text).catch(() => { })
           onCopy(text)
           setCopiedSelection(selection)
         } else if (focused) {
           const val = rows[focused.rowIndex]?.[focused.field] ?? ""
-          navigator.clipboard?.writeText(val).catch(() => {})
+          navigator.clipboard?.writeText(val).catch(() => { })
           onCopy(val)
         }
       }
@@ -151,7 +147,7 @@ export function SpreadsheetTable({
                 if (rowIdx < newRows.length)
                   line.split("\t").forEach((cell, ci) => {
                     const fi = n.startField + ci
-                    if (fi < headers.length)
+                    if (fi < FIELD_HEADERS.length)
                       newRows[rowIdx][getFieldFromIndex(fi)] = cell.trim()
                   })
               })
@@ -185,7 +181,7 @@ export function SpreadsheetTable({
   const colGroup = (
     <colgroup>
       <col style={{ width: "36px" }} />
-      {headers.map(({ field }) => (
+      {FIELD_HEADERS.map(({ field }) => (
         <col key={field} style={{ width: COLUMN_WIDTHS[field] ?? undefined }} />
       ))}
     </colgroup>
@@ -212,7 +208,7 @@ export function SpreadsheetTable({
             <th className="px-2 py-3 text-left text-[12px] font-semibold text-[#6b7280]">
               #
             </th>
-            {headers.map(({ label, field }) => (
+            {FIELD_HEADERS.map(({ label, field }) => (
               <th
                 key={label}
                 className={cn(
@@ -251,7 +247,10 @@ export function SpreadsheetTable({
                 <td className="px-2 py-1.5 text-center text-[12px] text-[#4b5563]">
                   {rowIndex + 1}
                 </td>
-                {headers.map(({ field, placeholder }, fieldIndex) => {
+                {FIELD_HEADERS.map(({ field, placeholder }, fieldIndex) => {
+                  const isFocused =
+                    focused?.rowIndex === rowIndex && focused?.field === field
+                  const isSelected = isCellSelected(rowIndex, fieldIndex)
                   const isNumber = !!COLUMN_WIDTHS[field]
                   return (
                     <td
@@ -273,6 +272,8 @@ export function SpreadsheetTable({
                         onChange={(e) =>
                           updateCell(rowIndex, field, e.target.value)
                         }
+                        // className={cn(
+                        //   "w-full rounded px-2.5 py-1.5 text-[13px] text-[#e2e8f0] transition-colors outline-none placeholder:text-[#374151]",
                         //   isNumber && "text-right tabular-nums",
                         //   isFocused
                         //     ? "border border-blue-500"
@@ -292,30 +293,28 @@ export function SpreadsheetTable({
       </div>
 
       {/* Pinned totals row */}
-      {!isManagement && (
-        <table
-          className="w-full shrink-0 border-collapse border-t border-[#1f2937] bg-[#0d1525] text-[13px]"
-          style={{ tableLayout: "fixed", height: TOTALS_HEIGHT }}
-        >
-          {colGroup}
-          <tbody>
-            <tr>
-              <td
-                colSpan={3}
-                className="px-3 py-3 text-right text-[13px] font-medium text-[#6b7280]"
-              >
-                Totals:
-              </td>
-              <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
-                ${totals.projectValue}
-              </td>
-              <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
-                {totals.labourTarget}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      )}
+      <table
+        className="w-full shrink-0 border-collapse border-t border-[#1f2937] bg-[#0d1525] text-[13px]"
+        style={{ tableLayout: "fixed", height: TOTALS_HEIGHT }}
+      >
+        {colGroup}
+        <tbody>
+          <tr>
+            <td
+              colSpan={3}
+              className="px-3 py-3 text-right text-[13px] font-medium text-[#6b7280]"
+            >
+              Totals:
+            </td>
+            <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
+              ${totals.projectValue}
+            </td>
+            <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
+              {totals.labourTarget}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }

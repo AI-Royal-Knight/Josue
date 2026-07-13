@@ -85,9 +85,9 @@ export default function AssignManagementPage() {
         const displayed = assigned.length > 0 ? assigned : params.data.users
         return (
           <div className="flex flex-wrap items-center gap-2 py-1">
-            {displayed.map((user) => (
+            {displayed.map((user, idx) => (
               <span
-                key={user.id}
+                key={`${user.id}-${idx}`}
                 className="group relative flex items-center rounded bg-white/10 px-2 py-0.5 text-xs text-slate-200"
               >
                 {user.name}

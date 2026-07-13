@@ -1,8 +1,64 @@
 "use client"
 
-export default function ApplicationView() {
+import { MonthlyApplicationApi, createMonthlyApplication } from "@/lib/api/monthly-application"
+import { formatGBP } from "../../variations/utils"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+import { toast } from "sonner"
+
+export default function ApplicationView({
+  projectId,
+  latestApp,
+  previousApp,
+  applications,
+  setApplications
+}: {
+  projectId: string,
+  latestApp: MonthlyApplicationApi | null,
+  previousApp: MonthlyApplicationApi | null,
+  applications: MonthlyApplicationApi[],
+  setApplications: (apps: MonthlyApplicationApi[]) => void
+}) {
+  const [creating, setCreating] = useState(false)
+
+  const handleCreate = async () => {
+    setCreating(true)
+    try {
+      const newApp = await createMonthlyApplication({ project_id: projectId, retention_percentage: 2.5, discount_percentage: 0 })
+      setApplications([newApp, ...applications])
+      toast.success("New Monthly Application created!")
+    } catch (e) {
+      toast.error("Failed to create application.")
+      console.error(e)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const contractWorks = latestApp ? parseFloat(latestApp.contract_works_total) : 0
+  const variations = latestApp ? parseFloat(latestApp.variations_total) : 0
+  const cumulativeGross = contractWorks + variations
+
+  const prevContractWorks = previousApp ? parseFloat(previousApp.contract_works_total) : 0
+  const prevVariations = previousApp ? parseFloat(previousApp.variations_total) : 0
+  const previousCumulative = prevContractWorks + prevVariations
+  const grossMovement = cumulativeGross - previousCumulative
+
+  const retentionPerc = latestApp ? parseFloat(latestApp.retention_percentage) : 2.5
+  const discountPerc = latestApp ? parseFloat(latestApp.discount_percentage) : 0.0
+
+  const lessRetention = cumulativeGross * (retentionPerc / 100)
+  const lessDiscount = cumulativeGross * (discountPerc / 100)
+  const cumulativeNetApp = cumulativeGross - lessRetention - lessDiscount
+
   return (
     <div className="w-full max-w-[880px] space-y-6 text-slate-200">
+      <div className="flex justify-end mb-4">
+        <Button onClick={handleCreate} disabled={creating || !projectId || projectId === "none"}>
+          {creating ? "Creating..." : "Create New Application Snapshot"}
+        </Button>
+      </div>
+
       {/* Top Box: Company Header & Client Info */}
       <div className="border border-white/10 bg-[#0a1730] overflow-hidden">
         <div className="border-b border-white/10 px-6 py-5 text-center bg-[#070f1e]/40">
@@ -21,10 +77,10 @@ export default function ApplicationView() {
 
         <div className="grid grid-cols-3 border-b border-white/10 text-xs bg-[#070f1e]/80">
           <div className="border-r border-white/10 px-4 py-2.5 text-slate-300">
-            <span className="text-slate-500 font-medium">Application Number:</span>
+            <span className="text-slate-500 font-medium">Application Number:</span> {latestApp?.application_number || "-"}
           </div>
           <div className="border-r border-white/10 px-4 py-2.5 text-slate-300">
-            <span className="text-slate-500 font-medium">Date:</span> 15/01/2026
+            <span className="text-slate-500 font-medium">Date:</span> {latestApp?.date || "-"}
           </div>
           <div className="px-4 py-2.5 text-slate-300">
             <span className="text-slate-500 font-medium">Ref No:</span>
@@ -57,7 +113,7 @@ export default function ApplicationView() {
                 Current Cumulative
               </div>
               <div className="px-4 py-2.5 text-right font-medium text-slate-100 h-9 flex items-center justify-end">
-                £ 17,600.00
+                {formatGBP(cumulativeGross)}
               </div>
             </div>
             <div className="grid grid-cols-[2fr_1fr] items-center">
@@ -65,7 +121,7 @@ export default function ApplicationView() {
                 Previous Cumulative
               </div>
               <div className="px-4 py-2.5 text-right text-slate-400 h-9 flex items-center justify-end">
-                —
+                {previousApp ? formatGBP(previousCumulative) : "—"}
               </div>
             </div>
             <div className="grid grid-cols-[2fr_1fr] items-center font-bold bg-[#111c35]/20">
@@ -73,7 +129,7 @@ export default function ApplicationView() {
                 Gross Movement in Period
               </div>
               <div className="px-4 py-2.5 text-right text-slate-100 h-9 flex items-center justify-end">
-                £ 17,600.00
+                {formatGBP(grossMovement)}
               </div>
             </div>
 
@@ -83,7 +139,7 @@ export default function ApplicationView() {
                 Projected Final Account
               </div>
               <div className="px-4 py-2.5 text-right font-medium text-slate-100 h-9 flex items-center justify-end">
-                £ 10,600.00
+                {formatGBP(0)} {/* Needs real logic */}
               </div>
             </div>
             <div className="grid grid-cols-[2fr_1fr] items-center">
@@ -99,7 +155,7 @@ export default function ApplicationView() {
                 Order Value
               </div>
               <div className="px-4 py-2.5 text-right font-medium text-slate-100 h-9 flex items-center justify-end">
-                £ 5,600.00
+                {formatGBP(0)} {/* Needs real logic */}
               </div>
             </div>
             <div className="grid grid-cols-[2fr_1fr] items-center">
@@ -107,7 +163,7 @@ export default function ApplicationView() {
                 Works Valued to Date
               </div>
               <div className="px-4 py-2.5 text-right text-slate-200 h-9 flex items-center justify-end">
-                15-Jan-26
+                {latestApp?.date || "-"}
               </div>
             </div>
             <div className="grid grid-cols-[2fr_1fr] items-center">
@@ -115,7 +171,7 @@ export default function ApplicationView() {
                 Payment Notice Date
               </div>
               <div className="px-4 py-2.5 text-right text-slate-200 h-9 flex items-center justify-end">
-                8-Feb-26
+                —
               </div>
             </div>
             <div className="grid grid-cols-[2fr_1fr] items-center">
@@ -123,7 +179,7 @@ export default function ApplicationView() {
                 Final Date for Payment
               </div>
               <div className="px-4 py-2.5 text-right text-slate-200 h-9 flex items-center justify-end">
-                22-Feb-26
+                —
               </div>
             </div>
           </div>
@@ -148,7 +204,7 @@ export default function ApplicationView() {
                 —
               </div>
               <div className="px-4 py-2.5 text-right font-medium text-slate-100 h-9 flex items-center justify-end">
-                £ 5,000.00
+                {formatGBP(contractWorks)}
               </div>
             </div>
 
@@ -161,7 +217,7 @@ export default function ApplicationView() {
                 —
               </div>
               <div className="px-4 py-2.5 text-right font-medium text-slate-100 h-9 flex items-center justify-end">
-                £ 12,000.00
+                {formatGBP(variations)}
               </div>
             </div>
 
@@ -174,7 +230,7 @@ export default function ApplicationView() {
                 —
               </div>
               <div className="px-4 py-2.5 text-right text-slate-100 h-9 flex items-center justify-end">
-                £ 17,600.00
+                {formatGBP(cumulativeGross)}
               </div>
             </div>
 
@@ -184,10 +240,10 @@ export default function ApplicationView() {
                 Less Retention
               </div>
               <div className="px-4 py-2.5 text-center text-slate-200 border-r border-white/10 h-9 flex items-center justify-center font-medium bg-[#111c35]/15">
-                2.5%
+                {retentionPerc}%
               </div>
               <div className="px-4 py-2.5 text-right font-medium text-slate-100 h-9 flex items-center justify-end">
-                £ 440.00
+                {formatGBP(lessRetention)}
               </div>
             </div>
 
@@ -197,10 +253,10 @@ export default function ApplicationView() {
                 Less Discount
               </div>
               <div className="px-4 py-2.5 text-center text-slate-200 border-r border-white/10 h-9 flex items-center justify-center font-medium bg-[#111c35]/15">
-                0.0%
+                {discountPerc}%
               </div>
               <div className="px-4 py-2.5 text-right text-slate-400 h-9 flex items-center justify-end">
-                —
+                {lessDiscount > 0 ? formatGBP(lessDiscount) : "—"}
               </div>
             </div>
 
@@ -213,7 +269,7 @@ export default function ApplicationView() {
                 —
               </div>
               <div className="px-4 py-2.5 text-right font-semibold text-slate-100 h-9 flex items-center justify-end">
-                £ 17,160.00
+                {formatGBP(cumulativeNetApp)}
               </div>
             </div>
 
@@ -236,7 +292,7 @@ export default function ApplicationView() {
                 Net Payment Due
               </div>
               <div className="px-4 py-2.5 text-right h-9 flex items-center justify-end">
-                £ 17,160.00
+                {formatGBP(cumulativeNetApp)}
               </div>
             </div>
           </div>

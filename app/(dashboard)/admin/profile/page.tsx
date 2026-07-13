@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Building2, Landmark, FileText, Upload, ImageIcon } from "lucide-react"
+import { Building2, Landmark, FileText, Upload, ImageIcon, Loader2 } from "lucide-react"
 import FileUpload from "@/components/ui/file-uploader"
+import { getProfile, updateProfile } from "@/lib/api/profile"
+import { useEffect } from "react"
 
 type CompanyDetails = {
   companyName: string
@@ -78,7 +80,45 @@ export default function AdminProfilePage() {
   const [details, setDetails] = useState<CompanyDetails>(defaultDetails)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    getProfile()
+      .then((data) => {
+        if (!isMounted) return
+        const c = data.company
+        if (c) {
+          setDetails({
+            companyName: c.company_name || "",
+            companyNumber: c.company_number?.toString() || "",
+            buildingNumber: c.building_number?.toString() || "",
+            street: c.street || "",
+            postcode: c.postcode || "",
+            vat: c.vat_number || "",
+            termsAndConditions: "",
+            bankName: c.bank_name || "",
+            bankAddress: c.bank_address || "",
+            sortCode: c.sort_code || "",
+            accountNumber: c.account_number || "",
+            iban: c.iban || "",
+            swift: c.swift_bic || "",
+          })
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load profile", err)
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -96,10 +136,41 @@ export default function AdminProfilePage() {
     setSaved(false)
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In production this would call an API / server action
-    setSaved(true)
+    setSaving(true)
+    setError(null)
+    try {
+      await updateProfile({
+        company: {
+          company_name: details.companyName,
+          company_number: Number(details.companyNumber) || undefined,
+          building_number: Number(details.buildingNumber) || undefined,
+          street: details.street,
+          postcode: details.postcode,
+          vat_number: details.vat,
+          bank_name: details.bankName,
+          bank_address: details.bankAddress,
+          sort_code: details.sortCode,
+          account_number: details.accountNumber,
+          iban: details.iban,
+          swift_bic: details.swift,
+        }
+      })
+      setSaved(true)
+    } catch (err: any) {
+      setError(err.message || "Failed to save profile.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
@@ -308,12 +379,16 @@ export default function AdminProfilePage() {
         </Card>
 
         <div className="flex items-center justify-end gap-3">
+          {error && <p className="text-sm text-red-400">{error}</p>}
           {saved && (
             <p className="text-sm text-emerald-400">
               ✓ Company details saved successfully.
             </p>
           )}
-          <Button type="submit">Save Changes</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Save Changes
+          </Button>
         </div>
       </form>
     </div>

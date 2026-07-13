@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -7,6 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Eye, Download } from "lucide-react"
+import PdfViewerDialog from "@/components/common/pdf-viewer-dialog"
+import { generateSimplePdf } from "@/lib/generate-pdf"
 
 export type InvoicePreviewData = {
   invoiceNumber: string
@@ -73,6 +77,27 @@ type Props = {
 }
 
 export default function ViewInvoiceDialog({ open, onOpenChange, invoice }: Props) {
+  const [showPdf, setShowPdf] = useState(false)
+
+  const getPdf = useCallback(() => {
+    if (!invoice) throw new Error("No invoice data")
+    return generateSimplePdf({
+      title: "INVOICE",
+      subtitle: `Invoice Number: ${invoice.invoiceNumber}`,
+      headerFields: [
+        { label: "Date", value: invoice.date },
+        ...(invoice.statusLabel ? [{ label: invoice.statusLabel, value: invoice.statusValue || "-" }] : []),
+        ...(invoice.project ? [{ label: "Project", value: invoice.project }] : []),
+      ],
+      detailFields: [
+        { label: "Description", value: invoice.description || "Work completed" },
+      ],
+      totalLabel: "Total Amount",
+      totalValue: invoice.amount,
+      footer: "This is a generated invoice document.",
+    })
+  }, [invoice])
+
   if (!invoice) return null
 
   function downloadDoc() {
@@ -89,44 +114,84 @@ export default function ViewInvoiceDialog({ open, onOpenChange, invoice }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[640px] border-slate-800 bg-[#0f172a] text-slate-200">
         <DialogHeader>
-          <DialogTitle>Invoice preview</DialogTitle>
+          <DialogTitle className="text-white">Invoice preview</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="border border-input bg-slate-900 p-6 text-sm text-slate-200">
+        <div className="mt-2 space-y-6">
+          <div className="rounded-md border border-slate-800 bg-[#151c2f] p-6 text-sm">
             <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-white">INVOICE</h2>
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold tracking-wide text-white">INVOICE</h2>
                 {invoice.project && <p className="text-slate-400">{invoice.project}</p>}
               </div>
-              <div className="text-right">
-                <div><span className="font-medium text-slate-400">Date:</span> {invoice.date}</div>
+              <div className="space-y-1 text-right">
+                <div className="text-slate-300">
+                  <span className="mr-1 text-slate-400">Date:</span> 
+                  {invoice.date}
+                </div>
                 {invoice.statusLabel && (
-                  <div><span className="font-medium text-slate-400">{invoice.statusLabel}:</span> {invoice.statusValue}</div>
+                  <div className="text-slate-300">
+                    <span className="mr-1 text-slate-400">{invoice.statusLabel}:</span> 
+                    {invoice.statusValue}
+                  </div>
                 )}
               </div>
             </div>
 
-            <div className="my-4 h-px bg-white/10" />
+            <div className="my-6 h-px bg-slate-800" />
 
-            <div className="mb-4">
-              <span className="font-medium text-slate-400">Description:</span>
-              <p className="mt-1">{invoice.description || "Work completed"}</p>
+            <div className="space-y-6">
+              <div>
+                <div className="mb-1 text-slate-400">Description:</div>
+                <div className="font-medium text-slate-300">{invoice.description || "Work completed"}</div>
+              </div>
+              
+              <div>
+                <div className="mb-1 text-slate-400">Subtotal:</div>
+                <div className="text-base font-medium text-white">{invoice.amount}</div>
+              </div>
+
+              <div>
+                <div className="mb-1 text-slate-400">Vat :</div>
+                <div className="text-base font-medium text-white">0.00</div>
+              </div>
+
+              <div>
+                <div className="mb-1 text-slate-400">Total Amount:</div>
+                <div className="text-base font-medium text-white">{invoice.amount}</div>
+              </div>
             </div>
 
-            <div className="mb-4">
-              <span className="font-medium text-slate-400">Total Amount:</span>
-              <p className="mt-1 text-lg font-semibold text-white">{invoice.amount}</p>
+            <div className="mt-8 flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowPdf(true)}
+                className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View PDF
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={downloadDoc} 
+                className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download Document
+              </Button>
             </div>
-
-            <Button variant="outline" onClick={downloadDoc}>
-              Download Document
-            </Button>
           </div>
         </div>
       </DialogContent>
+
+      <PdfViewerDialog
+        open={showPdf}
+        onOpenChange={setShowPdf}
+        title={`Invoice ${invoice.invoiceNumber}`}
+        getPdf={getPdf}
+      />
     </Dialog>
   )
 }

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Loader2 } from "lucide-react"
+import { Search, Loader2, Check } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { getProjectRoles, type ProjectUser, type SubfolderAssignment } from "@/lib/api/project-admin"
 import { ApiError } from "@/lib/api/client"
@@ -116,7 +116,7 @@ export function AssignFolderModal({
           <DialogTitle className="text-lg font-semibold text-white">
             Assign Employees
           </DialogTitle>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-[15px] text-slate-400 mt-1">
             Folder: <span className="text-amber-400 font-medium">{targetName}</span>
           </p>
         </DialogHeader>
@@ -153,27 +153,28 @@ export function AssignFolderModal({
               filteredUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="flex flex-col gap-2 rounded-md px-3 py-2.5 hover:bg-white/5 transition-colors border border-transparent"
+                  className="flex flex-col gap-1 rounded-md px-3 py-2.5 hover:bg-white/5 transition-colors border border-transparent"
                 >
-                  <label className="flex cursor-pointer items-center gap-3">
+                  <div
+                    className="flex cursor-pointer items-center gap-3"
+                    onClick={() => handleToggleUser(user.id)}
+                  >
                     <Checkbox
                       checked={user.checked}
                       onCheckedChange={() => handleToggleUser(user.id)}
+                      className="h-4 w-4 rounded-[2px] border-slate-600 data-[state=checked]:bg-transparent data-[state=checked]:text-white"
                     />
-                    <div className="flex flex-col">
-                      <span className="text-sm text-slate-100">{user.name || "Unknown Name"}</span>
-                      {user.email && <span className="text-xs text-slate-400">{user.email}</span>}
-                    </div>
-                  </label>
+                    <span className="text-[15px] text-slate-100">{user.name || "Unknown Name"}</span>
+                  </div>
                   
                   {user.checked && (
-                    <label className="flex cursor-pointer items-center gap-2 pl-7 mt-1">
+                    <label className="flex cursor-pointer items-center gap-3 pl-8 mt-2">
                       <Checkbox
                         checked={user.hide_labour_target}
                         onCheckedChange={(checked) => handleToggleHideLabour(user.id, checked === true)}
-                        className="h-3.5 w-3.5"
+                        className="h-4 w-4 rounded-[2px] border-slate-600 data-[state=checked]:bg-transparent data-[state=checked]:text-white"
                       />
-                      <span className="text-xs text-slate-400">Hide Labour Value</span>
+                      <span className="text-[14px] text-slate-400">Hide Labour Value</span>
                     </label>
                   )}
                 </div>

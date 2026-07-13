@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { ColDef } from "ag-grid-community"
 import { BellRing, CheckCircle2, FileText, Plus, RotateCcw } from "lucide-react"
 import { AgTable } from "@/components/common/AgTable"
@@ -21,10 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import ViewQuoteDialog, { type QuotePreviewData } from "./_components/ViewQuoteDialog"
+import ReQuoteDialog, { type ReQuoteTarget } from "./_components/ReQuoteDialog"
 import CreateQuotationForm from "./_components/create-quotation-form"
 import { addOrder } from "@/lib/po-store"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
+import { getQuotations } from "@/lib/api/quotations"
 import { useRoleStore } from "@/lib/role-store"
 
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
@@ -140,14 +143,70 @@ const initialRows: QuotationRow[] = [
 ]
 
 export default function Page() {
-  const [rows, setRows] = useState<QuotationRow[]>(initialRows)
+  const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [viewQuote, setViewQuote] = useState<QuotePreviewData | null>(null)
+  const [reQuoteTarget, setReQuoteTarget] = useState<ReQuoteTarget | null>(null)
   const [newQuoteOpen, setNewQuoteOpen] = useState(false)
   const [pending, setPending] = useState<PendingAction | null>(null)
 
   const role = useRoleStore((s) => s.role)
   const isProcurement = role === "procurement_department"
 
-  // Apply a confirmed action
+  const fetchQuotations = async () => {
+    try {
+      setLoading(true)
+      setErrorMsg(null)
+      const data = await getQuotations()
+      const formatted = data.map((q: any, i: number) => ({
+        no: i + 1,
+        quotesRef: q.quote_ref,
+        project: q.project_name,
+        mainFolder: q.main_folder_name || "-",
+        subFolder: q.sub_folder_name || "-",
+        variationRef: q.variation_ref || "-",
+        supplierName: q.supplier_name,
+        supplierEmailAddress: q.supplier_email || "-",
+        dateOfQuoteApproved: q.status === "Approved" ? q.date_of_quote : "-",
+        quoteTotal: `£${Number(q.quote_total).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+        poCreated: q.po_created,
+        datePoWasCreated: q.date_po_created || "-",
+        procurementComments: q.procurement_comments || "",
+        approveQuotesStatus: q.status,
+        quoteApprovalReasons: q.quote_approval_reasons || "-",
+        requoteComments: q.requote_comments || "",
+      }))
+      setRows(formatted)
+    } catch (err: any) {
+      console.error(err)
+      if (err.status === 403 || err.message?.includes("access given") || err.data?.detail?.includes("access given")) {
+        setErrorMsg("No project access given.")
+      } else {
+        setErrorMsg("Failed to load quotations.")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchQuotations()
+  }, [])
+
+
+  const handleReQuote = (comments: string) => {
+    if (!reQuoteTarget) return
+    setRows((prev) =>
+      prev.map((r) =>
+        r.no === reQuoteTarget.no
+          ? { ...r, requoteComments: comments }
+          : r
+      )
+    )
+    setReQuoteTarget(null)
+  }
+
   const handleConfirm = () => {
     if (!pending) return
     const today = new Date().toISOString().slice(0, 10)
@@ -203,14 +262,30 @@ export default function Page() {
   }
 
   const columns: ColDef<QuotationRow>[] = [
-    { headerName: "Quotes Ref", field: "quotesRef", minWidth: 140 },
+        {
+      headerName: "Quotes Ref",
+      field: "quotesRef",
+      minWidth: 140,
+      cellRenderer: (params: { data?: QuotationRow }) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <button
+            onClick={() => setViewQuote(row as unknown as QuotePreviewData)}
+            className="text-[#3467df] hover:underline"
+          >
+            {row.quotesRef}
+          </button>
+        )
+      },
+    },
     { headerName: "Project", field: "project" },
     { headerName: "Main Folder", field: "mainFolder" },
     { headerName: "Sub Folder", field: "subFolder" },
     { headerName: "Variation Ref", field: "variationRef" },
     { headerName: "Supplier Name", field: "supplierName" },
     {
-      headerName: "Supplier Email",
+      headerName: "Supplier Contact",
       field: "supplierEmailAddress",
       minWidth: 200,
     },
@@ -236,7 +311,34 @@ export default function Page() {
         const status = row.approveQuotesStatus
 
         if (status === "Approved") {
-          return (
+          if (loading) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-slate-400" />
+        <span className="ml-2 text-slate-400">Loading quotations…</span>
+      </div>
+    )
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="flex h-[80vh] flex-col items-center justify-center gap-4 text-center">
+        <div className="rounded-full bg-slate-800/50 p-4">
+          <svg className="size-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-xl font-medium text-slate-200">{errorMsg}</h3>
+          <p className="text-sm text-slate-500">
+            You must be assigned to at least one project to view or manage quotations.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
               <CheckCircle2 className="size-3" /> Approved
             </span>
@@ -349,15 +451,20 @@ export default function Page() {
       headerName: "Request Re-quote",
       sortable: false,
       filter: false,
-      cellRenderer: () => (
-        <Button
-          variant="outline"
-          className="h-7 rounded-none border-white/10 bg-slate-700 px-2 text-xs text-slate-200 hover:bg-slate-600"
-        >
-          <RotateCcw className="size-3.5" />
-          Re-quote
-        </Button>
-      ),
+      cellRenderer: (params: { data?: QuotationRow }) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <Button
+            variant="outline"
+            className="h-7 rounded-none border-white/10 bg-slate-700 px-2 text-xs text-slate-200 hover:bg-slate-600"
+            onClick={() => setReQuoteTarget({ no: row.no })}
+          >
+            <RotateCcw className="size-3.5" />
+            Re-quote
+          </Button>
+        )
+      },
     },
   ]
 
@@ -416,39 +523,16 @@ export default function Page() {
 
       {/* New quotation form */}
       <Dialog open={newQuoteOpen} onOpenChange={setNewQuoteOpen}>
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+        <DialogContent 
+          className="max-h-[90vh] max-w-5xl overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Create New Quotation</DialogTitle>
           </DialogHeader>
           <CreateQuotationForm
-            onSuccess={(data) => {
-              // Add the new quote row to the table
-              const payload = data as typeof data & {
-                mainFolder?: string
-                subFolder?: string
-                supplierEmails?: string[]
-                variationRef?: string
-              }
-              setRows((prev) => [
-                ...prev,
-                {
-                  no: prev.length + 1,
-                  quotesRef: data.quoteRef,
-                  project: data.project || "",
-                  mainFolder: payload.mainFolder || "",
-                  subFolder: payload.subFolder || "",
-                  variationRef: payload.variationRef || "-",
-                  supplierName: data.supplierName,
-                  supplierEmailAddress: payload.supplierEmails?.join(", ") ?? data.supplierEmail,
-                  dateOfQuoteApproved: "-",
-                  quoteTotal: `$${Number(data.quoteTotal).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-                  poCreated: false,
-                  datePoWasCreated: "-",
-                  procurementComments: "",
-                  approveQuotesStatus: "Pending",
-                  quoteApprovalReasons: "-",
-                },
-              ])
+            onSuccess={() => {
+              fetchQuotations()
               setNewQuoteOpen(false)
             }}
             onCancel={() => setNewQuoteOpen(false)}
@@ -481,6 +565,19 @@ export default function Page() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Detail and Re-quote dialogs */}
+      <ViewQuoteDialog
+        open={!!viewQuote}
+        onOpenChange={(open) => !open && setViewQuote(null)}
+        quote={viewQuote}
+      />
+      <ReQuoteDialog
+        open={!!reQuoteTarget}
+        onOpenChange={(open) => !open && setReQuoteTarget(null)}
+        onConfirm={handleReQuote}
+      />
+
     </div>
   )
 }

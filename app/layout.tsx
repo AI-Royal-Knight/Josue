@@ -22,6 +22,9 @@ export const metadata: Metadata = {
     shortcut: "/icon.png",
     apple: "/icon.png",
   },
+  other: {
+    "darkreader-lock": "true"
+  }
 }
 
 export default function RootLayout({

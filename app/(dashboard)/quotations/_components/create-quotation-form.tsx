@@ -1,10 +1,20 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Send, Trash2, ChevronDown, Search as SearchIcon, X } from "lucide-react"
+import {
+  Plus,
+  Send,
+  Trash2,
+  ChevronDown,
+  Search as SearchIcon,
+  X,
+} from "lucide-react"
+
+import { getProcurementProjects, ProcurementProject, createQuotation } from "@/lib/api/quotations"
+import { getSuppliers } from "@/lib/api/suppliers"
 
 import { Button } from "@/components/ui/button"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
@@ -21,21 +31,25 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import FileUpload from "@/components/ui/file-uploader"
 
 // ─── Static data ───────────────────────────────────────────────────────────────
 
-const FOLDER_STRUCTURE: Record<string, string[]> = {
-  APARTMENTS: ["Electrical", "Electrical First Fix", "Plumbing", "Joinery", "Finishes"],
-  CORRIDORS: ["Electrical", "Electrical First Fix", "Mechanical", "Painting"],
-  "COMMON AREAS": ["Tiling", "Ceilings", "HVAC", "Fire Protection"],
-  BASEMENT: ["Structural", "Waterproofing", "Drainage", "Mechanical"],
-  ROOF: ["Roofing", "Insulation", "Drainage", "Solar"],
-}
+// Folder structure now comes dynamically from projects
 
 const VARIATION_REFS = [
-  "VAR-001", "VAR-002", "VAR-003", "VAR-004",
-  "VAR-005", "VAR-006", "VAR-007", "VAR-008",
-  "VAR-009", "VAR-010", "VAR-011", "VAR-012",
+  "VAR-001",
+  "VAR-002",
+  "VAR-003",
+  "VAR-004",
+  "VAR-005",
+  "VAR-006",
+  "VAR-007",
+  "VAR-008",
+  "VAR-009",
+  "VAR-010",
+  "VAR-011",
+  "VAR-012",
 ]
 
 const MAX_EMAILS = 5
@@ -76,10 +90,16 @@ const createQuotationSchema = z.object({
   project: z.string().min(1, "Select a project"),
   name: z.string().min(1, "Name is required"),
   variationRef: z.string().optional(),
-  supplierName: z.string().min(1, "Supplier name is required"),
-  supplierEmail: z.string().email("Enter a valid email"),
+  supplier: z.string().min(1, "Supplier is required"),
+  supplierEmail: z.string().optional().or(z.literal("")),
   quoteTotal: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
+    (val) => {
+      if (typeof val === "string") {
+        const parsed = Number(val.replace(/,/g, ""));
+        return isNaN(parsed) ? val : parsed;
+      }
+      return val === "" ? undefined : Number(val);
+    },
     z.number({ message: "Quote total is required" }).nonnegative("Must be ≥ 0")
   ),
   date: z.date({ message: "Date is required" }).optional(),
@@ -121,7 +141,7 @@ function VariationRefSearch({
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs",
-          "ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none",
           !value && "text-muted-foreground"
         )}
       >
@@ -155,19 +175,29 @@ function VariationRefSearch({
             <button
               type="button"
               className="w-full px-3 py-1.5 text-left text-xs text-muted-foreground hover:bg-accent"
-              onClick={() => { onChange(""); setOpen(false); setQuery("") }}
+              onClick={() => {
+                onChange("")
+                setOpen(false)
+                setQuery("")
+              }}
             >
               — None —
             </button>
 
             {filtered.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-muted-foreground">No results</p>
+              <p className="px-3 py-2 text-xs text-muted-foreground">
+                No results
+              </p>
             ) : (
               filtered.map((ref) => (
                 <button
                   key={ref}
                   type="button"
-                  onClick={() => { onChange(ref); setOpen(false); setQuery("") }}
+                  onClick={() => {
+                    onChange(ref)
+                    setOpen(false)
+                    setQuery("")
+                  }}
                   className={cn(
                     "w-full px-3 py-1.5 text-left text-sm hover:bg-accent",
                     value === ref && "bg-accent font-medium"
@@ -190,7 +220,6 @@ export default function CreateQuotationForm({
   onSuccess,
   onCancel,
 }: CreateQuotationFormProps) {
-  const quoteRef = useMemo(() => generateQuoteRef(), [])
   const loggedInUserName = "Current User"
 
   const {
@@ -206,10 +235,24 @@ export default function CreateQuotationForm({
     },
   })
 
+  // ── Data state ──
+  const [projects, setProjects] = useState<ProcurementProject[]>([])
+  const [suppliers, setSuppliers] = useState<any[]>([])
+
+  useEffect(() => {
+    getProcurementProjects().then(setProjects).catch(console.error)
+    getSuppliers().then(setSuppliers).catch(console.error)
+  }, [])
+
   // ── Folder state ──
-  const [mainFolder, setMainFolder] = useState("")
-  const [subFolder, setSubFolder] = useState("")
-  const subFolders = mainFolder ? (FOLDER_STRUCTURE[mainFolder] ?? []) : []
+  const [selectedProjectVal, setSelectedProjectVal] = useState<string>("")
+  const [mainFolder, setMainFolder] = useState<string>("")
+  const [subFolder, setSubFolder] = useState<string>("")
+
+  const activeProject = projects.find(p => String(p.id) === selectedProjectVal)
+  const mainFolders = activeProject?.folders || []
+  const activeMainFolder = mainFolders.find(f => String(f.id) === mainFolder)
+  const subFolders = activeMainFolder?.subfolders || []
 
   // ── Variation ref state ──
   const [variationRef, setVariationRef] = useState("")
@@ -231,8 +274,14 @@ export default function CreateQuotationForm({
 
   // ── Line items ──
   const [lineItems, setLineItems] = useState<LineItem[]>(() => [
-    makeRow(), makeRow(), makeRow(), makeRow(),
-    makeRow(), makeRow(), makeRow(), makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
+    makeRow(),
   ])
 
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -240,30 +289,67 @@ export default function CreateQuotationForm({
   const onSubmit = async (data: CreateQuotationFormOutput) => {
     try {
       setSubmitError(null)
+
+      const computedTotal = lineItems.reduce((acc, row) => {
+        const qty = parseFloat(row.qty) || 0
+        const each = parseFloat(row.each) || 0
+        const discount = parseFloat(row.discount) || 0
+        return acc + qty * each * (1 - discount / 100)
+      }, 0)
+
       const payload = {
-        ...data,
-        quoteRef,
-        lineItems,
-        mainFolder,
-        subFolder,
-        variationRef,
-        supplierEmails: supplierEmails.filter(Boolean),
-        // Keep first valid email as supplierEmail for backward compat
-        supplierEmail: supplierEmails.find(Boolean) ?? data.supplierEmail,
+        quote_total: computedTotal,
+        project: data.project,
+        supplier: data.supplier,
+        main_folder: mainFolder || undefined,
+        sub_folder: subFolder || undefined,
+        variation_ref: variationRef,
+        supplier_email: supplierEmails.filter(Boolean).join(", ") || undefined,
+        // quote_ref will be auto-generated by the backend
+        line_items: lineItems
+          .filter(item => item.description.trim() !== "")
+          .map(item => ({
+            description: item.description,
+            qty: Number(item.qty) || 1,
+            discount: Number(item.discount) || 0,
+            per: item.per,
+            each: Number(item.each) || 0,
+            comments: item.comments
+          }))
       }
       console.log("Creating quotation:", payload)
-      onSuccess?.(payload as CreateQuotationFormOutput & { quoteRef: string })
+      await createQuotation(payload as any)
+      onSuccess?.(payload as any)
       reset()
       setMainFolder("")
       setSubFolder("")
       setVariationRef("")
       setSupplierEmails([""])
       setLineItems([
-        makeRow(), makeRow(), makeRow(), makeRow(),
-        makeRow(), makeRow(), makeRow(), makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
+        makeRow(),
       ])
-    } catch {
-      setSubmitError("Failed to create quotation. Please try again.")
+    } catch (error: any) {
+      let errorMessage = "Failed to create quotation. Please try again."
+      if (error && typeof error === "object" && "data" in error && error.data) {
+        if (typeof error.data === "object" && error.data !== null) {
+          const errs = Object.entries(error.data)
+            .map(([key, val]) => `${key}: ${Array.isArray(val) ? val.map(v => typeof v === 'object' ? JSON.stringify(v) : v).join(", ") : val}`)
+            .join(" | ")
+          if (errs) errorMessage = errs
+        } else if (typeof error.data === "string") {
+          errorMessage = error.data
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      }
+      setSubmitError(errorMessage)
     }
   }
 
@@ -271,7 +357,7 @@ export default function CreateQuotationForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* ── Quote Ref ── */}
       <div className="flex items-center justify-between rounded-md border border-input bg-muted/40 px-4 py-2">
-        <p className="text-xs text-muted-foreground">Quote Ref : {quoteRef}</p>
+        <p className="text-xs text-muted-foreground">Quote Ref : <span className="italic">(Auto-generated upon save)</span></p>
       </div>
 
       {/* ── Row 1: Project + Name ── */}
@@ -279,7 +365,27 @@ export default function CreateQuotationForm({
         <Field>
           <FieldLabel htmlFor="project">Project</FieldLabel>
           <FieldContent>
-            <Search label="Project" />
+            <Select
+              value={selectedProjectVal}
+              onValueChange={(v) => {
+                setSelectedProjectVal(v)
+                setMainFolder("")
+                setSubFolder("")
+                register("project").onChange({ target: { value: v, name: "project" } })
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.project_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <input type="hidden" {...register("project")} value={selectedProjectVal} />
             {errors.project && (
               <ErrorMessage message={errors.project.message} />
             )}
@@ -311,16 +417,17 @@ export default function CreateQuotationForm({
               value={mainFolder}
               onValueChange={(v) => {
                 setMainFolder(v)
-                setSubFolder("") // reset sub when main changes
+                setSubFolder("")
               }}
+              disabled={!activeProject || mainFolders.length === 0}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select main folder" />
               </SelectTrigger>
               <SelectContent>
-                {Object.keys(FOLDER_STRUCTURE).map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {f}
+                {mainFolders.map((f) => (
+                  <SelectItem key={f.id} value={String(f.id)}>
+                    {f.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -334,19 +441,21 @@ export default function CreateQuotationForm({
             <Select
               value={subFolder}
               onValueChange={setSubFolder}
-              disabled={!mainFolder}
+              disabled={!mainFolder || subFolders.length === 0}
             >
               <SelectTrigger>
                 <SelectValue
                   placeholder={
-                    mainFolder ? "Select sub folder" : "Select main folder first"
+                    mainFolder
+                      ? "Select sub folder"
+                      : "Select main folder first"
                   }
                 />
               </SelectTrigger>
               <SelectContent>
                 {subFolders.map((sf) => (
-                  <SelectItem key={sf} value={sf}>
-                    {sf}
+                  <SelectItem key={sf.id} value={String(sf.id)}>
+                    {sf.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -360,7 +469,10 @@ export default function CreateQuotationForm({
         <Field>
           <FieldLabel>Variation Ref</FieldLabel>
           <FieldContent>
-            <VariationRefSearch value={variationRef} onChange={setVariationRef} />
+            <VariationRefSearch
+              value={variationRef}
+              onChange={setVariationRef}
+            />
           </FieldContent>
         </Field>
 
@@ -373,13 +485,35 @@ export default function CreateQuotationForm({
         </Field>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <Field>
+          <FieldLabel htmlFor="supplier">Supplier</FieldLabel>
+          <FieldContent>
+            <Select
+              onValueChange={(v) => register("supplier").onChange({ target: { value: v, name: "supplier" } })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select supplier" />
+              </SelectTrigger>
+              <SelectContent>
+                {suppliers.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.supplier.company_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.supplier && <ErrorMessage message={errors.supplier.message} />}
+          </FieldContent>
+        </Field>
+      </div>
       {/* ── Supplier Emails (multi) ── */}
       <Field>
         <div className="flex items-center justify-between">
           <FieldLabel>
-            Supplier Email
+            Supplier Contact (Email / Name)
             <span className="ml-2 text-xs font-normal text-muted-foreground">
-              (up to {MAX_EMAILS} recipients)
+              (up to {MAX_EMAILS} contacts)
             </span>
           </FieldLabel>
           {supplierEmails.length < MAX_EMAILS && (
@@ -398,8 +532,8 @@ export default function CreateQuotationForm({
             {supplierEmails.map((email, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <Input
-                  type="email"
-                  placeholder={`supplier${idx + 1}@example.com`}
+                  type="text"
+                  placeholder={`supplier${idx + 1} contact`}
                   value={email}
                   onChange={(e) => updateEmail(idx, e.target.value)}
                   className="flex-1"
@@ -419,6 +553,8 @@ export default function CreateQuotationForm({
           </div>
         </FieldContent>
       </Field>
+
+      <FileUpload />
 
       {/* ── Line items table ── */}
       <LineItemTable items={lineItems} onChange={setLineItems} />

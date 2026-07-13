@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { ColDef } from "ag-grid-community"
-
 import {
   Select,
   SelectContent,
@@ -29,9 +28,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { InvoiceListRow, SummaryRow } from "../types/invoice"
+import { getUserInvoices, payUserInvoice, UserInvoiceApi } from "@/lib/api/user-invoices"
+import { toast } from "sonner"
 
-function buildInvoiceDocHtml(invoice: any) {
+function buildInvoiceDocHtml(invoice: UserInvoiceApi) {
   const paidText = invoice.paid ? "Yes" : "No"
   const confirmedDate = invoice.releaseDate || "-"
   const value = invoice.total || "-"
@@ -48,12 +48,12 @@ function buildInvoiceDocHtml(invoice: any) {
       <div style="margin: 0 0 16px; font-size: 12px;">
         <div><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</div>
         <div><strong>Invoice Date:</strong> ${invoice.date}</div>
+        <div><strong>Project:</strong> ${invoice.project}</div>
+        <div><strong>Description:</strong> ${invoice.description}</div>
         <div><strong>Paid:</strong> ${paidText}</div>
         <div><strong>Date of confirmed payment:</strong> ${confirmedDate}</div>
       </div>
-
       <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
-
       <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
         <thead>
           <tr>
@@ -63,7 +63,7 @@ function buildInvoiceDocHtml(invoice: any) {
         </thead>
         <tbody>
           <tr>
-            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">Work completed (sample)</td>
+            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">${invoice.description || "Work completed"}</td>
             <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${value}</td>
           </tr>
         </tbody>
@@ -74,35 +74,48 @@ function buildInvoiceDocHtml(invoice: any) {
           </tr>
         </tfoot>
       </table>
-
-      <p style="margin-top: 16px; font-size: 11px; color: #444;">
-        This is a sample invoice document generated from the invoice list.
-      </p>
     </div>
   </body>
 </html>`
 }
 
-type Props = {
-  initialRows: InvoiceListRow[]
-  summaryRows: SummaryRow[]
-}
-
-export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
-  const [project, setProject] = useState("all")
-  const [rows, setRows] = useState<InvoiceListRow[]>(initialRows)
+export default function InvoiceListPage() {
+  const [projectFilter, setProjectFilter] = useState("all")
+  const [rows, setRows] = useState<UserInvoiceApi[]>([])
+  const [loading, setLoading] = useState(true)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingRowId, setPendingRowId] = useState<string | null>(null)
   const [nextPaid, setNextPaid] = useState(false)
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceListRow | null>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<UserInvoiceApi | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  function openInvoice(invoice: InvoiceListRow) {
+  const role = useRoleStore((s) => s.role)
+  const canTogglePaid = role === "finance_department"
+
+  // Fetch only fully-approved invoices for the finance list
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await getUserInvoices({ finance_view: true })
+        setRows(res.invoices)
+      } catch (e) {
+        console.error("Failed to load invoices", e)
+        toast.error("Failed to load invoice list")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  function openInvoice(invoice: UserInvoiceApi) {
     setSelectedInvoice(invoice)
     setInvoiceDialogOpen(true)
   }
 
-  function downloadInvoiceDoc(invoice: InvoiceListRow) {
+  function downloadInvoiceDoc(invoice: UserInvoiceApi) {
     const html = buildInvoiceDocHtml(invoice)
     const blob = new Blob([html], { type: "application/msword" })
     const url = URL.createObjectURL(blob)
@@ -113,37 +126,58 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
     URL.revokeObjectURL(url)
   }
 
-  const role = useRoleStore((s) => s.role)
-  const canTogglePaid = role === "finance_department"
-
   function openPaymentConfirm(rowId: string, checked: boolean) {
     setPendingRowId(rowId)
     setNextPaid(checked)
     setConfirmOpen(true)
   }
 
-  function handleConfirmPaymentChange() {
+  async function handleConfirmPaymentChange() {
     if (!pendingRowId) return
-    setRows((current) =>
-      current.map((row) =>
-        row.no === pendingRowId ? { ...row, paid: nextPaid } : row
+    setSubmitting(true)
+    try {
+      const res = await payUserInvoice(pendingRowId, nextPaid)
+      setRows((current) =>
+        current.map((row) => (row.id === pendingRowId ? res.invoice : row))
       )
-    )
-    setConfirmOpen(false)
-    setPendingRowId(null)
+      toast.success(nextPaid ? "Invoice marked as paid!" : "Invoice marked as unpaid.")
+    } catch (e) {
+      toast.error("Failed to update payment status.")
+      console.error(e)
+    } finally {
+      setSubmitting(false)
+      setConfirmOpen(false)
+      setPendingRowId(null)
+    }
   }
 
-  const filteredRows =
-    project === "all"
-      ? rows
-      : rows.filter((r) => r.project.toLowerCase().includes(project))
+  // Build unique project list from invoices
+  const projectOptions = Array.from(new Set(rows.map((r) => r.project))).filter(Boolean)
 
-  const columnDefs: ColDef<InvoiceListRow>[] = [
+  const filteredRows =
+    projectFilter === "all"
+      ? rows
+      : rows.filter((r) => r.project === projectFilter)
+
+  // Summary stats
+  const paidCount = rows.filter((r) => r.paid).length
+  const unpaidCount = rows.length - paidCount
+  const moneyOnHold = rows
+    .filter((r) => !r.paid)
+    .reduce((sum, r) => sum + r.totalRaw, 0)
+
+  const summaryRows = [
+    { label: "Approved Invoices", qty: String(rows.length), value: "" },
+    { label: "Invoices Paid", qty: String(paidCount), value: "" },
+    { label: "Pending Payment", qty: String(unpaidCount), value: `£${moneyOnHold.toLocaleString("en-GB", { minimumFractionDigits: 2 })}` },
+  ]
+
+  const columnDefs: ColDef<UserInvoiceApi>[] = [
     { headerName: "No", field: "no", minWidth: 60, filter: false },
     {
       headerName: "Invoice Number",
       field: "invoiceNumber",
-      cellRenderer: (params: { data?: InvoiceListRow; value: string }) => (
+      cellRenderer: (params: { data?: UserInvoiceApi; value: string }) => (
         <button
           type="button"
           className={`hover:underline ${params.data?.paid ? "text-green-500" : "text-red-500"}`}
@@ -168,14 +202,35 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
       headerName: "Paid",
       field: "paid",
       type: "",
-      cellRenderer: (params: { data?: InvoiceListRow; value: boolean }) => {
+      cellRenderer: (params: { data?: UserInvoiceApi; value: boolean }) => {
         if (canTogglePaid) {
+          if (!params.data?.fullyApproved) {
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex cursor-not-allowed opacity-50">
+                      <Switch
+                        checked={params.value}
+                        disabled
+                        aria-label="Invoice must be fully approved first"
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    Invoice must be fully approved by all roles before payment can be processed.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
+          }
+
           return (
             <Switch
               checked={params.value}
               onCheckedChange={(checked) => {
                 if (!params.data) return
-                openPaymentConfirm(params.data.no, checked)
+                openPaymentConfirm(params.data.id, checked)
               }}
             />
           )
@@ -202,7 +257,25 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
     },
     { headerName: "Date scheduled", field: "dateScheduled" },
     { headerName: "Release date", field: "releaseDate" },
-    { headerName: "Comments", field: "comments" },
+    { 
+      headerName: "Comments", 
+      field: "comments",
+      tooltipField: "comments",
+      editable: canTogglePaid,
+      cellEditor: "agLargeTextCellEditor",
+      cellEditorPopup: true,
+      onCellValueChanged: async (params) => {
+        if (!params.data) return
+        try {
+          const res = await payUserInvoice(params.data.id, params.data.paid, params.newValue)
+          setRows((current) => current.map(r => r.id === params.data?.id ? res.invoice : r))
+          toast.success("Comment updated")
+        } catch (e) {
+          toast.error("Failed to update comment")
+          params.node?.setDataValue("comments", params.oldValue)
+        }
+      },
+    },
   ]
 
   return (
@@ -212,14 +285,17 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
       <TableStat summaryRows={summaryRows} />
 
       <div className="max-w-[220px]">
-        <Select value={project} onValueChange={setProject}>
+        <Select value={projectFilter} onValueChange={setProjectFilter}>
           <SelectTrigger className="bg-primary">
             <SelectValue placeholder="Project" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Projects</SelectItem>
-            <SelectItem value="alpha">Project Alpha</SelectItem>
-            <SelectItem value="beta">Project Beta</SelectItem>
+            {projectOptions.map((p) => (
+              <SelectItem key={p} value={p}>
+                {p}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -228,18 +304,23 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         supplierName={
-          rows.find((row) => row.no === pendingRowId)?.userName ??
-          "this supplier"
+          rows.find((row) => row.id === pendingRowId)?.userName ??
+          "this user"
         }
         nextPaid={nextPaid}
         onConfirm={handleConfirmPaymentChange}
       />
 
-      <AgTable
-        columnDefs={columnDefs}
-        rowData={filteredRows}
-        defaultColDef={{ flex: 1, minWidth: 140, resizable: true }}
-      />
+      {loading ? (
+        <div className="text-center text-muted-foreground py-12">Loading invoices...</div>
+      ) : (
+        <AgTable
+          columnDefs={columnDefs}
+          rowData={filteredRows}
+          defaultColDef={{ flex: 1, minWidth: 140, resizable: true }}
+          suppressCellClickAction={true}
+        />
+      )}
 
       <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
         <DialogContent className="sm:max-w-[900px]">
@@ -253,7 +334,7 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
                 <div>
                   <h2 className="text-lg font-semibold">INVOICE</h2>
                   <p className="text-sm text-muted-foreground">
-                    Sample document preview
+                    {selectedInvoice.description}
                   </p>
                 </div>
                 <div className="text-right text-sm">
@@ -264,6 +345,10 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
                   <div>
                     <span className="font-medium">Invoice Date:</span>{" "}
                     {selectedInvoice.date}
+                  </div>
+                  <div>
+                    <span className="font-medium">Project:</span>{" "}
+                    {selectedInvoice.project}
                   </div>
                   <div>
                     <span className="font-medium">Paid:</span>{" "}
@@ -289,7 +374,7 @@ export default function InvoiceListClient({ initialRows, summaryRows }: Props) {
                 </thead>
                 <tbody>
                   <tr className="border-b border-border/60">
-                    <td className="py-3">Work completed (sample)</td>
+                    <td className="py-3">{selectedInvoice.description || "Work completed"}</td>
                     <td className="py-3 text-right">{selectedInvoice.total}</td>
                   </tr>
                 </tbody>

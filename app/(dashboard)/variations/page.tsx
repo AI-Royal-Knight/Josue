@@ -8,7 +8,7 @@ import {
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Plus, XCircle, Loader2 } from "lucide-react"
+import { CheckCircle2, Plus, XCircle, Loader2, UserPlus } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
 import { toast } from "sonner"
 
@@ -25,6 +25,7 @@ import {
   createVariation,
   approveVariation,
   submitVariationToClient,
+  assignVariationUsers,
   type VariationApi,
 } from "@/lib/api/variations"
 import { getMyProjects } from "@/lib/api/project-admin"
@@ -56,7 +57,7 @@ function apiToRow(v: VariationApi): VariationRow {
     totalAmount: parseFloat(v.total_amount),
     evidence: "",
     comments: v.comments,
-    assignedUserIds: [],
+    assignedUserIds: v.assigned_user_ids || [],
     approvalStatus:
       v.approval_status === "approved"
         ? "Approved"
@@ -152,13 +153,21 @@ export default function Page() {
     setAssignOpen(true)
   }, [])
 
-  const confirmAssign = (selectedIds: string[]) => {
+  const confirmAssign = useCallback(async (selectedIds: string[]) => {
     if (!assignRowId) return
-    setRows((prev) =>
-      prev.map((r) => (r.id === assignRowId ? { ...r, assignedUserIds: selectedIds } : r))
-    )
-    setAssignOpen(false)
-  }
+    try {
+      const updated = await assignVariationUsers(assignRowId, selectedIds)
+      setRows((prev) =>
+        prev.map((r) => (r.id === assignRowId ? apiToRow(updated) : r))
+      )
+      toast.success("Users assigned successfully.")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to assign users."
+      toast.error(msg)
+    } finally {
+      setAssignOpen(false)
+    }
+  }, [assignRowId])
 
   // ── Approval ────────────────────────────────────────────────────────────
   const [pendingApproval, setPendingApproval] = useState<{
@@ -281,7 +290,6 @@ export default function Page() {
         )
       },
       { headerName: "Date", field: "date", minWidth: 120 },
-      { headerName: "Variation No.", field: "variationSheetNumber" },
       { headerName: "Project", field: "project" },
       { headerName: "Site Instruction No.", field: "siteInstructionNo", minWidth: 180 },
       { headerName: "Description of Works", field: "descriptionOfWorks", minWidth: 220 },
@@ -378,6 +386,35 @@ export default function Page() {
             </button>
           )
         },
+      },
+      {
+        headerName: "Assigned Users",
+        field: "assignedUserIds",
+        minWidth: 160,
+        cellRenderer: (params: { data?: VariationRow; value?: string[] }) => {
+          const row = params.data
+          if (!row) return null
+          const count = params.value?.length ?? 0
+          return (
+            <div className="flex items-center justify-between gap-2 w-full">
+              <span className="text-slate-300">
+                {count === 0 ? "None" : `${count} user${count > 1 ? "s" : ""}`}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openAssign(row.id, row.assignedUserIds || [])
+                }}
+                title="Assign Users"
+              >
+                <UserPlus className="h-4 w-4" />
+              </Button>
+            </div>
+          )
+        }
       },
       { headerName: "Comments", field: "comments", minWidth: 180 }
     )

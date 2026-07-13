@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ export type ToolboxTalksFormData = {
   title: string
   date: string
   assignToProject: string
+  description?: string
   attachment: File | null
 }
 
@@ -42,6 +44,7 @@ export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave, p
     title: "",
     date: "",
     assignToProject: defaultProjectId || "",
+    description: "",
     attachment: null,
   })
 
@@ -67,7 +70,7 @@ export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave, p
     const success = await onSave(form)
     setIsSubmitting(false)
     if (success) {
-      setForm({ title: "", date: "", assignToProject: defaultProjectId || "", attachment: null })
+      setForm({ title: "", date: "", assignToProject: defaultProjectId || "", description: "", attachment: null })
       onOpenChange(false)
     }
   }
@@ -123,6 +126,18 @@ export default function CreateToolboxTalksDialog({ open, onOpenChange, onSave, p
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="toolbox-description">Description (Optional)</Label>
+            <Textarea
+              id="toolbox-description"
+              value={form.description || ""}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              className="min-h-[80px] border-white/10 bg-white/5"
+              placeholder="e.g. Please review and sign this document."
+            />
           </div>
 
           {/* Attachments */}

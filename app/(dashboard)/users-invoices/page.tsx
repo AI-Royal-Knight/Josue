@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useMemo, useState, useCallback, useEffect } from "react"
 import type { ColDef } from "ag-grid-community"
 import TableStat from "@/components/common/table-stat"
 import { AgTable } from "@/components/common/AgTable"
@@ -20,187 +20,27 @@ import ViewInvoiceDialog, {
   InvoicePreviewData,
 } from "@/components/common/view-invoice-dialog"
 import { useRoleStore } from "@/lib/role-store"
+import { getUserInvoices, approveUserInvoice, commentUserInvoice, UserInvoiceApi } from "@/lib/api/user-invoices"
+import { toast } from "sonner"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** The four sequential approval signatures */
-type ApprovalSignatures = {
-  supervisorApproved: boolean
-  supervisorApprovedDate: string
-  contractsManagerApproved: boolean
-  contractsManagerApprovedDate: string
-  projectDirectorApproved: boolean
-  projectDirectorApprovedDate: string
-  managingDirectorApproved: boolean
-  managingDirectorApprovedDate: string
-}
-
-type InvoiceRow = {
-  no: string
-  invoiceNumber: string
-  date: string
-  variationSheetNo: string
-  nfiProformaNo: string
-  project: string
-  workArea: string
-  workSection: string
-  description: string
-  createdBy: string
-  approvedBy: string
-  approved: boolean
-  total: string
-  datePaid: string
-  paidBy: string
-  financeComments: string
-  commercialComments: string
-} & ApprovalSignatures
+type ApprovalField =
+  | "supervisorApproved"
+  | "contractsManagerApproved"
+  | "projectDirectorApproved"
+  | "managingDirectorApproved"
 
 /** Which toggle is being confirmed */
 type PendingToggle = {
-  no: string
+  id: string
   invoiceNumber: string
-  field: keyof ApprovalSignatures & `${string}Approved`
+  field: ApprovalField
   nextValue: boolean
   label: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const today = () => new Date().toLocaleDateString("en-GB")
-
-const emptySignatures: ApprovalSignatures = {
-  supervisorApproved: false,
-  supervisorApprovedDate: "",
-  contractsManagerApproved: false,
-  contractsManagerApprovedDate: "",
-  projectDirectorApproved: false,
-  projectDirectorApprovedDate: "",
-  managingDirectorApproved: false,
-  managingDirectorApprovedDate: "",
-}
-
-// ─── Initial data ─────────────────────────────────────────────────────────────
-
-const initialRows: InvoiceRow[] = [
-  {
-    no: "1",
-    invoiceNumber: "INV-2024-003",
-    date: "15/03/2024",
-    variationSheetNo: "VS-012",
-    nfiProformaNo: "NFI-045",
-    project: "Al Barsha Tower",
-    workArea: "Zone B",
-    workSection: "Structural",
-    description: "Concrete pouring for Level 5",
-    createdBy: "Ahmed K.",
-    approvedBy: "Mohammad R.",
-    approved: true,
-    total: "£145,000.00",
-    datePaid: "22/03/2024",
-    paidBy: "Sarah L.",
-    financeComments: "Cleared",
-    commercialComments: "Approved",
-    // Pre-seeded: first two signed
-    supervisorApproved: true,
-    supervisorApprovedDate: "16/03/2024",
-    contractsManagerApproved: true,
-    contractsManagerApprovedDate: "17/03/2024",
-    projectDirectorApproved: false,
-    projectDirectorApprovedDate: "",
-    managingDirectorApproved: false,
-    managingDirectorApprovedDate: "",
-  },
-  {
-    no: "2",
-    invoiceNumber: "INV-2024-004",
-    date: "20/03/2024",
-    variationSheetNo: "VS-015",
-    nfiProformaNo: "NFI-048",
-    project: "Dubai Marina Plaza",
-    workArea: "Zone C",
-    workSection: "",
-    description: "",
-    createdBy: "",
-    approvedBy: "",
-    approved: false,
-    total: "",
-    datePaid: "",
-    paidBy: "",
-    financeComments: "",
-    commercialComments: "",
-    ...emptySignatures,
-  },
-  {
-    no: "3",
-    invoiceNumber: "INV-2024-005",
-    date: "28/03/2024",
-    variationSheetNo: "VS-018",
-    nfiProformaNo: "NFI-052",
-    project: "Dubai Marina Plaza",
-    workArea: "Zone A",
-    workSection: "MEP",
-    description: "HVAC installation Phase 2",
-    createdBy: "Omar S.",
-    approvedBy: "Fatima H.",
-    approved: true,
-    total: "£89,500.00",
-    datePaid: "05/04/2024",
-    paidBy: "Sarah L.",
-    financeComments: "Processed",
-    commercialComments: "Verified",
-    // All three prior signed → MD visible
-    supervisorApproved: true,
-    supervisorApprovedDate: "29/03/2024",
-    contractsManagerApproved: true,
-    contractsManagerApprovedDate: "30/03/2024",
-    projectDirectorApproved: true,
-    projectDirectorApprovedDate: "01/04/2024",
-    managingDirectorApproved: false,
-    managingDirectorApprovedDate: "",
-  },
-  {
-    no: "4",
-    invoiceNumber: "INV-2024-006",
-    date: "01/04/2024",
-    variationSheetNo: "VS-020",
-    nfiProformaNo: "NFI-058",
-    project: "Al Barsha Tower",
-    workArea: "Zone C",
-    workSection: "Electrical",
-    description: "Main distribution board installation",
-    createdBy: "Khalid M.",
-    approvedBy: "",
-    approved: false,
-    total: "£62,000.00",
-    datePaid: "",
-    paidBy: "",
-    financeComments: "",
-    commercialComments: "",
-    ...emptySignatures,
-  },
-  {
-    no: "5",
-    invoiceNumber: "INV-2024-007",
-    date: "05/04/2024",
-    variationSheetNo: "VS-022",
-    nfiProformaNo: "NFI-061",
-    project: "Dubai Marina Plaza",
-    workArea: "Zone B",
-    workSection: "Civil",
-    description: "Foundation works Block D",
-    createdBy: "Yusuf A.",
-    approvedBy: "",
-    approved: false,
-    total: "£110,000.00",
-    datePaid: "",
-    paidBy: "",
-    financeComments: "",
-    commercialComments: "",
-    ...emptySignatures,
-  },
-]
-
-// ─── Approval toggle cell ─────────────────────────────────────────────────────
 
 function ApprovalToggleCell({
   row,
@@ -211,16 +51,13 @@ function ApprovalToggleCell({
   disabledReason,
   onRequest,
 }: {
-  row: InvoiceRow
-  field: keyof ApprovalSignatures & `${string}Approved`
-  dateField: keyof ApprovalSignatures & `${string}ApprovedDate`
+  row: UserInvoiceApi
+  field: ApprovalField
+  dateField: keyof UserInvoiceApi
   canToggle: boolean
   isDisabled: boolean
   disabledReason?: string
-  onRequest: (
-    field: keyof ApprovalSignatures & `${string}Approved`,
-    nextValue: boolean
-  ) => void
+  onRequest: (field: ApprovalField, nextValue: boolean) => void
 }) {
   const checked = row[field] as boolean
   const date = row[dateField] as string
@@ -254,42 +91,65 @@ function ApprovalToggleCell({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Page() {
-  const [rows, setRows] = useState<InvoiceRow[]>(initialRows)
+  const [rows, setRows] = useState<UserInvoiceApi[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedProject, setSelectedProject] = useState("")
   const [pending, setPending] = useState<PendingToggle | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] =
-    useState<InvoicePreviewData | null>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoicePreviewData | null>(null)
 
   const role = useRoleStore((s) => s.role)
   const isSupervisor = role === "supervisor" || role === "managers"
   const isContractsManager = role === "contracts_manager"
   const isProjectDirector = role === "project_director"
   const isManagingDirector = role === "managing_director"
+  const isCommercialDepartment = role === "commercial_department"
 
-  const openInvoice = useCallback((row: InvoiceRow) => {
+  // Fetch invoices when project changes
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await getUserInvoices(
+          selectedProject && selectedProject !== "none"
+            ? { project_id: selectedProject }
+            : undefined
+        )
+        setRows(res.invoices)
+      } catch (e) {
+        console.error("Failed to load invoices", e)
+        toast.error("Failed to load invoices")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [selectedProject])
+
+  const openInvoice = useCallback((row: UserInvoiceApi) => {
     setSelectedInvoice({
       invoiceNumber: row.invoiceNumber,
       date: row.date,
       project: row.project,
       statusLabel: "Approved",
-      statusValue: row.approved ? "Yes" : "No",
+      statusValue: row.fullyApproved ? "Yes" : "No",
       amount: row.total || "£0.00",
       description: row.description || "User invoice work",
     })
     setInvoiceDialogOpen(true)
   }, [])
 
-  // Stage a signature toggle — opens confirmation dialog
   const requestSignatureToggle = useCallback(
     (
-      row: InvoiceRow,
-      field: keyof ApprovalSignatures & `${string}Approved`,
+      row: UserInvoiceApi,
+      field: ApprovalField,
       nextValue: boolean,
       label: string
     ) => {
       setPending({
-        no: row.no,
+        id: row.id,
         invoiceNumber: row.invoiceNumber || `Row ${row.no}`,
         field,
         nextValue,
@@ -299,72 +159,40 @@ export default function Page() {
     []
   )
 
-  // Stage the main approved toggle
-  const requestToggle = useCallback(
-    (no: string, invoiceNumber: string, nextValue: boolean) => {
-      setPending({
-        no,
-        invoiceNumber,
-        field: "supervisorApproved", // not used for main toggle; handled separately
-        nextValue,
-        label: "Finance",
-      })
-    },
-    []
-  )
+  const confirmToggle = useCallback(async () => {
+    if (!pending || submitting) return
+    setSubmitting(true)
+    try {
+      const res = await approveUserInvoice(pending.id, pending.nextValue)
+      setRows((prev) =>
+        prev.map((r) => (r.id === pending.id ? res.invoice : r))
+      )
+      toast.success(
+        pending.nextValue
+          ? `Signed as ${pending.label}`
+          : `Revoked ${pending.label} signature`
+      )
+    } catch (e) {
+      toast.error("Failed to update approval. Please try again.")
+      console.error(e)
+    } finally {
+      setSubmitting(false)
+      setPending(null)
+    }
+  }, [pending, submitting])
 
-  // Confirmed — commit the toggle
-  const confirmToggle = useCallback(() => {
-    if (!pending) return
-    const todayStr = today()
+  const approvedCount = rows.filter((r) => r.fullyApproved).length
+  const pendingCount = rows.filter((r) => !r.fullyApproved).length
 
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.no !== pending.no) return r
-
-        // If it's the main "Approved/Paid" toggle (label === "Finance")
-        if (pending.label === "Finance") {
-          return {
-            ...r,
-            approved: pending.nextValue,
-            approvedBy: pending.nextValue ? "Finance Department" : "",
-            datePaid: pending.nextValue ? todayStr : "",
-            paidBy: pending.nextValue ? "Finance Department" : "",
-          }
-        }
-
-        // It's one of the 4 signature toggles
-        const dateField = (pending.field.replace(
-          "Approved",
-          "ApprovedDate"
-        ) as keyof ApprovalSignatures) as keyof ApprovalSignatures &
-          `${string}ApprovedDate`
-
-        return {
-          ...r,
-          [pending.field]: pending.nextValue,
-          [dateField]: pending.nextValue ? todayStr : "",
-        }
-      })
-    )
-
-    setPending(null)
-  }, [pending])
-
-  const approvedCount = rows.filter((r) => r.approved && r.invoiceNumber).length
-  const pendingCount = rows.filter(
-    (r) => !r.approved && r.invoiceNumber
-  ).length
-
-  const columns = useMemo<ColDef<InvoiceRow>[]>(() => {
-    const cols: ColDef<InvoiceRow>[] = [
+  const columns = useMemo<ColDef<UserInvoiceApi>[]>(() => {
+    const cols: ColDef<UserInvoiceApi>[] = [
       {
         headerName: "Invoice Number",
         field: "invoiceNumber",
         minWidth: 160,
-        cellRenderer: (params: { data?: InvoiceRow; value: string }) => {
+        cellRenderer: (params: { data?: UserInvoiceApi; value: string }) => {
           if (!params.value) return null
-          const approved = params.data?.approved
+          const approved = params.data?.fullyApproved
           return (
             <button
               type="button"
@@ -398,46 +226,12 @@ export default function Page() {
       },
       { headerName: "Created By", field: "createdBy", minWidth: 140 },
 
-      // ── Main Approved toggle (Finance) ──────────────────────────────────
-      {
-        headerName: "Approved",
-        field: "approved",
-        minWidth: 140,
-        cellRenderer: (params: { data?: InvoiceRow }) => {
-          const row = params.data
-          if (!row) return null
-          return (
-            <div className="flex items-center gap-2 py-2">
-              <Switch
-                checked={row.approved}
-                onCheckedChange={(checked) =>
-                  requestToggle(
-                    row.no,
-                    row.invoiceNumber || `Row ${row.no}`,
-                    checked
-                  )
-                }
-              />
-              <span
-                className={
-                  row.approved
-                    ? "text-xs font-medium text-emerald-400"
-                    : "text-xs font-medium text-slate-400"
-                }
-              >
-                {row.approved ? "Yes" : "No"}
-              </span>
-            </div>
-          )
-        },
-      },
-
       // ── Signature 1: Supervisor / Manager ───────────────────────────────
       {
         headerName: "Supervisor / Manager",
         colId: "sig_supervisor",
         minWidth: 180,
-        cellRenderer: (params: { data?: InvoiceRow }) => {
+        cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
           return (
@@ -460,7 +254,7 @@ export default function Page() {
         headerName: "Contracts Manager",
         colId: "sig_contracts_manager",
         minWidth: 180,
-        cellRenderer: (params: { data?: InvoiceRow }) => {
+        cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
           const prerequisiteMet = row.supervisorApproved
@@ -480,15 +274,14 @@ export default function Page() {
         },
       },
 
-      // ── Signature 3: Project Director (visible once first 2 signed) ─────
+      // ── Signature 3: Project Director ───────────────────────────────────
       {
         headerName: "Project Director",
         colId: "sig_project_director",
         minWidth: 180,
-        cellRenderer: (params: { data?: InvoiceRow }) => {
+        cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
-          // Only shows content once first 2 signatures exist
           const firstTwoSigned =
             row.supervisorApproved && row.contractsManagerApproved
           if (!firstTwoSigned) {
@@ -513,15 +306,14 @@ export default function Page() {
         },
       },
 
-      // ── Signature 4: Managing Director (visible once first 3 signed) ────
+      // ── Signature 4: Managing Director ──────────────────────────────────
       {
         headerName: "Managing Director",
         colId: "sig_managing_director",
         minWidth: 180,
-        cellRenderer: (params: { data?: InvoiceRow }) => {
+        cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
-          // Only shows content once all 3 prior signatures exist
           const allThreeSigned =
             row.supervisorApproved &&
             row.contractsManagerApproved &&
@@ -564,21 +356,21 @@ export default function Page() {
       },
       {
         headerName: "Paid",
-        field: "approved",
+        field: "paid",
         colId: "paid",
         minWidth: 90,
-        cellRenderer: (params: { data?: InvoiceRow }) => {
-          const approved = params.data?.approved
+        cellRenderer: (params: { data?: UserInvoiceApi }) => {
+          const paid = params.data?.paid
           if (!params.data?.invoiceNumber) return null
           return (
             <span
               className={
-                approved
+                paid
                   ? "font-medium text-emerald-400"
                   : "font-medium text-slate-400"
               }
             >
-              {approved ? "Yes" : "No"}
+              {paid ? "Yes" : "No"}
             </span>
           )
         },
@@ -589,57 +381,64 @@ export default function Page() {
         headerName: "Finance Comments",
         field: "financeComments",
         minWidth: 200,
+        tooltipField: "financeComments",
       },
       {
         headerName: "Commercial Comments",
         field: "commercialComments",
         minWidth: 200,
+        tooltipField: "commercialComments",
+        editable: isCommercialDepartment,
+        cellEditor: "agLargeTextCellEditor",
+        cellEditorPopup: true,
+        onCellValueChanged: async (params) => {
+          if (!params.data) return
+          try {
+            const res = await commentUserInvoice(params.data.id, params.newValue)
+            setRows((current) => current.map(r => r.id === params.data?.id ? res.invoice : r))
+            toast.success("Comment updated")
+          } catch (e) {
+            toast.error("Failed to update comment")
+            params.node?.setDataValue("commercialComments", params.oldValue)
+          }
+        },
       },
     ]
 
     return cols
   }, [
     openInvoice,
-    requestToggle,
     requestSignatureToggle,
     isSupervisor,
     isContractsManager,
     isProjectDirector,
     isManagingDirector,
+    isCommercialDepartment,
   ])
 
   // Confirmation dialog copy
-  const isMainToggle = pending?.label === "Finance"
   const dialogTitle = pending
-    ? isMainToggle
-      ? pending.nextValue
-        ? "Approve invoice?"
-        : "Revoke approval?"
-      : pending.nextValue
-        ? `Sign as ${pending.label}?`
-        : `Revoke ${pending.label} signature?`
+    ? pending.nextValue
+      ? `Sign as ${pending.label}?`
+      : `Revoke ${pending.label} signature?`
     : ""
 
   const dialogDescription = pending
-    ? isMainToggle
-      ? pending.nextValue
-        ? `Approving ${pending.invoiceNumber} will mark it as paid. Are you sure?`
-        : `Revoking approval for ${pending.invoiceNumber} will mark it as unpaid.`
-      : pending.nextValue
-        ? `You are adding your signature as ${pending.label} to invoice ${pending.invoiceNumber}. Today's date will be recorded.`
-        : `This will remove your ${pending.label} signature from invoice ${pending.invoiceNumber}.`
+    ? pending.nextValue
+      ? `You are adding your signature as ${pending.label} to invoice ${pending.invoiceNumber}. Today's date will be recorded.`
+      : `This will remove your ${pending.label} signature from invoice ${pending.invoiceNumber}.`
     : ""
 
   return (
     <div className="w-full space-y-6 p-6">
       <h2 className="text-2xl font-semibold">User Invoices</h2>
-      <SelectProject />
+      <SelectProject value={selectedProject} onChange={setSelectedProject} />
 
       <TableStat
         summaryRows={[
           {
             label: "Invoices",
-            value: String(rows.filter((r) => r.invoiceNumber).length),
+            value: String(rows.length),
           },
           {
             label: "Approved Invoices",
@@ -651,22 +450,21 @@ export default function Page() {
             value: String(pendingCount),
             valueColor: pendingCount > 0 ? "red" : undefined,
           },
-          { label: "Invoices Paid", value: String(approvedCount) },
-          {
-            label: "Money on hold",
-            value: "£110,000.00",
-            valueColor: pendingCount > 0 ? "red" : undefined,
-          },
+          { label: "Invoices Paid", value: String(rows.filter((r) => r.paid).length) },
         ]}
       />
 
-      <AgTable
-        rowData={rows}
-        columnDefs={columns}
-        suppressCellClickAction
-        height="auto"
-        gridOptions={{ rowHeight: 56 }}
-      />
+      {loading ? (
+        <div className="text-slate-400 p-8 text-center">Loading invoices...</div>
+      ) : (
+        <AgTable
+          rowData={rows}
+          columnDefs={columns}
+          suppressCellClickAction
+          height="auto"
+          gridOptions={{ rowHeight: 56 }}
+        />
+      )}
 
       {/* Confirmation dialog */}
       <AlertDialog
@@ -682,8 +480,8 @@ export default function Page() {
             <AlertDialogCancel onClick={() => setPending(null)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmToggle}>
-              {pending?.nextValue ? "Confirm" : "Revoke"}
+            <AlertDialogAction onClick={confirmToggle} disabled={submitting}>
+              {submitting ? "Saving..." : pending?.nextValue ? "Confirm" : "Revoke"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

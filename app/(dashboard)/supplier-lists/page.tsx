@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { ColDef } from "ag-grid-community"
+import { toast } from "sonner"
+import { getSuppliers, inviteSupplier, type CompanySupplier } from "@/lib/api/suppliers"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,12 +46,7 @@ type SupplierRow = {
   invoiceDueThisMonth: string
 }
 
-const summaryRows = [
-  { label: "Total Credit", value: "£2,500,000" },
-  { label: "Credit Used", value: "£845,200" },
-  { label: "Available Credit", value: "£1,654,800" },
-  { label: "Total Suppliers", value: "184" },
-]
+// We will compute summaryRows dynamically now
 
 const initialData: SupplierRow[] = [
   {
@@ -142,8 +139,28 @@ const initialData: SupplierRow[] = [
   },
 ]
 
-function InviteSupplierDialog() {
+function InviteSupplierDialog({ onInvited }: { onInvited: () => void }) {
   const [open, setOpen] = useState(false)
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleInvite = async () => {
+    if (!name || !email) return
+    setLoading(true)
+    try {
+      await inviteSupplier({ email, company_name: name })
+      toast.success("Supplier invited successfully")
+      setOpen(false)
+      setName("")
+      setEmail("")
+      onInvited()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to invite supplier")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -160,11 +177,16 @@ function InviteSupplierDialog() {
         <div className="space-y-5 pt-2">
           <div className="space-y-2">
             <Label className="text-sm text-slate-300">Name</Label>
-            <Input />
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label className="text-sm text-slate-300">Supplier Email</Label>
-            <Input type="email" className="border-white/10 bg-[#182742]" />
+            <Input 
+              type="email" 
+              className="border-white/10 bg-[#182742]"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)} 
+            />
           </div>
           {/* <div className="space-y-2">
             <Label className="text-sm text-slate-300">Credit Limit</Label>
@@ -184,7 +206,9 @@ function InviteSupplierDialog() {
           </div> */}
 
           <div className="pt-2">
-            <Button className="w-full">Send Invite</Button>
+            <Button className="w-full" onClick={handleInvite} disabled={loading}>
+              {loading ? "Sending..." : "Send Invite"}
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -193,7 +217,54 @@ function InviteSupplierDialog() {
 }
 
 export default function Page() {
-  const [rows, setRows] = useState<SupplierRow[]>(initialData)
+  const [rows, setRows] = useState<SupplierRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalCredit: 0,
+    creditUsed: 0,
+    availableCredit: 0,
+    totalSuppliers: 0
+  })
+
+  const fetchSuppliers = async () => {
+    try {
+      setLoading(true)
+      const data = await getSuppliers()
+      let totalCredit = 0
+      
+      const formattedRows: SupplierRow[] = data.map((cs, i) => {
+        const credit = parseFloat(cs.credit_limit) || 0
+        totalCredit += credit
+        
+        return {
+          no: String(i + 1),
+          supplierName: cs.supplier.company_name,
+          creditLimit: `£${credit.toLocaleString()}`,
+          eomPaymentTerms: `${cs.eom_payment_terms} days`,
+          monthCreditUsed: "£0.00",
+          availableCredit: `£${credit.toLocaleString()}`,
+          previousMonth: "£0.00",
+          invoiceDueThisMonth: "£0.00",
+          paid: false
+        }
+      })
+      setRows(formattedRows)
+      setStats({
+        totalCredit,
+        creditUsed: 0, // Need to implement invoice fetching for accurate credit used
+        availableCredit: totalCredit, // Total Credit - Credit Used
+        totalSuppliers: data.length
+      })
+    } catch (err: any) {
+      toast.error("Failed to load suppliers")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSuppliers()
+  }, [])
 
   const columnDefs: ColDef<SupplierRow>[] = [
     { headerName: "No", field: "no", maxWidth: 100, filter: false },
@@ -211,10 +282,15 @@ export default function Page() {
       <h1 className="text-primary">Supplier List</h1>
 
       {/* <div className="flex justify-between"> */}
-        <InviteSupplierDialog />
-      <TableStat summaryRows={summaryRows} />
+      <InviteSupplierDialog onInvited={fetchSuppliers} />
+      <TableStat summaryRows={[
+        { label: "Total Credit", value: `£${stats.totalCredit.toLocaleString()}` },
+        { label: "Credit Used", value: `£${stats.creditUsed.toLocaleString()}` },
+        { label: "Available Credit", value: `£${stats.availableCredit.toLocaleString()}` },
+        { label: "Total Suppliers", value: String(stats.totalSuppliers) },
+      ]} />
 
-        {/* <Filters /> */}
+      {/* <Filters /> */}
       {/* </div> */}
 
       <AgTable

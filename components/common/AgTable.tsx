@@ -337,6 +337,7 @@ export function AgTable<TData extends object>({
           animateRows
           suppressMovableColumns={false}
           enableCellTextSelection
+          stopEditingWhenCellsLoseFocus
           noRowsOverlayComponent={() => (
             <span className="text-sm text-slate-400">{noRowsText}</span>
           )}

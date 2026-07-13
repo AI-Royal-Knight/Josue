@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -32,6 +33,7 @@ export type RAMSFormData = {
   date: string
   reviewDate: string
   assignToProject: string
+  description?: string
   attachment: File | null
 }
 
@@ -43,6 +45,7 @@ export default function CreateRAMSDialog({ open, onOpenChange, onSave, projects,
     date: "",
     reviewDate: "",
     assignToProject: defaultProjectId || "",
+    description: "",
     attachment: null,
   })
 
@@ -60,7 +63,7 @@ export default function CreateRAMSDialog({ open, onOpenChange, onSave, projects,
     const success = await onSave(form)
     setIsSubmitting(false)
     if (success) {
-      setForm({ title: "", date: "", reviewDate: "", assignToProject: defaultProjectId || "", attachment: null })
+      setForm({ title: "", date: "", reviewDate: "", assignToProject: defaultProjectId || "", description: "", attachment: null })
       onOpenChange(false)
     }
   }
@@ -124,6 +127,18 @@ export default function CreateRAMSDialog({ open, onOpenChange, onSave, projects,
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="rams-description">Description (Optional)</Label>
+            <Textarea
+              id="rams-description"
+              value={form.description || ""}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              className="min-h-[80px] border-white/10 bg-white/5"
+              placeholder="e.g. Please review and sign this document."
+            />
           </div>
 
           {/* Attachment */}

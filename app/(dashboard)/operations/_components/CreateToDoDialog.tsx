@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ export type ToDoFormData = {
   completionDate: string
   project: string
   assignUser: string
+  description?: string
 }
 
 export default function CreateToDoDialog({ open, onOpenChange, onSave, projects, defaultProjectId }: Props) {
@@ -43,6 +45,7 @@ export default function CreateToDoDialog({ open, onOpenChange, onSave, projects,
     completionDate: "",
     project: defaultProjectId || "",
     assignUser: "",
+    description: "",
   })
 
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function CreateToDoDialog({ open, onOpenChange, onSave, projects,
     const success = await onSave(form)
     setIsSubmitting(false)
     if (success) {
-      setForm({ title: "", date: "", completionDate: "", project: defaultProjectId || "", assignUser: "" })
+      setForm({ title: "", date: "", completionDate: "", project: defaultProjectId || "", assignUser: "", description: "" })
       onOpenChange(false)
     }
   }
@@ -173,6 +176,18 @@ export default function CreateToDoDialog({ open, onOpenChange, onSave, projects,
                 </ul>
               )}
             </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="todo-description">Description (Optional)</Label>
+            <Textarea
+              id="todo-description"
+              value={form.description || ""}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              className="min-h-[80px] border-white/10 bg-white/5"
+              placeholder="e.g. Additional details..."
+            />
           </div>
         </div>
 

@@ -13,6 +13,9 @@ import Search from "@/components/ui/search"
 import DatePickr from "@/components/ui/date-picker"
 import ErrorMessage from "@/components/shared/form-error-message"
 import { Input } from "@/components/ui/input"
+import { useAuthStore } from "@/lib/auth-store"
+import { useSupplierStore } from "@/lib/supplier-store"
+import { addInvoice, type UserInvoice } from "@/lib/invoice-store"
 
 const supplierInvoiceSchema = z.object({
   project: z.string().min(1, "Select a project"),
@@ -72,11 +75,46 @@ function InvoiceSection({
     defaultValues: { invoiceTotal: 0 },
   })
 
+  const { user } = useAuthStore()
+  const activeCompanyId = useSupplierStore((state) => state.activeCompanyId)
+
   const [message, setMessage] = useState<string | null>(null)
 
   const onSubmit = async (data: SupplierInvoiceForm) => {
     try {
+      if (!activeCompanyId) {
+        setMessage("Please select a company first")
+        return
+      }
+
       console.log("Submitting invoice", data)
+
+      const newInvoice: UserInvoice = {
+        no: Math.random().toString(36).slice(2, 8),
+        invoiceNumber: data.invoiceNo,
+        date: data.date.toLocaleDateString("en-GB"),
+        variationSheetNo: data.variationRef,
+        nfiProformaNo: data.otherRef || "",
+        project: data.project,
+        workArea: "",
+        workSection: "",
+        description: "",
+        createdBy: data.name,
+        managerApproved: false,
+        managerApprovedBy: "",
+        managerApprovedDate: "",
+        financeApproved: false,
+        approvedBy: "",
+        total: `£${data.invoiceTotal?.toLocaleString("en-US", { minimumFractionDigits: 2 }) ?? "0.00"}`,
+        datePaid: "",
+        paidBy: "",
+        financeComments: "",
+        commercialComments: "",
+        companyId: activeCompanyId,
+        supplierEmail: user?.email || "",
+      }
+
+      addInvoice(newInvoice)
       setMessage("Invoice submitted successfully")
       reset()
     } catch {

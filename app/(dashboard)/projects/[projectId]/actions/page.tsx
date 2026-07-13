@@ -1,25 +1,21 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import Box from "@mui/material/Box"
-import Button from "@mui/material/Button"
-import MenuItem from "@mui/material/MenuItem"
-import Select from "@mui/material/Select"
-import Chip from "@mui/material/Chip"
-
-import {
-  DataGrid,
-  type GridColDef,
-  type GridRenderCellParams,
-  type GridRenderEditCellParams,
-  useGridApiContext,
-} from "@mui/x-data-grid"
-
+import { useCallback, useMemo, useState, useEffect } from "react"
+import { useParams } from "next/navigation"
+import { type ColDef } from "ag-grid-community"
 import { Save } from "lucide-react"
-import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
-import { colors } from "@/constants/colors"
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+import { AgTable } from "@/components/common/AgTable"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  getApprovalConfigs,
+  updateApprovalConfigs,
+  getProjectRoles,
+  type ApprovalConfigurationData,
+  type ProjectRoleData,
+} from "@/lib/api/project-admin"
 
 const ACTION_TYPES = [
   "User Invoices",
@@ -32,356 +28,371 @@ const ACTION_TYPES = [
 
 type ActionType = (typeof ACTION_TYPES)[number]
 
-const CAUSE_OPTIONS = [
-  ">£2000",
-  ">£5000",
-  ">£10,000.00",
-  ">£50,000.00",
-  "ALL",
-] as const
-
-const SIGNATURE_OPTIONS = [
-  "Supervisor/Contracts Manager",
-  "Supervisor/Contracts Manager/Project Director/Managing Director",
-  "Procurement/Managing director",
-  "Procurement/Managing Director",
-  "Commercial Manager/Project Director",
-] as const
+const ACTION_ROLES_MAP: Record<ActionType, { roleKey: string; roleName: string }[]> = {
+  "User Invoices": [
+    { roleKey: "supervisor", roleName: "Supervisor" },
+    { roleKey: "contracts_manager", roleName: "Contracts Manager" },
+  ],
+  "Proforma Nr Invoices": [
+    { roleKey: "supervisor", roleName: "Supervisor" },
+    { roleKey: "contracts_manager", roleName: "Contracts Manager" },
+    { roleKey: "project_director", roleName: "Project Director" },
+    { roleKey: "managing_director", roleName: "Managing Director" },
+  ],
+  "User Variations Invoices": [
+    { roleKey: "supervisor", roleName: "Supervisor" },
+    { roleKey: "contracts_manager", roleName: "Contracts Manager" },
+    { roleKey: "project_director", roleName: "Project Director" },
+    { roleKey: "managing_director", roleName: "Managing Director" },
+  ],
+  "Supplier Invoices": [
+    { roleKey: "procurement_department", roleName: "Procurement" },
+    { roleKey: "managing_director", roleName: "Managing Director" },
+  ],
+  "Purchase orders": [
+    { roleKey: "procurement_department", roleName: "Procurement" },
+    { roleKey: "managing_director", roleName: "Managing Director" },
+  ],
+  Variations: [
+    { roleKey: "commercial_department", roleName: "Commercial Manager" },
+    { roleKey: "project_director", roleName: "Project Director" },
+  ],
+}
 
 type ApprovalRule = {
   cause: string
-  signatures: string
-  toggles: number
+  signatures: string[] // List of active role keys
 }
 
 type ActionsConfig = Record<ActionType, ApprovalRule>
 
+type ActionRow = {
+  actionType: ActionType
+  cause: string
+  signatures: string[]
+}
+
+const FRONTEND_TO_BACKEND_ACTION_TYPE: Record<ActionType, string> = {
+  "User Invoices": "user_invoice",
+  "Proforma Nr Invoices": "proforma",
+  "User Variations Invoices": "user_variations_invoice",
+  "Supplier Invoices": "supplier_invoice",
+  "Purchase orders": "purchase_order",
+  Variations: "variations",
+}
+
+const BACKEND_TO_FRONTEND_ACTION_TYPE: Record<string, ActionType> = Object.entries(
+  FRONTEND_TO_BACKEND_ACTION_TYPE
+).reduce(
+  (acc, [front, back]) => {
+    acc[back] = front as ActionType
+    return acc
+  },
+  {} as Record<string, ActionType>
+)
+
 const DEFAULT_ACTIONS_CONFIG: ActionsConfig = {
-  "User Invoices": {
-    cause: ">£2000",
-    signatures: "Supervisor/Contracts Manager",
-    toggles: 2,
-  },
-  "Proforma Nr Invoices": {
-    cause: "ALL",
-    signatures: "Supervisor/Contracts Manager/Project Director/Managing Director",
-    toggles: 4,
-  },
-  "User Variations Invoices": {
-    cause: "ALL",
-    signatures: "Supervisor/Contracts Manager/Project Director/Managing Director",
-    toggles: 2,
-  },
-  "Supplier Invoices": {
-    cause: ">£50,000.00",
-    signatures: "Procurement/Managing director",
-    toggles: 2,
-  },
-  "Purchase orders": {
-    cause: ">£50,000.00",
-    signatures: "Procurement/Managing Director",
-    toggles: 2,
-  },
-  Variations: {
-    cause: ">£2000",
-    signatures: "Commercial Manager/Project Director",
-    toggles: 2,
-  },
+  "User Invoices": { cause: "", signatures: [] },
+  "Proforma Nr Invoices": { cause: "", signatures: [] },
+  "User Variations Invoices": { cause: "", signatures: [] },
+  "Supplier Invoices": { cause: "", signatures: [] },
+  "Purchase orders": { cause: "", signatures: [] },
+  Variations: { cause: "", signatures: [] },
 }
 
-// ─── Inline select editor: Cause ─────────────────────────────────────────────
-
-function CauseEditCell(params: GridRenderEditCellParams) {
-  const { id, value, field } = params
-  const api = useGridApiContext()
-
-  return (
-    <Select
-      value={value as string}
-      onChange={(e) => {
-        void api.current.setEditCellValue({ id, field, value: e.target.value })
-        api.current.stopCellEditMode({ id, field })
-      }}
-      size="small"
-      autoFocus
-      open
-      sx={{
-        width: "100%",
-        fontSize: 12,
-        color: colors.foreground,
-        "& .MuiOutlinedInput-notchedOutline": { borderColor: colors.border },
-        "& .MuiSvgIcon-root": { color: colors.foreground },
-        "& .MuiSelect-select": { py: 0.5 },
-      }}
-      MenuProps={{
-        slotProps: {
-          paper: {
-            sx: {
-              bgcolor: colors.accent,
-              color: colors.foreground,
-              border: `1px solid ${colors.border}`,
-              fontSize: 12,
-            },
-          },
-        },
-      }}
-    >
-      {CAUSE_OPTIONS.map((opt) => (
-        <MenuItem key={opt} value={opt} sx={{ fontSize: 12 }}>
-          {opt}
-        </MenuItem>
-      ))}
-    </Select>
-  )
-}
-
-// ─── Inline select editor: Signatures ────────────────────────────────────────
-
-function SignaturesEditCell(params: GridRenderEditCellParams) {
-  const { id, value, field } = params
-  const api = useGridApiContext()
-
-  return (
-    <Select
-      value={value as string}
-      onChange={(e) => {
-        void api.current.setEditCellValue({ id, field, value: e.target.value })
-        api.current.stopCellEditMode({ id, field })
-      }}
-      size="small"
-      autoFocus
-      open
-      sx={{
-        width: "100%",
-        fontSize: 12,
-        color: colors.foreground,
-        "& .MuiOutlinedInput-notchedOutline": { borderColor: colors.border },
-        "& .MuiSvgIcon-root": { color: colors.foreground },
-        "& .MuiSelect-select": { py: 0.5 },
-      }}
-      MenuProps={{
-        slotProps: {
-          paper: {
-            sx: {
-              bgcolor: colors.accent,
-              color: colors.foreground,
-              border: `1px solid ${colors.border}`,
-              fontSize: 12,
-              maxWidth: 420,
-            },
-          },
-        },
-      }}
-    >
-      {SIGNATURE_OPTIONS.map((opt) => (
-        <MenuItem key={opt} value={opt} sx={{ fontSize: 12, whiteSpace: "normal" }}>
-          {opt}
-        </MenuItem>
-      ))}
-    </Select>
-  )
-}
-
-import { useParams } from "next/navigation"
-import { useEffect } from "react"
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function ActionsPage() {
-  const { projectId } = useParams<{ projectId: string }>()
-  
-  const [config, setConfig] = useState<ActionsConfig>(DEFAULT_ACTIONS_CONFIG)
-  const [loading, setLoading] = useState(true)
-
-  // Load from API
-  useEffect(() => {
-    if (!projectId) return
-    import("@/lib/api/project-admin").then(({ getApprovalConfigs }) => {
-      getApprovalConfigs(projectId)
-        .then((data) => {
-          if (data && data.length > 0) {
-            const newConfig = { ...DEFAULT_ACTIONS_CONFIG }
-            data.forEach((item) => {
-              const actionType = item.action_type as ActionType
-              if (ACTION_TYPES.includes(actionType)) {
-                newConfig[actionType] = {
-                  cause: item.condition_value,
-                  signatures: item.required_roles,
-                  toggles: newConfig[actionType]?.toggles ?? 2,
-                }
-              }
-            })
-            setConfig(newConfig)
-          }
-        })
-        .catch(() => {
-          // fallback to default
-        })
-        .finally(() => setLoading(false))
-    })
-  }, [projectId])
-
-  const [saved, setSaved] = useState(false)
-
-  const handleSave = async () => {
-    if (!projectId) return
-    try {
-      const { updateApprovalConfigs } = await import("@/lib/api/project-admin")
-      
-      const payload = Object.entries(config).map(([action_type, rule]) => ({
-        action_type,
-        condition_value: rule.cause,
-        required_roles: rule.signatures,
-        is_active: true,
-      }))
-      
-      await updateApprovalConfigs(projectId, payload)
-      
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch {
-      alert("Failed to save actions")
+function cloneConfig(config: ActionsConfig): ActionsConfig {
+  return ACTION_TYPES.reduce((next, actionType) => {
+    next[actionType] = {
+      cause: config[actionType].cause,
+      signatures: [...config[actionType].signatures],
     }
+    return next
+  }, {} as ActionsConfig)
+}
+
+function CauseCell({ row, updateRule }: { row: ActionRow; updateRule: (type: ActionType, update: (current: ApprovalRule) => ApprovalRule) => void }) {
+  const [value, setValue] = useState(row.cause)
+  const [prevCause, setPrevCause] = useState(row.cause)
+
+  if (row.cause !== prevCause) {
+    setPrevCause(row.cause)
+    setValue(row.cause)
   }
 
-  const rows = useMemo(
+  return (
+    <div className="flex h-full min-w-[200px] items-center" data-cell-click-ignore>
+      <div className="relative z-40 w-full">
+        <Label className="sr-only">Cause</Label>
+        <Input
+          placeholder="Type cause or value..."
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => {
+            if (value !== row.cause) {
+              updateRule(row.actionType, (current) => ({
+                ...current,
+                cause: value,
+              }))
+            }
+          }}
+          className="bg-transparent text-xs"
+        />
+      </div>
+    </div>
+  )
+}
+
+export default function ActionsPage() {
+  const params = useParams()
+  const projectId = params.projectId as string
+
+  const [projectRoles, setProjectRoles] = useState<ProjectRoleData[]>([])
+  const [config, setConfig] = useState<ActionsConfig>(cloneConfig(DEFAULT_ACTIONS_CONFIG))
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!projectId) return
+
+    Promise.all([
+      getApprovalConfigs(projectId),
+      getProjectRoles(projectId),
+    ])
+      .then(([configsData, rolesData]) => {
+        setProjectRoles(rolesData)
+
+        const newConfig = cloneConfig(DEFAULT_ACTIONS_CONFIG)
+
+        configsData.forEach((item) => {
+          const frontType = BACKEND_TO_FRONTEND_ACTION_TYPE[item.action_type]
+          if (frontType) {
+            newConfig[frontType] = {
+              cause: item.condition_value || "",
+              signatures: item.required_roles
+                ? item.required_roles
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : [],
+            }
+          }
+        })
+        setConfig(newConfig)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [projectId])
+
+  const updateRule = useCallback(
+    (actionType: ActionType, update: (current: ApprovalRule) => ApprovalRule) => {
+      setSaved(false)
+      setConfig((previous) => ({
+        ...previous,
+        [actionType]: update(previous[actionType]),
+      }))
+    },
+    []
+  )
+
+  const rowData = useMemo<ActionRow[]>(
     () =>
-      ACTION_TYPES.map((actionType, index) => ({
-        id: index + 1,
+      ACTION_TYPES.map((actionType) => ({
         actionType,
         cause: config[actionType].cause,
         signatures: config[actionType].signatures,
-        toggles: config[actionType].toggles,
       })),
     [config]
   )
 
-  const columns: GridColDef[] = useMemo(
+  const columnDefs = useMemo<ColDef<ActionRow>[]>(
     () => [
       {
-        field: "actionType",
         headerName: "Actions",
-        width: 190,
-        editable: false,
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ fontSize: 13, color: colors.foreground, fontWeight: 500, whiteSpace: "normal", lineHeight: 1.35, py: 0.5 }}>
-            {params.value as string}
-          </Box>
-        ),
+        field: "actionType",
+        minWidth: 220,
+        flex: 1.2,
+        cellClass: "font-medium text-slate-100",
       },
       {
-        field: "cause",
         headerName: "Cause",
-        width: 150,
-        editable: true,
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ fontSize: 13, color: "#93c5fd", fontWeight: 500 }}>
-            {params.value as string}
-          </Box>
-        ),
-        renderEditCell: (params: GridRenderEditCellParams) => <CauseEditCell {...params} />,
+        field: "cause",
+        minWidth: 240,
+        flex: 1.3,
+        cellRenderer: (params: { data?: ActionRow }) => {
+          const row = params.data
+          if (!row) return null
+
+          return <CauseCell row={row} updateRule={updateRule} />
+        },
       },
       {
+        headerName: "Signatures",
         field: "signatures",
-        headerName: "Signatures / Toggles",
-        flex: 1,
-        minWidth: 320,
-        editable: true,
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ fontSize: 13, color: colors.foreground, whiteSpace: "normal", lineHeight: 1.35, py: 0.5 }}>
-            {params.value as string}
-          </Box>
-        ),
-        renderEditCell: (params: GridRenderEditCellParams) => <SignaturesEditCell {...params} />,
+        minWidth: 360,
+        flex: 2.3,
+        cellRenderer: (params: { data?: ActionRow }) => {
+          const row = params.data
+          if (!row) return null
+
+          // Find active roles
+          const activeRoles = ACTION_ROLES_MAP[row.actionType].filter((r) =>
+            row.signatures.includes(r.roleKey)
+          )
+
+          if (activeRoles.length === 0) {
+            return <div className="text-xs text-slate-500 italic mt-4">No signatures assigned</div>
+          }
+
+          return (
+            <div className="relative z-30 min-w-[320px]" data-cell-click-ignore>
+              <div className="flex flex-col gap-1 py-3">
+                {activeRoles.map((role) => {
+                  const roleData = projectRoles.find((pr) => pr.role_key === role.roleKey)
+                  const users = roleData?.users || []
+
+                  if (users.length === 0) {
+                    return (
+                      <span key={role.roleKey} className="text-[11px] text-slate-400">
+                        Pending assignment ({role.roleName})
+                      </span>
+                    )
+                  }
+
+                  return (
+                    <span key={role.roleKey} className="text-xs text-slate-200 font-medium">
+                      {users.map((u) => u.name).join(", ")}{" "}
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        ({role.roleName})
+                      </span>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        },
       },
       {
-        field: "toggles",
         headerName: "Toggles",
-        width: 100,
-        editable: true,
-        type: "number",
-        renderCell: (params: GridRenderCellParams) => (
-          <Box sx={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <Chip
-              label={params.value as number}
-              size="small"
-              sx={{
-                bgcolor: "#1e3a5f",
-                color: "#93c5fd",
-                fontWeight: 700,
-                fontSize: 13,
-                height: 24,
-                minWidth: 32,
-                "& .MuiChip-label": { px: 1 },
-              }}
-            />
-          </Box>
-        ),
+        field: "signatures",
+        minWidth: 240,
+        flex: 1.5,
+        cellRenderer: (params: { data?: ActionRow }) => {
+          const row = params.data
+          if (!row) return null
+
+          const availableRoles = ACTION_ROLES_MAP[row.actionType]
+
+          return (
+            <div className="flex flex-col gap-2 px-1 py-3" data-cell-click-ignore>
+              {availableRoles.map((role) => {
+                const roleData = projectRoles.find((pr) => pr.role_key === role.roleKey)
+                const hasUsers = roleData && roleData.users.length > 0
+                const isChecked = row.signatures.includes(role.roleKey)
+
+                return (
+                  <div key={role.roleKey} className="flex items-center gap-1.5">
+                    <Switch
+                      size="sm"
+                      checked={isChecked}
+                      disabled={!hasUsers}
+                      onCheckedChange={(checked) =>
+                        updateRule(row.actionType, (current) => {
+                          const nextSigs = new Set(current.signatures)
+                          if (checked) {
+                            nextSigs.add(role.roleKey)
+                          } else {
+                            nextSigs.delete(role.roleKey)
+                          }
+                          return { ...current, signatures: Array.from(nextSigs) }
+                        })
+                      }
+                    />
+                    <span
+                      className={`text-[10px] leading-none ${
+                        hasUsers ? "text-slate-200" : "text-slate-500"
+                      }`}
+                      title={!hasUsers ? "No users assigned to this role in this project" : ""}
+                    >
+                      {role.roleName}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        },
       },
     ],
-    []
+    [projectRoles, updateRule]
   )
 
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", p: 3, gap: 2 }}>
-      {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box>
-          <Box sx={{ fontSize: 18, fontWeight: 700, color: colors.headerText, mb: 0.5 }}>
-            Approval Actions
-          </Box>
-          <Box sx={{ fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>
-            Configure approval thresholds and required signatories for each document type.
-            <br />
-            <span style={{ color: "#93c5fd" }}>Cause</span>: triggers approval.&nbsp;
-            <span style={{ color: "#93c5fd" }}>Signatures / Toggles</span>: roles that must sign.&nbsp;
-            <span style={{ color: "#93c5fd" }}>Toggles</span>: number of approvers required.
-          </Box>
-        </Box>
-        <Button
-          variant={saved ? "contained" : "outlined"}
-          onClick={handleSave}
-          startIcon={<Save size={16} />}
-          sx={saved ? { bgcolor: "#2d7f5c", "&:hover": { bgcolor: "#246b4e" } } : {}}
-        >
-          {saved ? "Saved" : "Save"}
-        </Button>
-      </Box>
+  const handleSave = async () => {
+    if (!projectId) return
+    setSaving(true)
 
-      {/* Table */}
-      <Box sx={{ flex: 1, overflow: "auto" }}>
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          hideFooter
-          disableRowSelectionOnClick
-          showCellVerticalBorder
-          showColumnVerticalBorder
-          rowHeight={52}
-          processRowUpdate={(newRow) => {
-            const actionType = newRow.actionType as ActionType
-            setConfig((prev) => ({
-              ...prev,
-              [actionType]: {
-                cause: newRow.cause as string,
-                signatures: newRow.signatures as string,
-                toggles: newRow.toggles as number,
-              },
-            }))
-            return newRow
-          }}
-          sx={{
-            ...agTableDataGridSx,
-            "& .MuiDataGrid-columnHeaderTitleContainer": { justifyContent: "center" },
-            "& .MuiDataGrid-columnHeaderTitle": { textAlign: "center", width: "100%" },
-            "& .MuiDataGrid-cell": {
-              ...agTableDataGridSx["& .MuiDataGrid-cell"],
-              alignItems: "flex-start",
-              pt: "10px",
-            },
-          }}
-        />
-      </Box>
-    </Box>
+    const payload: ApprovalConfigurationData[] = ACTION_TYPES.map((type) => ({
+      action_type: FRONTEND_TO_BACKEND_ACTION_TYPE[type],
+      condition_value: config[type].cause,
+      required_roles: config[type].signatures.join(","),
+      is_active: true,
+    }))
+
+    try {
+      await updateApprovalConfigs(projectId, payload)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return <div className="p-6 text-sm text-slate-400">Loading configurations...</div>
+  }
+
+  return (
+    <div className="w-full space-y-4 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-100">Approval Actions</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Edit directly in the table using the selectors and inputs in each row.
+          </p>
+        </div>
+
+        <Button
+          variant={saved ? "default" : "outline"}
+          onClick={handleSave}
+          disabled={saving}
+          className={saved ? "bg-emerald-600 hover:bg-emerald-700" : undefined}
+        >
+          <Save className="mr-1 size-4" />
+          {saving ? "Saving..." : saved ? "Saved" : "Save"}
+        </Button>
+      </div>
+
+      <AgTable
+        rowData={rowData}
+        columnDefs={columnDefs}
+        showRowNumberColumn={false}
+        suppressCellClickAction
+        height="auto"
+        defaultColDef={{
+          sortable: false,
+          filter: false,
+          resizable: false,
+        }}
+        gridOptions={{
+          rowHeight: 88,
+        }}
+      />
+    </div>
   )
 }

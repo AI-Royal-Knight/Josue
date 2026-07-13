@@ -20,6 +20,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "./ui/button"
 import Link from "next/link"
 import { useRoleStore } from "@/lib/role-store"
+import { useAuthStore } from "@/lib/auth-store"
 
 const roleLabels: Record<string, string> = {
   admin: "Admin",
@@ -39,10 +40,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const router = useRouter()
   const selectedRole = useRoleStore((s) => s.role)
+  const clearRole = useRoleStore((s) => s.clearRole)
+  const logout = useAuthStore((s) => s.logout)
 
   const handleLogout = React.useCallback(() => {
+    logout()
+    clearRole()
     router.push("/sign-in")
-  }, [router])
+  }, [router, logout, clearRole])
 
   const navItems =
     selectedRole && DASHBOARD_NAV[selectedRole as keyof typeof DASHBOARD_NAV]

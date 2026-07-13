@@ -66,7 +66,7 @@ const DEFAULT_FOLDERS: FolderType[] = [
 // Custom column group header for subfolders — uses Radix ContextMenu (same as folder)
 // so right-click behaviour is identical and reliable inside MUI DataGrid.
 function SubfolderGroupHeader(props: any) {
-  const { headerName, groupId, onSubfolderAssign } = props
+  const { headerName, groupId, onSubfolderAssign, isManagement } = props
 
   return (
     <ContextMenu>
@@ -94,6 +94,7 @@ function SubfolderGroupHeader(props: any) {
         {/* Assign Employee */}
         <ContextMenuItem
           className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+          disabled={isManagement}
           onSelect={() => onSubfolderAssign?.(groupId)}
         >
           <UserPlus size={14} className="shrink-0 text-indigo-400" />
@@ -191,6 +192,7 @@ function FolderGrid({
               headerName={sub.name.toUpperCase()}
               groupId={sub.id}
               onSubfolderAssign={onSubfolderAssign}
+              isManagement={folder.is_management}
             />
           ),
         }
@@ -516,7 +518,14 @@ export default function DynamicFolderTable() {
   const toggleManagementFolder = useCallback((folderId: string) => {
     const newFolders = folders.map((f) => {
       if (f.id === folderId) {
-        return { ...f, is_management: !f.is_management }
+        const isNowManagement = !f.is_management
+        return { 
+          ...f, 
+          is_management: isNowManagement,
+          subfolders: isNowManagement 
+            ? f.subfolders.map(sf => ({ ...sf, assignments: [] })) 
+            : f.subfolders
+        }
       }
       return { ...f, is_management: false }
     })
@@ -636,6 +645,7 @@ export default function DynamicFolderTable() {
                     </ContextMenuItem>
                     <ContextMenuItem
                       className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                      disabled={folder.is_management}
                       onSelect={() => handleAssignSubfolder(folder.id)}
                     >
                       <UserPlus size={14} className="shrink-0 text-indigo-400" />

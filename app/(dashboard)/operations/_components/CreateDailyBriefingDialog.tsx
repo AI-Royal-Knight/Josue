@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -32,6 +33,7 @@ export type DailyBriefingFormData = {
   title: string
   date: string
   assignToProject: string
+  description?: string
   attachment: File | null
 }
 
@@ -50,6 +52,7 @@ export default function CreateDailyBriefingDialog({
     title: "",
     date: "",
     assignToProject: defaultProjectId || "",
+    description: "",
     attachment: null,
   })
 
@@ -76,7 +79,7 @@ export default function CreateDailyBriefingDialog({
     const success = await onSave(form)
     setIsSubmitting(false)
     if (success) {
-      setForm({ title: "", date: "", assignToProject: defaultProjectId || "", attachment: null })
+      setForm({ title: "", date: "", assignToProject: defaultProjectId || "", description: "", attachment: null })
       setFileError(null)
       onOpenChange(false)
     }
@@ -133,6 +136,18 @@ export default function CreateDailyBriefingDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="briefing-description">Description (Optional)</Label>
+            <Textarea
+              id="briefing-description"
+              value={form.description || ""}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              className="min-h-[80px] border-white/10 bg-white/5"
+              placeholder="e.g. Please review and sign this document."
+            />
           </div>
 
           {/* Attachments */}

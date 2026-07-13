@@ -34,6 +34,7 @@ export type VariationApi = {
   created_by: string | null
   created_by_name: string
   lines: VariationLineApi[]
+  assigned_user_ids?: string[]
 }
 
 export type CreateVariationPayload = {
@@ -79,5 +80,12 @@ export async function approveVariation(id: string, action: "approve" | "reject")
 export async function submitVariationToClient(id: string): Promise<VariationApi> {
   return apiRequest(`/commercial/variations/${id}/submit-to-client/`, {
     method: "POST",
+  })
+}
+
+export async function assignVariationUsers(id: string, assignedUserIds: string[]): Promise<VariationApi> {
+  return apiRequest(`/commercial/variations/${id}/assign/`, {
+    method: "POST",
+    body: { assigned_user_ids: assignedUserIds },
   })
 }

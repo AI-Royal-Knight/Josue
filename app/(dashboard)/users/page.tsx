@@ -59,7 +59,14 @@ export default function Page() {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch("http://localhost:8000/api/v1/account/users/")
+      const token = localStorage.getItem("tresta:accessToken")
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`
+      }
+      const res = await fetch("http://localhost:8000/api/v1/account/users/", {
+        headers
+      })
       if (res.ok) {
         const data = await res.json()
         const sortedData = data.sort((a: UserRow, b: UserRow) => {

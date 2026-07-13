@@ -278,12 +278,12 @@ export default function Page() {
       prev.map((r) =>
         r.no === pending.no
           ? {
-              ...r,
-              approved: pending.nextApproved ? "Approved" : "Pending",
-              approvedBy: pending.nextApproved
-                ? "Finance Department"
-                : "Pending",
-            }
+            ...r,
+            approved: pending.nextApproved ? "Approved" : "Pending",
+            approvedBy: pending.nextApproved
+              ? "Finance Department"
+              : "Pending",
+          }
           : r
       )
     )

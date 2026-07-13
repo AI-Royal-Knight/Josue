@@ -1,373 +1,378 @@
 "use client"
 
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { Trash2, UserPlus, Search, Loader2 } from "lucide-react"
 import type { ColDef } from "ag-grid-community"
-
 import { AgTable } from "@/components/common/AgTable"
-import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
-import { useState } from "react"
+import TableStat from "@/components/common/table-stat"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import AssignUsersDialog from "../variations/_components/AssignUsersDialog"
 
-type ProformaRow = {
-  no: number
-  invoiceNumber: string
-  date: string
-  nrProformaNo: string
-  project: string
-  descriptionOfWorks: string
-  createdBy: string
-  approvedBy: string
-  approved: string
-  total: string
-  paid: string
-  datePaid: string
-  paidBy: string
-  financeComments: string
-  commercialComments: string
-}
+import {
+  getProformaAccess,
+  assignProformaAccess,
+  updateProformaAccess,
+  deleteProformaAccess,
+  ProformaAccessData,
+  getProjectRoles,
+  ProjectUser
+} from "@/lib/api/project-admin"
+import { toast } from "sonner"
 
-type InvoiceRow = {
-  invoiceNumber: string
-  date: string
-  value: string
-  paid: boolean
-  paymentDate: string
-}
+export default function ProformaAccessPage() {
+  const [projectId, setProjectId] = useState<string>("")
 
-function buildInvoiceDocHtml(invoice: InvoiceRow) {
-  const paidText = invoice.paid ? "Yes" : "No"
-  const confirmedDate = invoice.paymentDate || "-"
+  const [accessList, setAccessList] = useState<ProformaAccessData[]>([])
 
-  // Word can open HTML saved as .doc; keep it simple and self-contained.
-  return `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Invoice ${invoice.invoiceNumber}</title>
-  </head>
-  <body style="font-family: Arial, Helvetica, sans-serif; color: #111;">
-    <div style="max-width: 720px; margin: 0 auto; padding: 24px;">
-      <h1 style="margin: 0 0 8px;">INVOICE</h1>
-      <div style="margin: 0 0 16px; font-size: 12px;">
-        <div><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</div>
-        <div><strong>Invoice Date:</strong> ${invoice.date}</div>
-        <div><strong>Paid:</strong> ${paidText}</div>
-        <div><strong>Date of confirmed payment:</strong> ${confirmedDate}</div>
-      </div>
-
-      <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
-
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-        <thead>
-          <tr>
-            <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px 4px;">Description</th>
-            <th style="text-align: right; border-bottom: 1px solid #ddd; padding: 8px 4px;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">Work completed (sample)</td>
-            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${invoice.value}</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td style="padding: 12px 4px; text-align: right;"><strong>Total</strong></td>
-            <td style="padding: 12px 4px; text-align: right;"><strong>${invoice.value}</strong></td>
-          </tr>
-        </tfoot>
-      </table>
-
-      <p style="margin-top: 16px; font-size: 11px; color: #444;">
-        This is a sample invoice document generated from the invoice list.
-      </p>
-    </div>
-  </body>
-</html>`
-}
-
-const summaryRows = [
-  { label: "Proforma NR Invoice", qty: 50, value: "1000", alert: false },
-  {
-    label: "Approved Proforma NR Invoice",
-    qty: 200,
-    value: "200",
-    alert: false,
-  },
-  {
-    label: "Proforma NR Invoice Awaiting approved",
-    qty: 200,
-    value: "200",
-    alert: true,
-  },
-  {
-    label: "Proforma NR invoices due this week",
-    qty: 200,
-    value: "200",
-    alert: false,
-  },
-  { label: "Proforma NR invoices paid", qty: 200, value: "200", alert: false },
-]
-
-const rows: ProformaRow[] = [
-  {
-    no: 1,
-    invoiceNumber: "INV-001",
-    date: "2023-10-01",
-    nrProformaNo: "NR-PF-1000",
-    project: "Project A",
-    descriptionOfWorks: "General contracting works",
-    createdBy: "John Doe",
-    approvedBy: "Jane Smith",
-    approved: "Yes",
-    total: "$6150.75",
-    paid: "Yes",
-    datePaid: "2023-10-10",
-    paidBy: "Finance Team A",
-    financeComments: "Processed",
-    commercialComments: "Approved for payment",
-  },
-  {
-    no: 2,
-    invoiceNumber: "INV-002",
-    date: "2023-10-02",
-    nrProformaNo: "NR-PF-1001",
-    project: "Project B",
-    descriptionOfWorks: "General contracting works",
-    createdBy: "John Doe",
-    approvedBy: "Pending",
-    approved: "No",
-    total: "$5521.86",
-    paid: "No",
-    datePaid: "-",
-    paidBy: "-",
-    financeComments: "-",
-    commercialComments: "Awaiting review",
-  },
-  {
-    no: 3,
-    invoiceNumber: "INV-003",
-    date: "2023-10-03",
-    nrProformaNo: "NR-PF-1002",
-    project: "Project C",
-    descriptionOfWorks: "General contracting works",
-    createdBy: "John Doe",
-    approvedBy: "Jane Smith",
-    approved: "Yes",
-    total: "$7960.08",
-    paid: "No",
-    datePaid: "-",
-    paidBy: "-",
-    financeComments: "-",
-    commercialComments: "Approved for payment",
-  },
-  {
-    no: 4,
-    invoiceNumber: "INV-004",
-    date: "2023-10-04",
-    nrProformaNo: "NR-PF-1003",
-    project: "Project D",
-    descriptionOfWorks: "General contracting works",
-    createdBy: "John Doe",
-    approvedBy: "Pending",
-    approved: "No",
-    total: "$4125.51",
-    paid: "Yes",
-    datePaid: "2023-10-13",
-    paidBy: "Finance Team A",
-    financeComments: "Processed",
-    commercialComments: "Awaiting review",
-  },
-]
-
-export default function Page() {
-  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(
-    null
-  )
+  const summaryRows = useMemo(() => {
+    const totalActive = accessList.filter(a => a.is_active).length;
+    const totalPaused = accessList.filter(a => !a.is_active).length;
+    const totalUsers = accessList.length;
+    
+    return [
+      { label: "Proforma NR Invoice", qty: 50, value: "1000", alert: false },
+      { label: "Proforma NR Invoice Awaiting approved", qty: 200, value: "200", alert: true },
+      { label: "Proforma NR invoices paid", qty: 200, value: "200", alert: false },
+      { label: "Total active users", qty: "", value: totalActive.toString(), alert: false },
+      { label: "Total paused users count", qty: "", value: totalPaused.toString(), alert: false },
+      { label: "Total users count", qty: "", value: totalUsers.toString(), alert: false },
+    ]
+  }, [accessList])
+  const [loading, setLoading] = useState(false)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
-  const [assignedUsers, setAssignedUsers] = useState<string[]>([])
+  
+  // Dialog state
+  const [projectUsers, setProjectUsers] = useState<ProjectUser[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [userSearch, setUserSearch] = useState("")
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
 
-  function openInvoice(invoice: InvoiceRow) {
-    setSelectedInvoice(invoice)
-    setInvoiceDialogOpen(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (projectId) {
+      loadAccessList(projectId)
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAccessList([])
+    }
+  }, [projectId])
+
+  async function loadAccessList(pid: string) {
+    setLoading(true)
+    try {
+      const data = await getProformaAccess(pid)
+      setAccessList(data)
+    } catch (error) {
+      console.error("Failed to load access list", error)
+      toast.error("Failed to load access list")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  function downloadInvoiceDoc(invoice: InvoiceRow) {
-    const html = buildInvoiceDocHtml(invoice)
-    const blob = new Blob([html], { type: "application/msword" })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `${invoice.invoiceNumber}.doc`
-    anchor.click()
-    URL.revokeObjectURL(url)
+  const handleOpenAssignModal = async () => {
+    if (!projectId) {
+      toast.error("Please select a project first")
+      return
+    }
+    
+    setAssignDialogOpen(true)
+    setUsersLoading(true)
+    setUserSearch("")
+    // Pre-select users already in the list
+    setSelectedUserIds(accessList.map(a => a.user.id))
+
+    try {
+      const rolesData = await getProjectRoles(projectId)
+      // Only get users who have the employee role
+      const allUsersMap = new Map<string, ProjectUser>()
+      rolesData.forEach(role => {
+        if (role.role_key === "employee") {
+          role.users.forEach(u => {
+            if (!allUsersMap.has(u.id)) {
+              allUsersMap.set(u.id, u)
+            }
+          })
+        }
+      })
+      setProjectUsers(Array.from(allUsersMap.values()))
+    } catch {
+      toast.error("Failed to load project users")
+    } finally {
+      setUsersLoading(false)
+    }
   }
 
-  const columns: ColDef<ProformaRow>[] = [
-    //   { headerName: "No.", field: "no" },
+  const handleAssignSubmit = async () => {
+    if (!projectId) return
+    try {
+      // Find which users are newly added (not in current accessList)
+      const newIds = selectedUserIds.filter(id => !accessList.find(a => a.user.id === id))
+      if (newIds.length > 0) {
+        await assignProformaAccess(projectId, newIds)
+        await loadAccessList(projectId)
+        toast.success("Users assigned successfully")
+      }
+      setAssignDialogOpen(false)
+    } catch {
+      toast.error("Failed to assign users")
+    }
+  }
+
+  const toggleActive = useCallback(async (accessId: string, isActive: boolean) => {
+    if (!projectId) return
+    try {
+      // Optimistic update
+      setAccessList(prev => prev.map(a => a.id === accessId ? { ...a, is_active: isActive } : a))
+      await updateProformaAccess(projectId, accessId, isActive)
+    } catch {
+      toast.error("Failed to update status")
+      await loadAccessList(projectId)
+    }
+  }, [projectId])
+
+  const openDeleteDialog = useCallback((accessId: string) => {
+    setUserToDelete(accessId)
+    setDeleteDialogOpen(true)
+  }, [])
+
+  const confirmDelete = async () => {
+    if (!projectId || !userToDelete) return
+    try {
+      setAccessList(prev => prev.filter(a => a.id !== userToDelete))
+      await deleteProformaAccess(projectId, userToDelete)
+      toast.success("Access removed")
+    } catch {
+      toast.error("Failed to remove access")
+      await loadAccessList(projectId)
+    } finally {
+      setDeleteDialogOpen(false)
+      setUserToDelete(null)
+    }
+  }
+
+  const filteredModalUsers = useMemo(() => {
+    return projectUsers.filter(u => 
+      u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
+      (u.email && u.email.toLowerCase().includes(userSearch.toLowerCase()))
+    )
+  }, [projectUsers, userSearch])
+
+  const columns: ColDef<ProformaAccessData>[] = useMemo(() => [
     {
-      headerName: "Invoice Number",
-      field: "invoiceNumber",
-      cellRenderer: (params: { data?: InvoiceRow; value: string }) => (
-        <button
-          type="button"
-          className={`${params.data?.paid ? "text-green-500" : "text-red-500"} hover:underline`}
-          onClick={(event) => {
-            event.stopPropagation()
-            if (!params.data) return
-            openInvoice(params.data)
-          }}
-        >
-          {params.value}
-        </button>
-      ),
+      headerName: "Name",
+      valueGetter: (params) => params.data?.user?.first_name || "-",
+      flex: 1,
+      minWidth: 150,
     },
-    { headerName: "Date", field: "date" },
-    { headerName: "NR Proforma no.", field: "nrProformaNo" },
-    { headerName: "Project", field: "project" },
-    { headerName: "Description of Works", field: "descriptionOfWorks" },
-    { headerName: "Created by", field: "createdBy" },
-    { headerName: "Approved by", field: "approvedBy" },
     {
-      headerName: "Approved",
-      field: "approved",
-      cellRenderer: (params: { value: string }) => (
-        <span
-          className={params.value === "Yes" ? "text-green-500" : "text-red-500"}
-        >
-          {params.value}
-        </span>
-      ),
+      headerName: "Surname",
+      valueGetter: (params) => params.data?.user?.last_name || "-",
+      flex: 1,
+      minWidth: 150,
     },
-    { headerName: "TOTAL", field: "total" },
+    { 
+      headerName: "Email", 
+      valueGetter: (params) => params.data?.user?.email || "-",
+      flex: 1,
+      minWidth: 200,
+    },
     {
-      headerName: "Paid",
-      field: "paid",
-      cellRenderer: (params: { value: string }) => (
-        <span
-          className={params.value === "Yes" ? "text-green-500" : "text-red-500"}
-        >
-          {params.value}
-        </span>
-      ),
+      headerName: "Status (Active)",
+      field: "is_active",
+      width: 150,
+      cellRenderer: (params: { data?: ProformaAccessData }) => {
+        if (!params.data) return null
+        const rowData = params.data
+        return (
+          <div className="flex h-full items-center">
+            <Switch
+              checked={rowData.is_active}
+              onCheckedChange={(checked) => toggleActive(rowData.id, checked)}
+            />
+          </div>
+        )
+      }
     },
-    { headerName: "Date paid", field: "datePaid" },
-    { headerName: "Paid by", field: "paidBy" },
-    { headerName: "Finance team comments", field: "financeComments" },
-    { headerName: "Commercial team Comments", field: "commercialComments" },
-  ]
+    {
+      headerName: "Actions",
+      width: 100,
+      sortable: false,
+      cellRenderer: (params: { data?: ProformaAccessData }) => {
+        if (!params.data) return null
+        const rowData = params.data
+        return (
+          <div className="flex h-full items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+              onClick={() => openDeleteDialog(rowData.id)}
+            >
+              <Trash2 size={16} />
+            </Button>
+          </div>
+        )
+      }
+    }
+  ], [toggleActive, openDeleteDialog])
 
   return (
-    <div className="w-full min-w-0 space-y-6 p-6">
-      <h1 className="text-2xl font-semibold">Proforma NR List</h1>
+    <div className="w-full min-w-0 space-y-6 p-6 flex flex-col h-[calc(100vh-64px)]">
+      <h1 className="text-2xl font-semibold shrink-0">Proforma NR List</h1>
 
-      <SelectProject />
+      <div className="flex items-center gap-4 shrink-0">
+        <div className="w-[300px]">
+          <SelectProject value={projectId} onChange={setProjectId} />
+        </div>
+      </div>
+
       <TableStat summaryRows={summaryRows} />
 
-      <Button onClick={() => setAssignDialogOpen(true)}>Assign User</Button>
+      <div className="shrink-0">
+        <Button 
+          onClick={handleOpenAssignModal}
+          disabled={!projectId}
+        >
+          <UserPlus className="mr-2" size={16} />
+          Assign User
+        </Button>
+      </div>
 
-      <AssignUsersDialog
-        open={assignDialogOpen}
-        onOpenChange={setAssignDialogOpen}
-        initialSelected={assignedUsers}
-        onAssign={(ids) => {
-          setAssignedUsers(ids)
-          setAssignDialogOpen(false)
-        }}
-      />
+      <div className="flex-1 min-h-0 bg-slate-900 border border-white/10 rounded-md overflow-hidden">
+        {loading ? (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="animate-spin text-slate-400" size={24} />
+          </div>
+        ) : (
+          <AgTable 
+            rowData={accessList} 
+            columnDefs={columns} 
+            height="100%" 
+          />
+        )}
+      </div>
 
-      <AgTable rowData={rows} columnDefs={columns} height="auto" />
-
-      <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
-        <DialogContent className="sm:max-w-[900px]">
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="max-w-md border-white/10 bg-slate-950 text-slate-100">
           <DialogHeader>
-            <DialogTitle>Invoice preview</DialogTitle>
+            <DialogTitle className="text-slate-100">Assign Users to Proforma</DialogTitle>
           </DialogHeader>
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+            <Input
+              placeholder="Search project users..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="border-white/10 bg-slate-900 pl-9 text-slate-100 placeholder:text-slate-500"
+            />
+          </div>
 
-          {selectedInvoice ? (
-            <div className="max-h-[70vh] overflow-auto border border-input bg-white p-6">
-              <div className="flex items-start justify-between gap-6">
-                <div>
-                  <h2 className="text-lg font-semibold">INVOICE</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Sample document preview
-                  </p>
-                </div>
-                <div className="text-right text-sm">
-                  <div>
-                    <span className="font-medium">Invoice Number:</span>{" "}
-                    {selectedInvoice.invoiceNumber}
-                  </div>
-                  <div>
-                    <span className="font-medium">Invoice Date:</span>{" "}
-                    {selectedInvoice.date}
-                  </div>
-                  <div>
-                    <span className="font-medium">Paid:</span>{" "}
-                    {selectedInvoice.paid ? "Yes" : "No"}
-                  </div>
-                  <div>
-                    <span className="font-medium">
-                      Date of confirmed payment:
-                    </span>{" "}
-                    {selectedInvoice.paymentDate || "-"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="my-6 h-px bg-border" />
-
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 text-left font-medium">Description</th>
-                    <th className="py-2 text-right font-medium">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-border/60">
-                    <td className="py-3">Work completed (sample)</td>
-                    <td className="py-3 text-right">{selectedInvoice.value}</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td className="py-3 text-right font-semibold">Total</td>
-                    <td className="py-3 text-right font-semibold">
-                      {selectedInvoice.value}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+          {usersLoading ? (
+            <div className="flex h-32 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
             </div>
-          ) : null}
+          ) : filteredModalUsers.length === 0 ? (
+            <div className="flex h-32 items-center justify-center text-sm text-slate-500">
+              No users found assigned to this project.
+            </div>
+          ) : (
+            <div className="max-h-[300px] space-y-2 overflow-y-auto pr-2">
+              {filteredModalUsers.map((u) => {
+                const isSelected = selectedUserIds.includes(u.id)
+                // If they are already in the list (before this modal opened), we disable unchecking them here. 
+                // They must use the trash icon to delete.
+                const isExisting = accessList.some(a => a.user.id === u.id)
+                
+                return (
+                  <label
+                    key={u.id}
+                    className="flex cursor-pointer items-center justify-between rounded border border-white/5 bg-white/5 p-3 hover:bg-white/10"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={isSelected}
+                        disabled={isExisting}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedUserIds([...selectedUserIds, u.id])
+                          } else {
+                            setSelectedUserIds(selectedUserIds.filter(id => id !== u.id))
+                          }
+                        }}
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-slate-200">
+                          {u.name}
+                        </span>
+                        {u.email && (
+                          <span className="text-xs text-slate-400">
+                            {u.email}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isExisting && (
+                      <span className="text-xs text-slate-500">Already assigned</span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
 
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setAssignDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignSubmit}
+              disabled={usersLoading}
+            >
+              Confirm Assignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-sm border-white/10 bg-slate-950 text-slate-100">
+          <DialogHeader>
+            <DialogTitle className="text-slate-100">Remove Access</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-slate-300">
+            Are you sure you want to remove this user's access?
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
-              type="button"
-              onClick={() => setInvoiceDialogOpen(false)}
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setUserToDelete(null)
+              }}
             >
-              Close
+              Cancel
             </Button>
             <Button
-              type="button"
-              onClick={() => {
-                if (!selectedInvoice) return
-                downloadInvoiceDoc(selectedInvoice)
-              }}
-              disabled={!selectedInvoice}
+              variant="destructive"
+              onClick={confirmDelete}
             >
-              Download Invoice
+              Remove
             </Button>
           </DialogFooter>
         </DialogContent>

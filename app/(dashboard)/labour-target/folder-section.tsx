@@ -68,9 +68,9 @@ export function FolderSection({
       const d =
         sx === tx
           ? // Card is directly below label — straight vertical line
-            `M ${sx},${sy} L ${tx},${ty}`
+          `M ${sx},${sy} L ${tx},${ty}`
           : // L-shaped elbow connector
-            `M ${sx},${sy} L ${sx},${midY} L ${tx},${midY} L ${tx},${ty}`;
+          `M ${sx},${sy} L ${sx},${midY} L ${tx},${midY} L ${tx},${ty}`;
 
       newPaths.push({ d });
     });

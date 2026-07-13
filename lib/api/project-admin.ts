@@ -197,11 +197,14 @@ export type ApprovalConfigurationData = {
   action_type: string
   condition_value: string
   required_roles: string
+  toggle_states?: boolean[]
   is_active: boolean
 }
 
 export async function getApprovalConfigs(projectId: string): Promise<ApprovalConfigurationData[]> {
-  return apiRequest<ApprovalConfigurationData[]>(`/project-admin/projects/${projectId}/approval-configs/`)
+  return apiRequest<ApprovalConfigurationData[]>(`/project-admin/projects/${projectId}/approval-configs/`, {
+    cache: "no-store"
+  })
 }
 
 export async function updateApprovalConfigs(
@@ -211,5 +214,105 @@ export async function updateApprovalConfigs(
   return apiRequest<ApprovalConfigurationData[]>(`/project-admin/projects/${projectId}/approval-configs/`, {
     method: "PUT",
     body: payload,
+    cache: "no-store",
+  })
+}
+
+export type UserMinimalData = {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+}
+
+export type ProformaAccessData = {
+  id: string
+  user: UserMinimalData
+  is_active: boolean
+  created_at: string
+}
+
+export async function getProformaAccess(projectId: string): Promise<ProformaAccessData[]> {
+  return apiRequest<ProformaAccessData[]>(`/project-admin/projects/${projectId}/proforma-access/`, {
+    cache: "no-store"
+  })
+}
+
+export async function assignProformaAccess(
+  projectId: string,
+  userIds: string[]
+): Promise<ProformaAccessData[]> {
+  return apiRequest<ProformaAccessData[]>(`/project-admin/projects/${projectId}/proforma-access/`, {
+    method: "POST",
+    body: { user_ids: userIds },
+    cache: "no-store"
+  })
+}
+
+export async function updateProformaAccess(
+  projectId: string,
+  accessId: string,
+  isActive: boolean
+): Promise<ProformaAccessData> {
+  return apiRequest<ProformaAccessData>(`/project-admin/projects/${projectId}/proforma-access/${accessId}/`, {
+    method: "PATCH",
+    body: { is_active: isActive },
+    cache: "no-store"
+  })
+}
+
+export async function deleteProformaAccess(
+  projectId: string,
+  accessId: string
+): Promise<void> {
+  return apiRequest<void>(`/project-admin/projects/${projectId}/proforma-access/${accessId}/`, {
+    method: "DELETE",
+    cache: "no-store"
+  })
+}
+
+export type LoadingClearingAccessData = {
+  id: string
+  user: UserMinimalData
+  is_active: boolean
+  created_at: string
+}
+
+export async function getLoadingClearingAccess(projectId: string): Promise<LoadingClearingAccessData[]> {
+  return apiRequest<LoadingClearingAccessData[]>(`/project-admin/projects/${projectId}/loading-clearing-access/`, {
+    cache: "no-store"
+  })
+}
+
+export async function assignLoadingClearingAccess(
+  projectId: string,
+  userIds: string[]
+): Promise<LoadingClearingAccessData[]> {
+  return apiRequest<LoadingClearingAccessData[]>(`/project-admin/projects/${projectId}/loading-clearing-access/`, {
+    method: "POST",
+    body: { user_ids: userIds },
+    cache: "no-store"
+  })
+}
+
+export async function updateLoadingClearingAccess(
+  projectId: string,
+  accessId: string,
+  isActive: boolean
+): Promise<LoadingClearingAccessData> {
+  return apiRequest<LoadingClearingAccessData>(`/project-admin/projects/${projectId}/loading-clearing-access/${accessId}/`, {
+    method: "PATCH",
+    body: { is_active: isActive },
+    cache: "no-store"
+  })
+}
+
+export async function deleteLoadingClearingAccess(
+  projectId: string,
+  accessId: string
+): Promise<void> {
+  return apiRequest<void>(`/project-admin/projects/${projectId}/loading-clearing-access/${accessId}/`, {
+    method: "DELETE",
+    cache: "no-store"
   })
 }

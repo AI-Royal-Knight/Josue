@@ -6,7 +6,7 @@ export type Row = {
   labourTarget: string;
 };
 
-import type { SubfolderAssignment } from "@/lib/api/project-admin";
+import { SubfolderAssignment } from "@/lib/api/project-admin";
 
 export type Subfolder = {
   id: string;
@@ -19,12 +19,11 @@ export type FolderType = {
   id: string;
   name: string;
   subfolders: Subfolder[];
-  is_management?: boolean;
 };
 
 export type ModalState = {
   folderId: string;
-  subfolderId: string;
+  subfolderId: string | null;
 } | null;
 
 export type FocusedCell = {

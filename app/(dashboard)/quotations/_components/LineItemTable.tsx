@@ -1,6 +1,7 @@
 import { useRef, useCallback, KeyboardEvent, ClipboardEvent } from "react"
+import * as XLSX from "xlsx"
 import { LineItem, makeRow } from "./create-quotation-form"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, FileSpreadsheet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const COL_KEYS: (keyof Omit<LineItem, "id">)[] = [
@@ -36,6 +37,16 @@ const NUMERIC_COLS = new Set<keyof Omit<LineItem, "id">>([
   "each",
 ])
 
+// Fallback positional column mapping for Excel files without headers
+const POSITIONAL_COL_MAP: (keyof Omit<LineItem, "id">)[] = [
+  "description",
+  "qty",
+  "discount",
+  "per",
+  "each",
+  "comments",
+]
+
 function focusCell(
   tableRef: React.RefObject<HTMLTableElement | null>,
   row: number,
@@ -66,6 +77,116 @@ export function LineItemTable({
   onChange: (items: LineItem[]) => void
 }) {
   const tableRef = useRef<HTMLTableElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Import from Excel ─────────────────────────────────────────────────
+  const handleImportExcel = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        try {
+          const data = evt.target?.result
+          if (!data) return
+
+          const workbook = XLSX.read(data, { type: "array" })
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
+          const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
+            defval: "",
+          })
+
+          if (json.length === 0) return
+
+          // Build a column-mapping from the first row's keys
+          const headerKeys = Object.keys(json[0])
+
+          // Try to match Excel column headers to our field keys
+          const headerMap = new Map<number, keyof Omit<LineItem, "id">>()
+
+          // Check if the first row has meaningful headers by trying to match
+          const headerMatched = headerKeys.some(
+            (hk) =>
+              COL_HEADERS.description.toLowerCase().startsWith(hk.toLowerCase().slice(0, 6)) ||
+              hk.toLowerCase().includes("descript") ||
+              hk.toLowerCase().includes("qty") ||
+              hk.toLowerCase().includes("quant") ||
+              hk.toLowerCase().includes("disc") ||
+              hk.toLowerCase().includes("unit") ||
+              hk.toLowerCase().includes("price") ||
+              hk.toLowerCase().includes("each") ||
+              hk.toLowerCase().includes("comment")
+          )
+
+          if (headerMatched) {
+            // Map by header name
+            headerKeys.forEach((hk, idx) => {
+              const lower = hk.toLowerCase()
+              if (lower.includes("descript") || lower.includes("item")) {
+                headerMap.set(idx, "description")
+              } else if (lower.includes("qty") || lower.includes("quant")) {
+                headerMap.set(idx, "qty")
+              } else if (lower.includes("disc")) {
+                headerMap.set(idx, "discount")
+              } else if (lower.includes("unit") || lower.includes("per")) {
+                headerMap.set(idx, "per")
+              } else if (lower.includes("price") || lower.includes("each") || lower.includes("rate")) {
+                headerMap.set(idx, "each")
+              } else if (lower.includes("comment")) {
+                headerMap.set(idx, "comments")
+              }
+            })
+          }
+
+          // `sheet_to_json` already uses the first row as column headers,
+          // so the JSON array starts at the first data row (index 0).
+          const imported: LineItem[] = []
+
+          for (let ri = 0; ri < json.length; ri++) {
+            const row = json[ri]
+            if (!row) continue
+            const cellKeys = Object.keys(row)
+
+            const newItem = makeRow()
+
+            if (headerMap.size > 0) {
+              // Use header-based mapping
+              cellKeys.forEach((ck, idx) => {
+                const field = headerMap.get(idx)
+                if (field) {
+                  newItem[field] = String(row[ck] ?? "").trim()
+                }
+              })
+            } else {
+              // Fall back to positional mapping
+              cellKeys.forEach((ck, idx) => {
+                if (idx < POSITIONAL_COL_MAP.length) {
+                  newItem[POSITIONAL_COL_MAP[idx]] = String(row[ck] ?? "").trim()
+                }
+              })
+            }
+
+            // Only add if at least the description is filled
+            if (newItem.description || newItem.qty || newItem.each) {
+              imported.push(newItem)
+            }
+          }
+
+          if (imported.length > 0) {
+            onChange(imported)
+          }
+        } catch (err) {
+          console.error("Excel import failed:", err)
+        }
+      }
+      reader.readAsArrayBuffer(file)
+
+      // Reset input so the same file can be re-imported
+      e.target.value = ""
+    },
+    [onChange]
+  )
 
   const updateCell = useCallback(
     (id: string, key: keyof Omit<LineItem, "id">, value: string) => {
@@ -242,10 +363,10 @@ export function LineItemTable({
                   <td className="px-3 py-2 text-right text-sm text-slate-300 tabular-nums">
                     {hasValue ? (
                       <span className="text-emerald-400">
-                        ${lineTotal.toFixed(2)}
+                        £{lineTotal.toFixed(2)}
                       </span>
                     ) : (
-                      <span className="text-slate-600">$</span>
+                      <span className="text-slate-600">£</span>
                     )}
                   </td>
                   {/* Delete button */}
@@ -273,7 +394,7 @@ export function LineItemTable({
                 TOTAL
               </td>
               <td className="px-3 py-2 text-right text-sm font-semibold text-emerald-400 tabular-nums">
-                ${total.toFixed(2)}
+                £{total.toFixed(2)}
               </td>
               <td />
             </tr>
@@ -281,16 +402,37 @@ export function LineItemTable({
         </table>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={addRow}
-        className="border-white/10 bg-transparent text-xs text-slate-300 hover:bg-white/5"
-      >
-        <Plus className="size-3.5" />
-        Add Row
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addRow}
+          className="border-white/10 bg-transparent text-xs text-slate-300 hover:bg-white/5"
+        >
+          <Plus className="size-3.5" />
+          Add Row
+        </Button>
+
+        {/* Import from Excel */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="sr-only"
+          onChange={handleImportExcel}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          className="border-emerald-700/40 bg-emerald-950/20 text-xs text-emerald-300 hover:bg-emerald-950/40 hover:text-emerald-200"
+        >
+          <FileSpreadsheet className="size-3.5" />
+          Import from Excel
+        </Button>
+      </div>
     </div>
   )
 }

@@ -265,6 +265,7 @@ export default function Page() {
     fd.append('title', data.title)
     fd.append('date', data.date)
     if (data.reviewDate) fd.append('review_date', data.reviewDate)
+    if (data.description) fd.append('description', data.description)
     if (data.attachment) fd.append('attachment', data.attachment)
     try {
       const created = await createRAMS(fd)
@@ -283,6 +284,7 @@ export default function Page() {
     fd.append('project_id', data.assignToProject)
     fd.append('title', data.title)
     fd.append('date', data.date)
+    if (data.description) fd.append('description', data.description)
     if (data.attachment) fd.append('attachment', data.attachment)
     try {
       const created = await createDailyBriefing(fd)
@@ -301,6 +303,7 @@ export default function Page() {
     fd.append('project_id', data.assignToProject)
     fd.append('title', data.title)
     fd.append('date', data.date)
+    if (data.description) fd.append('description', data.description)
     if (data.attachment) fd.append('attachment', data.attachment)
     try {
       const created = await createToolboxTalk(fd)
@@ -320,6 +323,7 @@ export default function Page() {
         project_id: data.project,
         title: data.title,
         date: data.date,
+        description: data.description,
         completion_date: data.completionDate,
         assign_user: data.assignUser
       })

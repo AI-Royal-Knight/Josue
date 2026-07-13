@@ -75,7 +75,10 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
+      <DialogContent 
+        className="max-h-[92vh] max-w-5xl overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Create Variation</DialogTitle>
           <DialogDescription>
