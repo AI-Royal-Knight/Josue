@@ -13,7 +13,11 @@ import {
 } from "@/hooks/use-file-upload";
 import { Button } from "@/components/ui/button";
 
-export default function FileUpload() {
+export default function FileUpload({
+  onFilesChange,
+}: {
+  onFilesChange?: (files: any) => void;
+} = {}) {
   const maxSize = 10 * 1024 * 1024; // 10MB default
 
   const [
@@ -29,6 +33,7 @@ export default function FileUpload() {
     },
   ] = useFileUpload({
     maxSize,
+    onFilesChange,
   });
 
   const file = files[0];

@@ -52,6 +52,7 @@ export type CreateVariationPayload = {
     material: number
     qty: number
   }[]
+  evidence?: File | null
 }
 
 // ── API Functions ──────────────────────────────────────────────────────────
@@ -64,9 +65,20 @@ export async function getVariations(projectId?: string): Promise<{ variations: V
 }
 
 export async function createVariation(data: CreateVariationPayload): Promise<VariationApi> {
+  const fd = new FormData()
+  fd.append("project_id", data.project_id)
+  fd.append("site_instruction_no", data.site_instruction_no)
+  fd.append("attention_of", data.attention_of)
+  fd.append("description_of_works", data.description_of_works)
+  fd.append("comments", data.comments)
+  fd.append("lines", JSON.stringify(data.lines))
+  if (data.evidence) {
+    fd.append("evidence", data.evidence)
+  }
+
   return apiRequest("/commercial/variations/", {
     method: "POST",
-    body: data,
+    body: fd,
   })
 }
 

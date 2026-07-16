@@ -126,7 +126,7 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
 
             <div className="space-y-1">
               <label className="text-xs text-slate-400">Evidence</label>
-              <FileUpload />
+              <FileUpload onFilesChange={(files) => setForm(f => ({ ...f, evidence: files[0]?.file || null }))} />
             </div>
           </div>
 

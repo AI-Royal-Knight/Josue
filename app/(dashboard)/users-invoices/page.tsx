@@ -21,12 +21,14 @@ import ViewInvoiceDialog, {
 } from "@/components/common/view-invoice-dialog"
 import { useRoleStore } from "@/lib/role-store"
 import { getUserInvoices, approveUserInvoice, commentUserInvoice, UserInvoiceApi } from "@/lib/api/user-invoices"
+import { getApprovalConfigs, type ApprovalConfigurationData } from "@/lib/api/project-admin"
 import { toast } from "sonner"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ApprovalField =
   | "supervisorApproved"
+  | "managerApproved"
   | "contractsManagerApproved"
   | "projectDirectorApproved"
   | "managingDirectorApproved"
@@ -100,24 +102,32 @@ export default function Page() {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<InvoicePreviewData | null>(null)
 
+  const [config, setConfig] = useState<ApprovalConfigurationData | null>(null)
+
   const role = useRoleStore((s) => s.role)
-  const isSupervisor = role === "supervisor" || role === "managers"
+  const isSupervisor = role === "supervisor"
+  const isManager = role === "managers" || role === "manager"
   const isContractsManager = role === "contracts_manager"
   const isProjectDirector = role === "project_director"
   const isManagingDirector = role === "managing_director"
   const isCommercialDepartment = role === "commercial_department"
 
-  // Fetch invoices when project changes
+  // Fetch invoices and config when project changes
   useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-        const res = await getUserInvoices(
-          selectedProject && selectedProject !== "none"
-            ? { project_id: selectedProject }
-            : undefined
-        )
-        setRows(res.invoices)
+        const hasProject = selectedProject && selectedProject !== "none"
+        const [invRes, configs] = await Promise.all([
+          getUserInvoices(hasProject ? { project_id: selectedProject } : undefined),
+          hasProject ? getApprovalConfigs(selectedProject).catch(() => []) : Promise.resolve([]),
+        ])
+        
+        setRows(invRes.invoices)
+        
+        // Find config for user_invoice
+        const userInvoiceConfig = configs.find(c => c.action_type === "user_invoice") || null
+        setConfig(userInvoiceConfig)
       } catch (e) {
         console.error("Failed to load invoices", e)
         toast.error("Failed to load invoices")
@@ -184,6 +194,16 @@ export default function Page() {
   const approvedCount = rows.filter((r) => r.fullyApproved).length
   const pendingCount = rows.filter((r) => !r.fullyApproved).length
 
+  const isRoleRequired = useCallback((roleKey: string, row: UserInvoiceApi) => {
+    if (!config) return true // fallback to required if no config
+    if (!config.required_roles.includes(roleKey)) return false
+
+    let threshold = config.role_thresholds?.[roleKey]
+    if (threshold === undefined) threshold = 1 // default to 1 if no budget set
+
+    return row.totalRaw > threshold
+  }, [config])
+
   const columns = useMemo<ColDef<UserInvoiceApi>[]>(() => {
     const cols: ColDef<UserInvoiceApi>[] = [
       {
@@ -226,11 +246,11 @@ export default function Page() {
       },
       { headerName: "Created By", field: "createdBy", minWidth: 140 },
 
-      // ── Signature 1: Supervisor / Manager ───────────────────────────────
+      // ── Signature 1: Supervisor ───────────────────────────────
       {
-        headerName: "Supervisor / Manager",
+        headerName: "Supervisor",
         colId: "sig_supervisor",
-        minWidth: 180,
+        minWidth: 150,
         cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
@@ -242,14 +262,42 @@ export default function Page() {
               canToggle={isSupervisor}
               isDisabled={false}
               onRequest={(field, next) =>
-                requestSignatureToggle(row, field, next, "Supervisor / Manager")
+                requestSignatureToggle(row, field, next, "Supervisor")
               }
             />
           )
         },
       },
 
-      // ── Signature 2: Contracts Manager ──────────────────────────────────
+      // ── Signature 2: Manager ───────────────────────────────
+      {
+        headerName: "Manager",
+        colId: "sig_manager",
+        minWidth: 150,
+        cellRenderer: (params: { data?: UserInvoiceApi }) => {
+          const row = params.data
+          if (!row) return null
+          if (!isRoleRequired("manager", row)) {
+            return <span className="text-[11px] italic text-slate-500">N/A</span>
+          }
+          const prerequisiteMet = row.supervisorApproved
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="managerApproved"
+              dateField="managerApprovedDate"
+              canToggle={isManager}
+              isDisabled={!prerequisiteMet}
+              disabledReason="Supervisor must approve first"
+              onRequest={(field, next) =>
+                requestSignatureToggle(row, field, next, "Manager")
+              }
+            />
+          )
+        },
+      },
+
+      // ── Signature 3: Contracts Manager ──────────────────────────────────
       {
         headerName: "Contracts Manager",
         colId: "sig_contracts_manager",
@@ -257,7 +305,10 @@ export default function Page() {
         cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
-          const prerequisiteMet = row.supervisorApproved
+          if (!isRoleRequired("contracts_manager", row)) {
+            return <span className="text-[11px] italic text-slate-500">N/A</span>
+          }
+          const prerequisiteMet = row.supervisorApproved && (!isRoleRequired("manager", row) || row.managerApproved)
           return (
             <ApprovalToggleCell
               row={row}
@@ -265,7 +316,7 @@ export default function Page() {
               dateField="contractsManagerApprovedDate"
               canToggle={isContractsManager}
               isDisabled={!prerequisiteMet}
-              disabledReason="Supervisor must approve first"
+              disabledReason="Prior approvals required"
               onRequest={(field, next) =>
                 requestSignatureToggle(row, field, next, "Contracts Manager")
               }
@@ -274,7 +325,7 @@ export default function Page() {
         },
       },
 
-      // ── Signature 3: Project Director ───────────────────────────────────
+      // ── Signature 4: Project Director ───────────────────────────────────
       {
         headerName: "Project Director",
         colId: "sig_project_director",
@@ -282,9 +333,14 @@ export default function Page() {
         cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
-          const firstTwoSigned =
-            row.supervisorApproved && row.contractsManagerApproved
-          if (!firstTwoSigned) {
+          if (!isRoleRequired("project_director", row)) {
+            return <span className="text-[11px] italic text-slate-500">N/A</span>
+          }
+          const priorSigned =
+            row.supervisorApproved &&
+            (!isRoleRequired("manager", row) || row.managerApproved) &&
+            (!isRoleRequired("contracts_manager", row) || row.contractsManagerApproved)
+          if (!priorSigned) {
             return (
               <span className="text-[11px] italic text-slate-600">
                 Awaiting prior approvals
@@ -306,7 +362,7 @@ export default function Page() {
         },
       },
 
-      // ── Signature 4: Managing Director ──────────────────────────────────
+      // ── Signature 5: Managing Director ──────────────────────────────────
       {
         headerName: "Managing Director",
         colId: "sig_managing_director",
@@ -314,11 +370,15 @@ export default function Page() {
         cellRenderer: (params: { data?: UserInvoiceApi }) => {
           const row = params.data
           if (!row) return null
-          const allThreeSigned =
+          if (!isRoleRequired("managing_director", row)) {
+            return <span className="text-[11px] italic text-slate-500">N/A</span>
+          }
+          const priorSigned =
             row.supervisorApproved &&
-            row.contractsManagerApproved &&
-            row.projectDirectorApproved
-          if (!allThreeSigned) {
+            (!isRoleRequired("manager", row) || row.managerApproved) &&
+            (!isRoleRequired("contracts_manager", row) || row.contractsManagerApproved) &&
+            (!isRoleRequired("project_director", row) || row.projectDirectorApproved)
+          if (!priorSigned) {
             return (
               <span className="text-[11px] italic text-slate-600">
                 Awaiting prior approvals
@@ -409,7 +469,9 @@ export default function Page() {
   }, [
     openInvoice,
     requestSignatureToggle,
+    isRoleRequired,
     isSupervisor,
+    isManager,
     isContractsManager,
     isProjectDirector,
     isManagingDirector,

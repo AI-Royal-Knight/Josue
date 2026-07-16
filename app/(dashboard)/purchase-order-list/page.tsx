@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { parsePOPDF, generateBrandedPOPDF } from "@/lib/api/purchase-order-pdf"
+import type { ParsedPOData } from "@/lib/api/purchase-order-pdf"
 import type { ColDef } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import { Button } from "@/components/ui/button"
@@ -15,6 +17,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useFileUpload } from "@/hooks/use-file-upload"
 import ViewPODialog from "./_components/ViewPODialog"
 import type { POPreviewData } from "./_components/ViewPODialog"
@@ -27,9 +36,11 @@ import {
   CheckCircle2,
   AlertCircleIcon,
   XIcon,
+  Download,
 } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
+import { getQuotations, ProcurementProject, createQuotation, type QuotationLineItem } from "@/lib/api/quotations"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +64,7 @@ type PurchaseOrderRow = {
   approvalRelatedRequests: string
   sourceFile?: string
   sourceFileUrl?: string
+  lineItems?: QuotationLineItem[]
 }
 
 type POFormData = {
@@ -82,23 +94,18 @@ const nextRef = (rows: PurchaseOrderRow[]) => {
 const nextNo = (rows: PurchaseOrderRow[]) =>
   String(rows.reduce((m, r) => Math.max(m, parseInt(r.no, 10) || 0), 0) + 1)
 
-/** Simulates reading a PDF quote. Replace with a real AI/OCR call in production. */
-async function parsePDFQuote(file: File): Promise<POFormData> {
-  await new Promise((r) => setTimeout(r, 1800))
-  const hint = file.name
-    .replace(/\.(pdf)$/i, "")
-    .replace(/[-_]/g, " ")
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ")
+/** Calls the real backend to parse a supplier PDF. */
+async function parsePDFQuote(file: File): Promise<POFormData & { _parsed?: ParsedPOData }> {
+  const data = await parsePOPDF(file)
   return {
-    supplierName: hint || "Supplier Ltd",
+    supplierName: data.supplier_name || "",
     supplierEmail: "",
-    project: "",
+    project: data.job_site_ref || "",
     mainFolder: "",
     subFolder: "",
-    variationRef: "",
-    quoteTotal: "",
+    variationRef: data.quotation_number || "",
+    quoteTotal: data.grand_total || "",
+    _parsed: data,
   }
 }
 
@@ -221,8 +228,6 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
   },
 ]
 
-const summaryMetrics = [{ label: "PO", value: "£2,550,000" }]
-
 // ─── Create PO Dialog ─────────────────────────────────────────────────────────
 
 type Step = "drop" | "parsing" | "review"
@@ -231,19 +236,23 @@ function CreatePODialog({
   rows,
   onCreated,
   onClose,
+  selectedProject,
 }: {
   rows: PurchaseOrderRow[]
-  onCreated: (row: PurchaseOrderRow) => void
+  onCreated: () => void
   onClose: () => void
+  selectedProject: ProcurementProject | null
 }) {
   const [step, setStep] = useState<Step>("drop")
   const [parseError, setParseError] = useState<string | null>(null)
   const [sourceFile, setSourceFile] = useState("")
   const [sourceFileUrl, setSourceFileUrl] = useState("")
+  const [parsedData, setParsedData] = useState<ParsedPOData | null>(null)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
   const [form, setForm] = useState<POFormData>({
     supplierName: "",
     supplierEmail: "",
-    project: "",
+    project: selectedProject?.project_name || "",
     mainFolder: "",
     subFolder: "",
     variationRef: "",
@@ -274,44 +283,75 @@ function CreatePODialog({
     setParseError(null)
     try {
       const extracted = await parsePDFQuote(droppedFile)
-      setForm(extracted)
+      const { _parsed, ...formFields } = extracted as POFormData & { _parsed?: ParsedPOData }
+      setForm(prev => ({ ...formFields, project: prev.project }))
+      if (_parsed) setParsedData(_parsed)
       setSourceFile(droppedFile.name)
       setSourceFileUrl(URL.createObjectURL(droppedFile))
       setStep("review")
-    } catch {
-      setParseError(
-        "Could not extract data — please fill in the fields manually."
-      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not extract data — please fill in the fields manually."
+      setParseError(msg)
       setSourceFile(droppedFile.name)
       setSourceFileUrl(URL.createObjectURL(droppedFile))
       setStep("review")
     }
   }, [droppedFile])
 
-  const handleCreate = () => {
-    const newRow: PurchaseOrderRow = {
-      no: nextNo(rows),
-      quotationRef: nextRef(rows),
-      project: form.project,
-      mainFolder: form.mainFolder,
-      subFolder: form.subFolder,
-      variationRef: form.variationRef || "-",
-      supplierName: form.supplierName,
-      supplierEmail: form.supplierEmail,
-      dateOfQuoteApproved: today(),
-      quoteTotal: form.quoteTotal,
-      createPo: "PO Created",
-      datePOCreated: today(),
-      sendReminder: "Reminder",
-      procurementComments: "",
-      requestToReQuote: "Re-quote",
-      approvalQuotation: "Pending",
-      approvalRelatedRequests: "-",
-      sourceFile,
-      sourceFileUrl,
+  const handleDownloadBrandedPDF = useCallback(async () => {
+    if (!parsedData) return
+    setGeneratingPdf(true)
+    try {
+      const blob = await generateBrandedPOPDF(parsedData)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `PO_${parsedData.quotation_number || "export"}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error("Failed to generate branded PDF:", err)
+    } finally {
+      setGeneratingPdf(false)
     }
-    onCreated(newRow)
-    onClose()
+  }, [parsedData])
+
+  const handleCreate = async () => {
+    if (!selectedProject) return
+    const mainFolderId = selectedProject.folders.find(f => f.name === form.mainFolder)?.id
+    const subFolderId = selectedProject.folders.find(f => f.name === form.mainFolder)?.subfolders.find(sf => sf.name === form.subFolder)?.id
+
+    try {
+      await createQuotation({
+        project: selectedProject.id,
+        main_folder: mainFolderId,
+        sub_folder: subFolderId,
+        variation_ref: form.variationRef,
+        supplier_name: form.supplierName,
+        supplier_email: form.supplierEmail,
+        quote_total: parseFloat(form.quoteTotal.replace(/[^0-9.-]+/g, "")) || 0,
+        status: "Pending",
+        po_created: true,
+        line_items: parsedData?.line_items.map((li) => {
+          const qty = parseFloat(li.quantity.replace(/[^0-9.-]+/g, "")) || 0
+          const discount = parseFloat(li.discount.replace(/[^0-9.-]+/g, "")) || 0
+          const each = parseFloat(li.unit_price.replace(/[^0-9.-]+/g, "")) || 0
+          return {
+            description: li.description,
+            qty: Number(qty.toFixed(2)),
+            discount: Number(discount.toFixed(2)),
+            per: "EA",
+            each: Number(each.toFixed(2)),
+            comments: ""
+          }
+        }) || []
+      } as any) // as any since we pass supplier_name to the backend to resolve
+      onCreated()
+      onClose()
+    } catch (err) {
+      console.error("Failed to create PO:", err)
+      alert("Failed to create PO. Check console for details.")
+    }
   }
 
   const field = (
@@ -505,10 +545,37 @@ function CreatePODialog({
                   "e.g. sales@supplier.com",
                   true
                 )}
-                {field("Project", "project", "e.g. Downtown Tower A", true)}
+                <div className="flex flex-col gap-1 col-span-2">
+                  <label>Project</label>
+                  <Input value={form.project} readOnly className="bg-[#0e1a30] text-slate-400 cursor-not-allowed" />
+                </div>
                 {field("Quote Total", "quoteTotal", "e.g. £45,000.00", true)}
-                {field("Main Folder", "mainFolder", "e.g. Structural", true)}
-                {field("Sub Folder", "subFolder", "e.g. Concrete", true)}
+                <div className="flex flex-col gap-1">
+                  <label>Main Folder</label>
+                  <Select value={form.mainFolder} onValueChange={(val) => setForm(prev => ({ ...prev, mainFolder: val, subFolder: "" }))}>
+                    <SelectTrigger className="bg-[#0a1428]">
+                      <SelectValue placeholder="Select folder" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedProject?.folders?.map(f => (
+                        <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label>Sub Folder</label>
+                  <Select value={form.subFolder} onValueChange={(val) => setForm(prev => ({ ...prev, subFolder: val }))}>
+                    <SelectTrigger className="bg-[#0a1428]">
+                      <SelectValue placeholder="Select sub folder" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedProject?.folders?.find(f => f.name === form.mainFolder)?.subfolders?.map(sf => (
+                        <SelectItem key={sf.id} value={sf.name}>{sf.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {field(
                   "Variation Ref",
                   "variationRef",
@@ -522,6 +589,42 @@ function CreatePODialog({
                 Source:{" "}
                 <span className="ml-1 text-slate-400">{sourceFile}</span>
               </div>
+
+              {parsedData && parsedData.line_items.length > 0 && (
+                <div className="rounded border border-[#1e3a5f]/50 bg-[#071020] p-3">
+                  <p className="mb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                    Extracted Line Items ({parsedData.line_items.length})
+                  </p>
+                  <div className="max-h-36 overflow-y-auto">
+                    <table className="w-full text-[10px] text-slate-300">
+                      <thead>
+                        <tr className="border-b border-[#1e3a5f]/60">
+                          <th className="py-1 text-left text-slate-500">Cat No</th>
+                          <th className="py-1 text-left text-slate-500">Description</th>
+                          <th className="py-1 text-right text-slate-500">Qty</th>
+                          <th className="py-1 text-right text-slate-500">Unit £</th>
+                          <th className="py-1 text-right text-slate-500">Total £</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsedData.line_items.map((item, i) => (
+                          <tr key={i} className="border-b border-[#1e3a5f]/30">
+                            <td className="py-0.5 font-mono text-[9px] text-slate-500">{item.cat_no}</td>
+                            <td className="py-0.5">{item.description}</td>
+                            <td className="py-0.5 text-right tabular-nums">{item.quantity}</td>
+                            <td className="py-0.5 text-right tabular-nums">{item.unit_price}</td>
+                            <td className="py-0.5 text-right tabular-nums text-emerald-400">{item.total_value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between border-t border-[#1e3a5f]/60 pt-1.5">
+                    <span className="text-[10px] text-slate-500">Grand Total</span>
+                    <span className="text-[12px] font-bold text-emerald-400">{parsedData.grand_total}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -552,6 +655,19 @@ function CreatePODialog({
               <Button variant="outline" onClick={() => setStep("drop")}>
                 ← Back
               </Button>
+              {parsedData && (
+                <Button
+                  variant="outline"
+                  onClick={() => void handleDownloadBrandedPDF()}
+                  disabled={generatingPdf}
+                  className="border-blue-800/60 text-blue-300 hover:bg-blue-900/20"
+                >
+                  {generatingPdf
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <Download className="mr-2 h-4 w-4" />}
+                  {generatingPdf ? "Generating…" : "Download Branded PDF"}
+                </Button>
+              )}
               <Button
                 onClick={handleCreate}
                 disabled={!form.supplierName.trim()}
@@ -571,11 +687,49 @@ function CreatePODialog({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Page() {
-  const [data, setData] = useState<PurchaseOrderRow[]>(INITIAL_DATA)
+  const [data, setData] = useState<PurchaseOrderRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewPO, setViewPO] = useState<POPreviewData | null>(null)
+  const [selectedProject, setSelectedProject] = useState<ProcurementProject | null>(null)
 
   const role = useRoleStore((state) => state.role)
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const res = await getQuotations()
+      const mapped: PurchaseOrderRow[] = res.map((q, index) => ({
+        no: String(index + 1),
+        quotationRef: q.quote_ref || "",
+        project: q.project_name || "",
+        mainFolder: q.main_folder_name || "-",
+        subFolder: q.sub_folder_name || "-",
+        variationRef: q.variation_ref || "-",
+        supplierName: q.supplier_name || "",
+        supplierEmail: q.supplier_email || "",
+        dateOfQuoteApproved: q.date_of_quote || "",
+        quoteTotal: `£${q.quote_total}`,
+        createPo: q.po_created ? "PO Created" : "Create PO",
+        datePOCreated: q.date_po_created || "-",
+        sendReminder: "Reminder",
+        procurementComments: q.procurement_comments || "",
+        requestToReQuote: "Re-quote",
+        approvalQuotation: q.status || "Pending",
+        approvalRelatedRequests: q.quote_approval_reasons || "-",
+        lineItems: q.line_items || [],
+      }))
+      setData(mapped)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   const columns: ColDef<PurchaseOrderRow>[] = [
     { headerName: "No.", field: "no", maxWidth: 60, filter: false },
@@ -639,33 +793,61 @@ export default function Page() {
         <h2 className="text-2xl font-semibold">Purchase Order List</h2>
 
         {role === "procurement_department" && (
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => setDialogOpen(true)} disabled={!selectedProject}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Create PO
           </Button>
         )}
       </div>
 
-      <SelectProject />
-      <div className="flex items-end justify-between">
-        <TableStat summaryRows={summaryMetrics} />
-
-        <ExportCsvButton
-          rows={data}
-          columns={columns.map((col) => ({
-            header: col.headerName || String(col.field) || "",
-            field: col.field as keyof PurchaseOrderRow,
-          }))}
-          fileName="purchase_orders.csv"
-        />
-      </div>
-      <AgTable
-        rowData={data}
-        columnDefs={columns}
-        height="auto"
-        defaultColDef={{ flex: 1, minWidth: 150 }}
-        suppressCellClickAction
+      <SelectProject
+        onProjectSelect={(p) => setSelectedProject(p)}
       />
+
+      {/* FILTER DATA BY SELECTED PROJECT */}
+      {(() => {
+        const filteredData = selectedProject 
+          ? data.filter(r => r.project === selectedProject.project_name)
+          : []
+          
+        return (
+          <>
+            <div className="flex items-end justify-between">
+              <TableStat
+                summaryRows={[
+                  {
+                    label: "PO",
+                    value: `£${filteredData
+                      .reduce((acc, row) => {
+                        const val = parseFloat(row.quoteTotal.replace(/[^0-9.-]+/g, ""))
+                        return acc + (isNaN(val) ? 0 : val)
+                      }, 0)
+                      .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                  },
+                ]}
+              />
+
+              <ExportCsvButton
+                rows={filteredData}
+                columns={columns.map((col) => ({
+                  header: col.headerName || String(col.field) || "",
+                  field: col.field as keyof PurchaseOrderRow,
+                }))}
+                fileName="purchase_orders.csv"
+              />
+            </div>
+            
+            <AgTable
+              rowData={filteredData}
+              columnDefs={columns}
+              height="auto"
+              defaultColDef={{ flex: 1, minWidth: 150 }}
+              suppressCellClickAction
+              loading={loading}
+            />
+          </>
+        )
+      })()}
 
       {/* View PO details dialog */}
       <ViewPODialog
@@ -677,8 +859,9 @@ export default function Page() {
       {dialogOpen && (
         <CreatePODialog
           rows={data}
-          onCreated={handleCreated}
+          onCreated={fetchData}
           onClose={() => setDialogOpen(false)}
+          selectedProject={selectedProject}
         />
       )}
     </div>

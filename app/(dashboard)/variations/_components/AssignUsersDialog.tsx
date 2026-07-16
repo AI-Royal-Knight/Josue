@@ -16,6 +16,7 @@ type UserItem = {
   surname?: string
   email: string
   profession?: string
+  role?: string
 }
 
 type Props = {
@@ -57,7 +58,7 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
       setLoading(true)
       apiRequest<UserItem[]>("/account/users/")
         .then((data) => {
-          setUsers(data)
+          setUsers(data.filter(u => u.role === "employee"))
         })
         .catch((err) => {
           console.error("Failed to load users:", err)

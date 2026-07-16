@@ -197,6 +197,7 @@ export type ApprovalConfigurationData = {
   action_type: string
   condition_value: string
   required_roles: string
+  role_thresholds?: Record<string, number>
   toggle_states?: boolean[]
   is_active: boolean
 }

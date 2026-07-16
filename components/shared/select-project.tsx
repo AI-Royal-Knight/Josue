@@ -11,9 +11,10 @@ import { getProcurementProjects, ProcurementProject } from "@/lib/api/quotations
 type Props = {
   value?: string
   onChange?: (value: string) => void
+  onProjectSelect?: (project: ProcurementProject | null) => void
 }
 
-export default function SelectProject({ value, onChange }: Props) {
+export default function SelectProject({ value, onChange, onProjectSelect }: Props) {
   const [projects, setProjects] = useState<ProcurementProject[]>([])
   const [internalSelected, setInternalSelected] = useState<string>("")
   const [loading, setLoading] = useState(true)
@@ -27,6 +28,10 @@ export default function SelectProject({ value, onChange }: Props) {
     if (onChange) {
       onChange(newVal)
     }
+    if (onProjectSelect) {
+      const found = projects.find((p) => String(p.id) === newVal) ?? null
+      onProjectSelect(found)
+    }
   }
 
   useEffect(() => {
@@ -35,7 +40,9 @@ export default function SelectProject({ value, onChange }: Props) {
         setProjects(data)
         // Only set default if no value is provided and nothing is selected
         if (data.length > 0 && !value && !internalSelected) {
-          handleValueChange(String(data[0].id))
+          const first = data[0]
+          handleValueChange(String(first.id))
+          if (onProjectSelect) onProjectSelect(first)
         }
       })
       .catch(console.error)

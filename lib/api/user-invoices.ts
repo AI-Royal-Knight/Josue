@@ -20,6 +20,8 @@ export type UserInvoiceApi = {
   // Approval chain
   supervisorApproved: boolean
   supervisorApprovedDate: string
+  managerApproved: boolean
+  managerApprovedDate: string
   contractsManagerApproved: boolean
   contractsManagerApprovedDate: string
   projectDirectorApproved: boolean
@@ -89,5 +91,23 @@ export async function commentUserInvoice(
   return apiRequest(`/project-admin/user-invoices/${invoiceId}/commercial-comment/`, {
     method: "POST",
     body: { commercial_comments: commercialComments },
+  })
+}
+
+export async function getBucketItems(params?: {
+  project_id?: string
+}): Promise<{ invoices: UserInvoiceApi[]; total_count: number }> {
+  const qs = new URLSearchParams()
+  if (params?.project_id) qs.set("project_id", params.project_id)
+  const query = qs.toString() ? `?${qs.toString()}` : ""
+  return apiRequest(`/project-admin/bucket/${query}`)
+}
+
+export async function submitBucketItems(
+  invoiceIds: string[]
+): Promise<{ message: string }> {
+  return apiRequest(`/project-admin/bucket/submit/`, {
+    method: "POST",
+    body: { invoice_ids: invoiceIds },
   })
 }

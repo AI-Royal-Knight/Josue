@@ -25,6 +25,7 @@ export type VariationRow = {
   lines: VariationLine[]
   totalAmount: number
   evidence: string
+  evidence_url: string
   comments: string
   assignedUserIds: string[]
   approvalStatus: ApprovalStatus
@@ -40,4 +41,5 @@ export type VariationFormData = {
   descriptionOfWorks: string
   lines: VariationLine[]
   comments: string
+  evidence: File | null
 }

@@ -162,7 +162,7 @@ export const useFileUpload = (
         files: [],
       };
 
-      onFilesChange?.(newState.files);
+      setTimeout(() => onFilesChange?.(newState.files), 0);
       return newState;
     });
   }, [onFilesChange]);
@@ -240,7 +240,7 @@ export const useFileUpload = (
           const newFiles = !multiple
             ? validFiles
             : [...prev.files, ...validFiles];
-          onFilesChange?.(newFiles);
+          setTimeout(() => onFilesChange?.(newFiles), 0);
           return {
             ...prev,
             errors,
@@ -286,7 +286,7 @@ export const useFileUpload = (
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
-        onFilesChange?.(newFiles);
+        setTimeout(() => onFilesChange?.(newFiles), 0);
 
         return {
           ...prev,

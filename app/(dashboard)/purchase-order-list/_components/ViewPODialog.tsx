@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog"
 import { Download, Eye, FileText } from "lucide-react"
 import PdfViewerDialog from "@/components/common/pdf-viewer-dialog"
-import { generateSimplePdf } from "@/lib/generate-pdf"
+import { generateBrandedPOPDF, type ParsedPOData } from "@/lib/api/purchase-order-pdf"
+import type { QuotationLineItem } from "@/lib/api/quotations"
 
 export type POPreviewData = {
 
@@ -27,6 +28,7 @@ export type POPreviewData = {
     procurementComments: string
     approvalQuotation: string
     approvalRelatedRequests: string
+    lineItems?: QuotationLineItem[]
 }
 
 function buildPODocHtml(po: POPreviewData) {
@@ -91,28 +93,26 @@ export default function ViewPODialog({ open, onOpenChange, po }: Props) {
 
     const getPdf = useCallback(() => {
         if (!po) throw new Error("No PO data")
-        return generateSimplePdf({
-            title: "PURCHASE ORDER",
-            subtitle: `PO Ref: ${po.quotationRef}`,
-            headerFields: [
-                { label: "Project", value: po.project },
-                { label: "Status", value: po.approvalQuotation },
-                { label: "Date PO Created", value: po.datePOCreated || "-" },
-                { label: "Date Quote Approved", value: po.dateOfQuoteApproved || "-" },
-            ],
-            detailFields: [
-                { label: "Main Folder", value: po.mainFolder || "-" },
-                { label: "Sub Folder", value: po.subFolder || "-" },
-                { label: "Variation Ref", value: po.variationRef || "-" },
-                { label: "Supplier Name", value: po.supplierName },
-                { label: "Supplier Email", value: po.supplierEmail },
-                { label: "Approval Reasons", value: po.approvalRelatedRequests || "-" },
-                { label: "Procurement Comments", value: po.procurementComments || "-" },
-            ],
-            totalLabel: "PO Total",
-            totalValue: po.quoteTotal,
-            footer: "This is a generated purchase order document.",
-        })
+        const fakeParsed: ParsedPOData = {
+            supplier_name: po.supplierName,
+            supplier_address: "",
+            fao: "",
+            quotation_number: po.quotationRef,
+            your_ref: "",
+            job_site_ref: po.project,
+            quotation_date: po.dateOfQuoteApproved,
+            grand_total: String(po.quoteTotal),
+            raw_text: "",
+            line_items: po.lineItems?.map(li => ({
+                cat_no: "",
+                description: li.description,
+                discount: String(li.discount),
+                quantity: String(li.qty),
+                unit_price: String(li.each),
+                total_value: String((li.qty || 0) * (li.each || 0))
+            })) || []
+        }
+        return generateBrandedPOPDF(fakeParsed)
     }, [po])
 
     function downloadDoc() {

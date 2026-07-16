@@ -7,6 +7,7 @@ import TableStat from "@/components/common/table-stat"
 import type { ColDef } from "ag-grid-community"
 import { Switch } from "@/components/ui/switch"
 import { getVariations } from "@/lib/api/variations"
+import { File } from "lucide-react"
 
 type VariationSummaryRow = {
   no: string
@@ -45,6 +46,20 @@ const columns: ColDef<VariationSummaryRow>[] = [
   {
     headerName: "Evidence",
     field: "evidence",
+    cellRenderer: (params: { data: { evidence_url?: string }; value: string }) => {
+      if (params.data?.evidence_url) {
+        return (
+          <a href={params.data.evidence_url} target="_blank" rel="noopener noreferrer" className="p-2 inline-block text-blue-400 hover:text-blue-300">
+            <File size={18} />
+          </a>
+        )
+      }
+      return (
+        <div className="p-2 text-slate-500">
+          <File size={18} />
+        </div>
+      )
+    },
   },
   {
     headerName: "Date",

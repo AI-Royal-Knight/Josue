@@ -24,6 +24,7 @@ const ACTION_TYPES = [
   "Supplier Invoices",
   "Purchase orders",
   "Variations",
+  "User Clock in",
 ] as const
 
 type ActionType = (typeof ACTION_TYPES)[number]
@@ -31,37 +32,53 @@ type ActionType = (typeof ACTION_TYPES)[number]
 const ACTION_ROLES_MAP: Record<ActionType, { roleKey: string; roleName: string }[]> = {
   "User Invoices": [
     { roleKey: "supervisor", roleName: "Supervisor" },
+    { roleKey: "manager", roleName: "Manager" },
     { roleKey: "contracts_manager", roleName: "Contracts Manager" },
+    { roleKey: "project_director", roleName: "Project Director" },
+    { roleKey: "managing_director", roleName: "Managing Director" },
   ],
   "Proforma Nr Invoices": [
-    { roleKey: "supervisor", roleName: "Supervisor" },
+    { roleKey: "manager", roleName: "Manager" },
     { roleKey: "contracts_manager", roleName: "Contracts Manager" },
     { roleKey: "project_director", roleName: "Project Director" },
     { roleKey: "managing_director", roleName: "Managing Director" },
+    { roleKey: "commercial_department", roleName: "Commercial Manager" },
   ],
   "User Variations Invoices": [
-    { roleKey: "supervisor", roleName: "Supervisor" },
+    { roleKey: "manager", roleName: "Manager" },
     { roleKey: "contracts_manager", roleName: "Contracts Manager" },
     { roleKey: "project_director", roleName: "Project Director" },
     { roleKey: "managing_director", roleName: "Managing Director" },
+    { roleKey: "commercial_department", roleName: "Commercial Manager" },
   ],
   "Supplier Invoices": [
     { roleKey: "procurement_department", roleName: "Procurement" },
+    { roleKey: "manager", roleName: "Manager" },
+    { roleKey: "contracts_manager", roleName: "Contracts Manager" },
+    { roleKey: "project_director", roleName: "Project Director" },
     { roleKey: "managing_director", roleName: "Managing Director" },
+    { roleKey: "commercial_department", roleName: "Commercial Manager" },
   ],
   "Purchase orders": [
     { roleKey: "procurement_department", roleName: "Procurement" },
+    { roleKey: "contracts_manager", roleName: "Contracts Manager" },
+    { roleKey: "project_director", roleName: "Project Director" },
     { roleKey: "managing_director", roleName: "Managing Director" },
+    { roleKey: "commercial_department", roleName: "Commercial Manager" },
   ],
   Variations: [
     { roleKey: "commercial_department", roleName: "Commercial Manager" },
+    { roleKey: "contracts_manager", roleName: "Contracts Manager" },
     { roleKey: "project_director", roleName: "Project Director" },
+    { roleKey: "managing_director", roleName: "Managing Director" },
   ],
+  "User Clock in": [],
 }
 
 type ApprovalRule = {
   cause: string
   signatures: string[] // List of active role keys
+  roleThresholds: Record<string, number>
 }
 
 type ActionsConfig = Record<ActionType, ApprovalRule>
@@ -70,6 +87,7 @@ type ActionRow = {
   actionType: ActionType
   cause: string
   signatures: string[]
+  roleThresholds: Record<string, number>
 }
 
 const FRONTEND_TO_BACKEND_ACTION_TYPE: Record<ActionType, string> = {
@@ -79,6 +97,7 @@ const FRONTEND_TO_BACKEND_ACTION_TYPE: Record<ActionType, string> = {
   "Supplier Invoices": "supplier_invoice",
   "Purchase orders": "purchase_order",
   Variations: "variations",
+  "User Clock in": "user_clock_in",
 }
 
 const BACKEND_TO_FRONTEND_ACTION_TYPE: Record<string, ActionType> = Object.entries(
@@ -92,12 +111,13 @@ const BACKEND_TO_FRONTEND_ACTION_TYPE: Record<string, ActionType> = Object.entri
 )
 
 const DEFAULT_ACTIONS_CONFIG: ActionsConfig = {
-  "User Invoices": { cause: "", signatures: [] },
-  "Proforma Nr Invoices": { cause: "", signatures: [] },
-  "User Variations Invoices": { cause: "", signatures: [] },
-  "Supplier Invoices": { cause: "", signatures: [] },
-  "Purchase orders": { cause: "", signatures: [] },
-  Variations: { cause: "", signatures: [] },
+  "User Invoices": { cause: "", signatures: [], roleThresholds: {} },
+  "Proforma Nr Invoices": { cause: "", signatures: [], roleThresholds: {} },
+  "User Variations Invoices": { cause: "", signatures: [], roleThresholds: {} },
+  "Supplier Invoices": { cause: "", signatures: [], roleThresholds: {} },
+  "Purchase orders": { cause: "", signatures: [], roleThresholds: {} },
+  Variations: { cause: "", signatures: [], roleThresholds: {} },
+  "User Clock in": { cause: "", signatures: ["enabled"], roleThresholds: {} },
 }
 
 function cloneConfig(config: ActionsConfig): ActionsConfig {
@@ -105,40 +125,46 @@ function cloneConfig(config: ActionsConfig): ActionsConfig {
     next[actionType] = {
       cause: config[actionType].cause,
       signatures: [...config[actionType].signatures],
+      roleThresholds: { ...config[actionType].roleThresholds },
     }
     return next
   }, {} as ActionsConfig)
 }
 
-function CauseCell({ row, updateRule }: { row: ActionRow; updateRule: (type: ActionType, update: (current: ApprovalRule) => ApprovalRule) => void }) {
-  const [value, setValue] = useState(row.cause)
-  const [prevCause, setPrevCause] = useState(row.cause)
+function ThresholdInput({
+  initialValue,
+  onSave,
+}: {
+  initialValue: number | undefined
+  onSave: (val: number) => void
+}) {
+  const [value, setValue] = useState(initialValue !== undefined ? String(initialValue) : "1")
 
-  if (row.cause !== prevCause) {
-    setPrevCause(row.cause)
-    setValue(row.cause)
-  }
+  // Sync if the row data changes externally
+  useEffect(() => {
+    setValue(initialValue !== undefined ? String(initialValue) : "1")
+  }, [initialValue])
 
   return (
-    <div className="flex h-full min-w-[200px] items-center" data-cell-click-ignore>
-      <div className="relative z-40 w-full">
-        <Label className="sr-only">Cause</Label>
-        <Input
-          placeholder="Type cause or value..."
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={() => {
-            if (value !== row.cause) {
-              updateRule(row.actionType, (current) => ({
-                ...current,
-                cause: value,
-              }))
-            }
-          }}
-          className="bg-transparent text-xs"
-        />
-      </div>
-    </div>
+    <Input
+      type="number"
+      min="1"
+      className="h-6 w-16 px-1.5 text-[11px] font-medium text-right bg-slate-900/50 border-slate-700 focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => {
+        const valStr = value
+        const parsed = parseFloat(valStr)
+        const budget = isNaN(parsed) ? 1 : Math.max(1, parsed)
+        if (budget !== initialValue) {
+          onSave(budget)
+        }
+        // Always reset UI to the sanitized budget if they typed something invalid
+        if (isNaN(parsed) || parsed < 1) {
+          setValue(String(budget))
+        }
+      }}
+    />
   )
 }
 
@@ -169,12 +195,15 @@ export default function ActionsPage() {
           if (frontType) {
             newConfig[frontType] = {
               cause: item.condition_value || "",
-              signatures: item.required_roles
-                ? item.required_roles
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                : [],
+              signatures: item.action_type === "user_clock_in"
+                ? (item.is_active ? ["enabled"] : [])
+                : (item.required_roles
+                    ? item.required_roles
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    : []),
+              roleThresholds: item.role_thresholds || {},
             }
           }
         })
@@ -204,6 +233,7 @@ export default function ActionsPage() {
         actionType,
         cause: config[actionType].cause,
         signatures: config[actionType].signatures,
+        roleThresholds: config[actionType].roleThresholds,
       })),
     [config]
   )
@@ -217,26 +247,19 @@ export default function ActionsPage() {
         flex: 1.2,
         cellClass: "font-medium text-slate-100",
       },
+
       {
-        headerName: "Cause",
-        field: "cause",
-        minWidth: 240,
-        flex: 1.3,
+        headerName: "Signatures",
+        field: "signatures",
+        minWidth: 260,
+        flex: 1.5,
         cellRenderer: (params: { data?: ActionRow }) => {
           const row = params.data
           if (!row) return null
 
-          return <CauseCell row={row} updateRule={updateRule} />
-        },
-      },
-      {
-        headerName: "Signatures",
-        field: "signatures",
-        minWidth: 360,
-        flex: 2.3,
-        cellRenderer: (params: { data?: ActionRow }) => {
-          const row = params.data
-          if (!row) return null
+          if (row.actionType === "User Clock in") {
+            return <div className="text-xs text-slate-500 italic mt-4 px-2">N/A</div>
+          }
 
           // Find active roles
           const activeRoles = ACTION_ROLES_MAP[row.actionType].filter((r) =>
@@ -248,7 +271,7 @@ export default function ActionsPage() {
           }
 
           return (
-            <div className="relative z-30 min-w-[320px]" data-cell-click-ignore>
+            <div className="relative z-30 w-full" data-cell-click-ignore>
               <div className="flex flex-col gap-1 py-3">
                 {activeRoles.map((role) => {
                   const roleData = projectRoles.find((pr) => pr.role_key === role.roleKey)
@@ -256,14 +279,14 @@ export default function ActionsPage() {
 
                   if (users.length === 0) {
                     return (
-                      <span key={role.roleKey} className="text-[11px] text-slate-400">
+                      <span key={role.roleKey} className="text-[11px] text-slate-400 break-words whitespace-normal leading-snug">
                         Pending assignment ({role.roleName})
                       </span>
                     )
                   }
 
                   return (
-                    <span key={role.roleKey} className="text-xs text-slate-200 font-medium">
+                    <span key={role.roleKey} className="text-xs text-slate-200 font-medium break-words whitespace-normal leading-snug">
                       {users.map((u) => u.name).join(", ")}{" "}
                       <span className="text-[10px] text-slate-400 font-normal">
                         ({role.roleName})
@@ -279,11 +302,33 @@ export default function ActionsPage() {
       {
         headerName: "Toggles",
         field: "signatures",
-        minWidth: 240,
-        flex: 1.5,
+        minWidth: 340,
+        flex: 2.3,
         cellRenderer: (params: { data?: ActionRow }) => {
           const row = params.data
           if (!row) return null
+
+          if (row.actionType === "User Clock in") {
+            const isChecked = row.signatures.includes("enabled")
+            return (
+              <div className="flex flex-col gap-2 px-1 py-3" data-cell-click-ignore>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    size="sm"
+                    checked={isChecked}
+                    onCheckedChange={(checked) => {
+                      updateRule(row.actionType, (current) => {
+                        return { ...current, signatures: checked ? ["enabled"] : [] }
+                      })
+                    }}
+                  />
+                  <span className="text-[11px] font-medium leading-none whitespace-nowrap text-slate-200">
+                    Enable User Clock In
+                  </span>
+                </div>
+              </div>
+            )
+          }
 
           const availableRoles = ACTION_ROLES_MAP[row.actionType]
 
@@ -293,33 +338,49 @@ export default function ActionsPage() {
                 const roleData = projectRoles.find((pr) => pr.role_key === role.roleKey)
                 const hasUsers = roleData && roleData.users.length > 0
                 const isChecked = row.signatures.includes(role.roleKey)
+                const threshold = row.roleThresholds?.[role.roleKey]
 
                 return (
-                  <div key={role.roleKey} className="flex items-center gap-1.5">
+                  <div key={role.roleKey} className="flex items-center gap-2">
                     <Switch
                       size="sm"
                       checked={isChecked}
-                      disabled={!hasUsers}
-                      onCheckedChange={(checked) =>
+                      onCheckedChange={(checked) => {
                         updateRule(row.actionType, (current) => {
                           const nextSigs = new Set(current.signatures)
+                          const nextThresholds = { ...current.roleThresholds }
+                          
                           if (checked) {
                             nextSigs.add(role.roleKey)
+                            nextThresholds[role.roleKey] = 1 // default to 1
                           } else {
                             nextSigs.delete(role.roleKey)
+                            delete nextThresholds[role.roleKey]
                           }
-                          return { ...current, signatures: Array.from(nextSigs) }
+                          return { ...current, signatures: Array.from(nextSigs), roleThresholds: nextThresholds }
                         })
-                      }
+                      }}
                     />
-                    <span
-                      className={`text-[10px] leading-none ${
-                        hasUsers ? "text-slate-200" : "text-slate-500"
-                      }`}
-                      title={!hasUsers ? "No users assigned to this role in this project" : ""}
-                    >
-                      {role.roleName}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium leading-none whitespace-nowrap text-slate-200">
+                        {role.roleName}
+                      </span>
+                      {isChecked && (
+                        <div className="flex items-center gap-1 ml-1 shrink-0">
+                          <span className="text-[10px] text-slate-400">Min: £</span>
+                          <ThresholdInput
+                            initialValue={threshold}
+                            onSave={(newBudget) => {
+                              updateRule(row.actionType, (current) => {
+                                const nextThresholds = { ...current.roleThresholds }
+                                nextThresholds[role.roleKey] = newBudget
+                                return { ...current, roleThresholds: nextThresholds }
+                              })
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -339,7 +400,8 @@ export default function ActionsPage() {
       action_type: FRONTEND_TO_BACKEND_ACTION_TYPE[type],
       condition_value: config[type].cause,
       required_roles: config[type].signatures.join(","),
-      is_active: true,
+      role_thresholds: config[type].roleThresholds,
+      is_active: type === "User Clock in" ? config[type].signatures.includes("enabled") : true,
     }))
 
     try {
@@ -390,7 +452,12 @@ export default function ActionsPage() {
           resizable: false,
         }}
         gridOptions={{
-          rowHeight: 88,
+          getRowHeight: (params) => {
+            const row = params.data as ActionRow | undefined;
+            if (!row) return 88;
+            const rolesCount = ACTION_ROLES_MAP[row.actionType]?.length || 0;
+            return Math.max(88, rolesCount * 36 + 24); // 36px per toggle + 24px padding
+          }
         }}
       />
     </div>

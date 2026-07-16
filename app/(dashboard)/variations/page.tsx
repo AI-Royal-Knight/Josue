@@ -128,6 +128,7 @@ export default function Page() {
             material: l.material,
             qty: l.qty,
           })),
+          evidence: form.evidence,
         }
         const created = await createVariation(payload)
         setRows((prev) => [apiToRow(created), ...prev])
