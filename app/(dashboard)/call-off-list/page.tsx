@@ -30,10 +30,12 @@ import { colors } from "@/constants/colors"
 import { cn } from "@/lib/utils"
 import { useRoleStore } from "@/lib/role-store"
 
-import type { CallOffRow, PODialogState, HistoryDialogState } from "./types"
+import type { CallOffRow, PODialogState, HistoryDialogState, CallOffHistoryEntry } from "./types"
 import { formatGBP, initialData, summaryMetrics, baseTheme } from "./utils"
 import HistoryDialog from "./_components/HistoryDialog"
 import PODialog from "./_components/PODialog"
+import { getCallOffList, toggleCallOffManagementApproval, createCallOff } from "@/lib/api/call-off"
+import { useEffect } from "react"
 
 type GroupHeaderRow = {
   _kind: "group"
@@ -66,15 +68,70 @@ type GroupHeaderRow = {
   no: ""
 }
 
-type ChildRow = CallOffRow & { _kind: "child" }
+type ChildRow = CallOffRow & { _kind: "child"; lineItemRef?: string }
 
 type VirtualRow = GroupHeaderRow | ChildRow
 
 export default function Page() {
-  const [data, setData] = useState<CallOffRow[]>(initialData)
-  const [expanded, setExpanded] = useState<Set<string>>(
-    () => new Set(Array.from(new Set(initialData.map((r) => r.poRef))))
-  )
+  const [data, setData] = useState<CallOffRow[]>([])
+  const [loading, setLoading] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const res = await getCallOffList()
+      const mapped = res.map((r) => {
+        // Last call off is usually first in history if sorted descending by date
+        const lastCO = r.history.length > 0 ? r.history[0] : null
+        return {
+          id: r.id,
+          poRef: r.po_ref || "",
+          callOffRef: `LI-${r.id}`, // Using line item ID as the call off ref for tracking
+          project: r.project_name || "",
+          mainFolder: r.main_folder_name || "-",
+          subFolder: r.sub_folder_name || "-",
+          variationRef: r.variation_ref || "-",
+          supplierName: r.supplier_name || "",
+          supplierEmail: r.supplier_email || "",
+          no: String(r.id),
+          productDescription: r.description || "",
+          totalQty: Number(r.qty),
+          unit: r.per || "EA",
+          unitPrice: `£${r.each}`,
+          unitPriceNum: Number(r.each),
+          qtyRemaining: Number(r.qty_remaining),
+          callOffQty: lastCO ? Number(lastCO.qty) : 0,
+          callOffPrice: lastCO ? `£${lastCO.price}` : "-",
+          callOffDate: lastCO ? lastCO.date : "-",
+          expectedDeliveryDate: lastCO ? (lastCO.expected_delivery_date || "-") : "-",
+          callOffBy: lastCO ? (lastCO.call_off_by_name || "-") : "-",
+          approveBy: lastCO ? (lastCO.approve_by_name || "Pending") : "-",
+          history: r.history.map(h => ({
+            callOffRef: h.call_off_ref,
+            callOffDate: h.date,
+            callOffQty: Number(h.qty),
+            callOffPrice: `£${h.price}`,
+            callOffBy: h.call_off_by_name || "-",
+            approveBy: h.approve_by_name || "-",
+            expectedDeliveryDate: h.expected_delivery_date || "-"
+          })) as CallOffHistoryEntry[],
+          managementApproved: r.management_approved,
+          managementApprovedDate: r.management_approved_date,
+        }
+      })
+      setData(mapped)
+      setExpanded(new Set(Array.from(new Set(mapped.map((m) => m.poRef)))))
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
   const [poDialog, setPoDialog] = useState<PODialogState | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sentPO, setSentPO] = useState<string | null>(null)
@@ -92,20 +149,17 @@ export default function Page() {
     })
   }, [])
 
-  const toggleManagementApproval = useCallback((callOffRef: string) => {
-    const today = new Date().toISOString().slice(0, 10)
-    setData((prev) =>
-      prev.map((r) =>
-        r.callOffRef === callOffRef
-          ? {
-              ...r,
-              managementApproved: !r.managementApproved,
-              managementApprovedDate: !r.managementApproved ? today : null,
-            }
-          : r
-      )
-    )
-  }, [])
+  const toggleManagementApproval = useCallback(async (callOffRef: string) => {
+    const row = data.find(r => r.callOffRef === callOffRef)
+    if (!row) return
+    try {
+      const idStr = callOffRef.replace('LI-', '')
+      await toggleCallOffManagementApproval(idStr, !row.managementApproved)
+      await fetchData()
+    } catch (err) {
+      console.error(err)
+    }
+  }, [data, fetchData])
 
   const isApproved = (row?: CallOffRow) => {
     const v = row?.approveBy?.trim()
@@ -155,16 +209,40 @@ export default function Page() {
   )
   const hasOrder = (poDialog?.lines ?? []).some((l) => l.orderQty > 0)
 
-  const handleSendToSupplier = () => {
-    setSentPO(poDialog?.poRef ?? null)
-    setConfirmOpen(false)
-    setPoDialog(null)
+  const handleSendToSupplier = async () => {
+    if (!poDialog) return
+    try {
+      setLoading(true)
+      // Generate a shared call_off_ref for this batch
+      const sharedRef = `CO-${Math.random().toString(36).substring(2, 10).toUpperCase()}`
+      
+      // Send a call off creation request for each line item that has an orderQty > 0
+      for (const line of poDialog.lines) {
+        if (line.orderQty > 0) {
+          const idStr = line.callOffRef.replace('LI-', '')
+          await createCallOff(idStr, {
+            qty: line.orderQty,
+            price: line.orderQty * line.unitPriceNum,
+            expected_delivery_date: undefined, // could add UI field later
+            call_off_ref: sharedRef
+          })
+        }
+      }
+      setSentPO(poDialog.poRef)
+      setConfirmOpen(false)
+      // We don't close poDialog yet so user sees success state, but we fetch latest data
+      await fetchData()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const openHistoryDialog = useCallback((row: CallOffRow) => {
+  const openHistoryDialog = useCallback((row: CallOffRow | ChildRow) => {
     setHistoryDialog({
       poRef: row.poRef,
-      callOffRef: row.callOffRef,
+      callOffRef: ('lineItemRef' in row && row.lineItemRef) ? row.lineItemRef : row.callOffRef,
       productDescription: row.productDescription,
       totalQty: row.totalQty,
       unit: row.unit,
@@ -192,10 +270,10 @@ export default function Page() {
         linesCount: children.length,
         totalValue,
         callOffRef: "",
-        project: "",
-        mainFolder: "",
-        subFolder: "",
-        variationRef: "",
+        project: children[0].project,
+        mainFolder: children[0].mainFolder,
+        subFolder: children[0].subFolder,
+        variationRef: children[0].variationRef,
         productDescription: "",
         totalQty: 0,
         unit: "",
@@ -216,7 +294,22 @@ export default function Page() {
 
       // Child rows — only include when this PO is expanded
       if (expanded.has(poRef)) {
-        children.forEach((r) => rows.push({ ...r, _kind: "child" }))
+        children.forEach((r) => {
+          r.history.forEach((h) => {
+            rows.push({
+              ...r,
+              _kind: "child",
+              lineItemRef: r.callOffRef,
+              callOffRef: h.callOffRef,
+              callOffQty: h.callOffQty,
+              callOffPrice: h.callOffPrice,
+              callOffDate: h.callOffDate,
+              expectedDeliveryDate: h.expectedDeliveryDate,
+              callOffBy: h.callOffBy,
+              approveBy: h.approveBy,
+            })
+          })
+        })
       }
     })
 
@@ -230,7 +323,7 @@ export default function Page() {
       {
         headerName: "PO Ref",
         field: "poRef",
-        minWidth: 260,
+        minWidth: 320,
         pinned: "left" as const,
         cellStyle: {
           display: "flex",
@@ -255,18 +348,15 @@ export default function Page() {
                 ) : (
                   <ChevronRight className="size-4 shrink-0 text-slate-400" />
                 )}
-                <div className="flex min-w-0 flex-1 flex-col justify-center">
-                  <span className="text-[13px] font-semibold text-emerald-400">
+                <div className="flex min-w-0 flex-1 flex-col justify-center pr-2">
+                  <span className="text-[13px] font-semibold text-emerald-400 truncate">
                     {row.poRef}
                   </span>
-                  {/* <span className="text-[11px] text-slate-400">
-                    {row.supplierName} &middot; {row.linesCount} line{row.linesCount !== 1 ? "s" : ""} &middot; {formatGBP(row.totalValue)}
-                  </span> */}
                 </div>
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="h-7 shrink-0 px-3 text-[11px]"
+                  variant="default"
+                  className="h-7 shrink-0 px-3 text-[11px] bg-blue-600 hover:bg-blue-700 text-white ml-auto"
                   onClick={(e) => {
                     e.stopPropagation()
                     openPODialog(row.poRef)
@@ -279,12 +369,12 @@ export default function Page() {
             )
           }
 
-          // Child row — show the call-off ref indented
           return (
             <div className="flex items-center pl-8">
               <button
                 className="text-[12px] font-medium text-blue-400 underline-offset-2 hover:underline"
-                onClick={() => openPODialog(row.poRef, row.callOffRef)}
+                onClick={() => openHistoryDialog(row)}
+                title="View call-off history for this line item"
               >
                 {row.callOffRef}
               </button>
@@ -298,36 +388,26 @@ export default function Page() {
         headerName: "Project",
         field: "project",
         minWidth: 130,
-        cellRenderer: (p: { data?: VirtualRow; value: string }) =>
-          p.data?._kind === "group" ? null : p.value,
       },
       {
         headerName: "Main Folder",
         field: "mainFolder",
         minWidth: 120,
-        cellRenderer: (p: { data?: VirtualRow; value: string }) =>
-          p.data?._kind === "group" ? null : p.value,
       },
       {
         headerName: "Sub Folder",
         field: "subFolder",
         minWidth: 120,
-        cellRenderer: (p: { data?: VirtualRow; value: string }) =>
-          p.data?._kind === "group" ? null : p.value,
       },
       {
         headerName: "Variation Ref",
         field: "variationRef",
         minWidth: 120,
-        cellRenderer: (p: { data?: VirtualRow; value: string }) =>
-          p.data?._kind === "group" ? null : p.value,
       },
       {
         headerName: "Supplier",
         field: "supplierName",
         minWidth: 150,
-        cellRenderer: (p: { data?: VirtualRow; value: string }) =>
-          p.data?._kind === "group" ? null : p.value,
       },
       {
         headerName: "Product Description",
@@ -340,7 +420,7 @@ export default function Page() {
             <button
               className="flex w-full items-center justify-between gap-1 text-left underline-offset-2 hover:underline"
               onClick={() => openHistoryDialog(row)}
-              title="View call-off history"
+              title="View call-off history for this line item"
             >
               <span>{params.value}</span>
               <History className="size-3 shrink-0 text-slate-500" />

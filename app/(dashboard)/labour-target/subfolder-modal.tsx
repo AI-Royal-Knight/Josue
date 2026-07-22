@@ -18,6 +18,7 @@ type SubfolderModalProps = {
   folderName: string
   copiedValue: string
   onCopy: (value: string) => void
+  isManagement?: boolean
   onSave: (rows: Row[]) => void
   onClose: () => void
 }
@@ -30,6 +31,7 @@ export function SubfolderModal({
   folderName,
   copiedValue,
   onCopy,
+  isManagement,
   onSave,
   onClose,
 }: SubfolderModalProps) {

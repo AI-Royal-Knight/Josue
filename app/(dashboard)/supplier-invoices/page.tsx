@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 import { AgTable } from "@/components/common/AgTable"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -21,11 +21,15 @@ import type {
 } from "ag-grid-community"
 import TableStat from "@/components/common/table-stat"
 import { useRoleStore } from "@/lib/role-store"
+
 import ViewInvoiceDialog, { InvoicePreviewData } from "@/components/common/view-invoice-dialog"
+import { getQuotations, patchQuotation, Quotation } from "@/lib/api/quotations"
+import { format } from "date-fns"
 
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
 type SupplierInvoiceRow = {
+  id: string
   no: string
   invoiceNumber: string
   date: string
@@ -53,197 +57,76 @@ type CommentField =
   | "commercialComments"
 
 type PendingToggle = {
+  id: string
   no: string
   invoiceNumber: string
   nextApproved: boolean
 }
 
 const summaryRows = [
-  { label: "Invoices", qty: "1", value: "2" },
-  { label: "Approved invoices", qty: "1", value: "2" },
-  { label: "Invoices awaiting approval", qty: "1", value: "2" },
+  { label: "Invoices", qty: "0", value: "0" },
+  { label: "Approved invoices", qty: "0", value: "0" },
+  { label: "Invoices awaiting approval", qty: "0", value: "0" },
   {
     label: "Invoices due this month",
-    qty: "1",
-    value: "2",
+    qty: "0",
+    value: "0",
   },
-  { label: "Invoices paid", qty: "1", value: "2" },
-]
-
-const initialRows: SupplierInvoiceRow[] = [
-  {
-    no: "001",
-    invoiceNumber: "INV-88-2024-089",
-    date: "12 Oct 2024",
-    poDate: "01 Sep 2024",
-    poRef: "PO-45002",
-    callOffDate: "15 Sep 2024",
-    callOffRef: "CO-5921",
-    variationRef: "VAR-001",
-    otherRef: "-",
-    project: "M25 Junction 10",
-    supplierName: "Balfour Beatty",
-    invoiceTotal: "£145,000.00",
-    expectedCost: "£145,000.00",
-    paymentDueDate: "31 Oct 2024",
-    approvedBy: "Sarah Jenkins",
-    approved: "Approved",
-    financeComments: "Matched to PO",
-    procurementComments: "Rates verified",
-    commercialComments: "Approved for payment",
-  },
-  {
-    no: "002",
-    invoiceNumber: "KER-99281-A",
-    date: "14 Oct 2024",
-    poDate: "10 Aug 2024",
-    poRef: "PO-45311",
-    callOffDate: "20 Aug 2024",
-    callOffRef: "CO-8544",
-    variationRef: "-",
-    otherRef: "REF-A3",
-    project: "HS2 Phase 2A",
-    supplierName: "Kier Group",
-    invoiceTotal: "£89,450.00",
-    expectedCost: "£89,450.00",
-    paymentDueDate: "31 Oct 2024",
-    approvedBy: "Marcus Thorne",
-    approved: "Approved",
-    financeComments: "Clear",
-    procurementComments: "All good",
-    commercialComments: null,
-  },
-  {
-    no: "003",
-    invoiceNumber: "MS-2024-1102",
-    date: "18 Oct 2024",
-    poDate: "09 Oct 2024",
-    poRef: "PO-48012",
-    callOffDate: "10 Oct 2024",
-    callOffRef: "CO-1002",
-    variationRef: "VAR-004",
-    otherRef: "-",
-    project: "Thames Tideway",
-    supplierName: "Morgan Sindall",
-    invoiceTotal: "£210,000.00",
-    expectedCost: "£205,000.00",
-    paymentDueDate: "20 Nov 2024",
-    approvedBy: "Pending",
-    approved: "Pending",
-    financeComments: "Awaiting commercial review",
-    procurementComments: "Checking variation",
-    commercialComments: "Reviewing EBR variance",
-  },
-  {
-    no: "004",
-    invoiceNumber: "SK-LDN-449",
-    date: "02 Sep 2024",
-    poDate: "10 Jul 2024",
-    poRef: "PO-44100",
-    callOffDate: "01 Aug 2024",
-    callOffRef: "CO-4820",
-    variationRef: "-",
-    otherRef: "-",
-    project: "Holday Point C",
-    supplierName: "Skanska",
-    invoiceTotal: "£78,500.00",
-    expectedCost: "£78,500.00",
-    paymentDueDate: "30 Sep 2024",
-    approvedBy: "David Chen",
-    approved: "Rejected",
-    financeComments: "Overdue - On hold",
-    procurementComments: "Disputed hours",
-    commercialComments: "Awaiting revised timesheet",
-  },
-  {
-    no: "005",
-    invoiceNumber: "CDS-892-B",
-    date: "20 Oct 2024",
-    poDate: "01 Oct 2024",
-    poRef: "PO-45699",
-    callOffDate: "05 Oct 2024",
-    callOffRef: "CO-8988",
-    variationRef: "-",
-    otherRef: "-",
-    project: "A14 Cambridge",
-    supplierName: "Costain",
-    invoiceTotal: "£45,200.00",
-    expectedCost: "£45,200.00",
-    paymentDueDate: "30 Nov 2024",
-    approvedBy: "Sarah Jenkins",
-    approved: "Approved",
-    financeComments: "Processed",
-    procurementComments: "Processed",
-    commercialComments: "Approved",
-  },
-  {
-    no: "006",
-    invoiceNumber: "INV-88-2024-090",
-    date: "22 Oct 2024",
-    poDate: "01 Sep 2024",
-    poRef: "PO-45002",
-    callOffDate: "15 Sep 2024",
-    callOffRef: "CO-8932",
-    variationRef: "-",
-    otherRef: "-",
-    project: "M25 Junction 10",
-    supplierName: "Balfour Beatty",
-    invoiceTotal: "£112,000.00",
-    expectedCost: "£112,000.00",
-    paymentDueDate: "30 Nov 2024",
-    approvedBy: "Pending",
-    approved: "Pending",
-    financeComments: "In queue",
-    procurementComments: "Reviewing",
-    commercialComments: null,
-  },
-  {
-    no: "007",
-    invoiceNumber: "VIN-2024-001",
-    date: "25 Sep 2024",
-    poDate: "10 Sep 2024",
-    poRef: "PO-45970",
-    callOffDate: "12 Sep 2024",
-    callOffRef: "CO-9930",
-    variationRef: "VAR-002",
-    otherRef: "-",
-    project: "HS2 Phase 1",
-    supplierName: "Vinci Construction",
-    invoiceTotal: "£125,400.00",
-    expectedCost: "£125,400.00",
-    paymentDueDate: "31 Oct 2024",
-    approvedBy: "Marcus Thorne",
-    approved: "Approved",
-    financeComments: "Paid Due - Processing today",
-    procurementComments: "Approved",
-    commercialComments: "Approved",
-  },
-  {
-    no: "008",
-    invoiceNumber: "BAM-NW-882",
-    date: "24 Oct 2024",
-    poDate: "25 Sep 2024",
-    poRef: "PO-45960",
-    callOffDate: "25 Sep 2024",
-    callOffRef: "CO-9960",
-    variationRef: "-",
-    otherRef: "-",
-    project: "Transpennine Route",
-    supplierName: "BAM Nuttall",
-    invoiceTotal: "£97,800.00",
-    expectedCost: "£97,800.00",
-    paymentDueDate: "30 Nov 2024",
-    approvedBy: "Pending",
-    approved: "Pending",
-    financeComments: null,
-    procurementComments: null,
-    commercialComments: null,
-  },
+  { label: "Invoices paid", qty: "0", value: "0" },
 ]
 
 export default function Page() {
-  const [rows, setRows] = useState(initialRows)
+  const [rows, setRows] = useState<SupplierInvoiceRow[]>([])
   const [pending, setPending] = useState<PendingToggle | null>(null)
+  const [summary, setSummary] = useState(summaryRows)
+
+  const loadData = useCallback(async () => {
+    try {
+      const data = await getQuotations()
+      const mapped: SupplierInvoiceRow[] = data.map((q, i) => ({
+        id: q.id,
+        no: String(i + 1).padStart(3, "0"),
+        invoiceNumber: q.quote_ref,
+        date: q.date_of_quote ? format(new Date(q.date_of_quote), "dd MMM yyyy") : "-",
+        poDate: q.date_po_created ? format(new Date(q.date_po_created), "dd MMM yyyy") : "-",
+        poRef: q.po_created ? "Yes" : "No",
+        callOffDate: "-",
+        callOffRef: "-",
+        variationRef: q.variation_ref || "-",
+        otherRef: "-",
+        project: q.project_name || "-",
+        supplierName: q.supplier_name || "-",
+        invoiceTotal: `£${Number(q.quote_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        expectedCost: `£${Number(q.quote_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        paymentDueDate: "-",
+        approvedBy: q.status === "Approved" ? "Finance Dept" : "Pending",
+        approved: q.status as ApprovalStatus,
+        financeComments: q.finance_comments || null,
+        procurementComments: q.procurement_comments || null,
+        commercialComments: q.commercial_comments || null,
+      }))
+      
+      setRows(mapped)
+
+      const approvedCount = data.filter(d => d.status === "Approved").length
+      const pendingCount = data.filter(d => d.status === "Pending").length
+      
+      setSummary([
+        { label: "Invoices", qty: String(data.length), value: "0" },
+        { label: "Approved invoices", qty: String(approvedCount), value: "0" },
+        { label: "Invoices awaiting approval", qty: String(pendingCount), value: "0" },
+        { label: "Invoices due this month", qty: "0", value: "0" },
+        { label: "Invoices paid", qty: "0", value: "0" },
+      ])
+      
+    } catch (err) {
+      console.error("Failed to load supplier invoices:", err)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<InvoicePreviewData | null>(null)
@@ -265,30 +148,49 @@ export default function Page() {
 
   // Stage the toggle — opens confirmation dialog
   const requestToggle = useCallback(
-    (no: string, invoiceNumber: string, nextApproved: boolean) => {
-      setPending({ no, invoiceNumber, nextApproved })
+    async (no: string, invoiceNumber: string, nextApproved: boolean) => {
+      // Find the ID. Here invoiceNumber acts as the ID/quote_ref, but to use patchQuotation we need the actual UUID if possible.
+      // Wait, getQuotations returns UUID. If we just patch using quote_ref it might fail if the backend expects UUID.
+      // Let's pass the real ID in `no` or in `otherRef` temporarily. I will add `id` to SupplierInvoiceRow.
+      const row = rows.find(r => r.invoiceNumber === invoiceNumber)
+      if (row) {
+        setPending({ id: row.id, no, invoiceNumber, nextApproved })
+      }
     },
-    []
+    [rows]
   )
 
   // Confirmed — commit the change
-  const confirmToggle = useCallback(() => {
+  const confirmToggle = useCallback(async () => {
     if (!pending) return
-    setRows((prev) =>
-      prev.map((r) =>
-        r.no === pending.no
-          ? {
-            ...r,
-            approved: pending.nextApproved ? "Approved" : "Pending",
-            approvedBy: pending.nextApproved
-              ? "Finance Department"
-              : "Pending",
-          }
-          : r
+    try {
+      const status = pending.nextApproved ? "Approved" : "Pending"
+      // Find the actual Quotation ID. We stored quote_ref in invoiceNumber.
+      // Let's use patchQuotation. To make this work smoothly, we should ensure we have the UUID.
+      const row = rows.find(r => r.no === pending.no)
+      const qId = row?.id || pending.id 
+
+      await patchQuotation(qId, { status })
+      
+      setRows((prev) =>
+        prev.map((r) =>
+          r.no === pending.no
+            ? {
+              ...r,
+              approved: status as ApprovalStatus,
+              approvedBy: pending.nextApproved
+                ? "Finance Department"
+                : "Pending",
+            }
+            : r
+        )
       )
-    )
-    setPending(null)
-  }, [pending])
+    } catch (err) {
+      console.error("Failed to update status", err)
+    } finally {
+      setPending(null)
+    }
+  }, [pending, rows])
 
   function CommentCellRenderer(
     params: ICellRendererParams<SupplierInvoiceRow, string> & {
@@ -418,7 +320,25 @@ export default function Page() {
   }, [role, requestToggle])
 
   const handleCellValueChanged = useCallback(
-    (params: CellValueChangedEvent<SupplierInvoiceRow>) => {
+    async (params: CellValueChangedEvent<SupplierInvoiceRow>) => {
+      const field = params.colDef.field
+      const newValue = params.newValue
+
+      const row = params.data
+      const qId = row.id
+
+      try {
+        if (field === "financeComments") {
+          await patchQuotation(qId, { finance_comments: newValue })
+        } else if (field === "procurementComments") {
+          await patchQuotation(qId, { procurement_comments: newValue })
+        } else if (field === "commercialComments") {
+          await patchQuotation(qId, { commercial_comments: newValue })
+        }
+      } catch (err) {
+        console.error("Failed to save comment", err)
+      }
+
       setRows((prev) =>
         prev.map((r) => (r.no === params.data.no ? params.data : r))
       )
@@ -431,7 +351,7 @@ export default function Page() {
       <h2 className="text-xl font-semibold">Supplier Invoices</h2>
 
       <div className="flex-1">
-        <TableStat summaryRows={summaryRows} />
+        <TableStat summaryRows={summary} />
       </div>
 
       <AgTable

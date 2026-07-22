@@ -11,9 +11,10 @@ import {
     DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog"
-import { RotateCcw } from "lucide-react"
+import { RotateCcw, Loader2 } from "lucide-react"
 
 export type ReQuoteTarget = {
+    id: string
     no: number
     quotesRef: string
     supplierName: string
@@ -24,7 +25,7 @@ type Props = {
     open: boolean
     onOpenChange: (open: boolean) => void
     target: ReQuoteTarget | null
-    onSubmit: (comments: string) => void
+    onSubmit: (comments: string) => Promise<void>
 }
 
 export default function ReQuoteDialog({
@@ -34,11 +35,17 @@ export default function ReQuoteDialog({
     onSubmit,
 }: Props) {
     const [comments, setComments] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!target) return
-        onSubmit(comments)
-        setComments("")
+        setIsLoading(true)
+        try {
+            await onSubmit(comments)
+            setComments("")
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const handleCancel = () => {
@@ -90,6 +97,7 @@ export default function ReQuoteDialog({
                         type="button"
                         variant="outline"
                         onClick={handleCancel}
+                        disabled={isLoading}
                         className="border-white/10 text-xs text-slate-300 hover:bg-white/5"
                     >
                         Cancel
@@ -97,11 +105,15 @@ export default function ReQuoteDialog({
                     <Button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={!comments.trim()}
+                        disabled={!comments.trim() || isLoading}
                         className="bg-amber-600 text-xs text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                        <RotateCcw className="size-3.5" />
-                        Request Re-quote
+                        {isLoading ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                            <RotateCcw className="size-3.5" />
+                        )}
+                        {isLoading ? "Requesting..." : "Request Re-quote"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

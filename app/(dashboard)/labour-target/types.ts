@@ -19,6 +19,7 @@ export type FolderType = {
   id: string;
   name: string;
   subfolders: Subfolder[];
+  is_management?: boolean;
 };
 
 export type ModalState = {

@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { Switch } from "@/components/ui/switch"
@@ -14,58 +14,31 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
+import { getAllInvoices, updateInvoicePayment, type MonthlyInvoice } from "@/lib/api/super-admin"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
+
 type InvoiceRow = {
+  id: string
   invoiceNumber: string
+  companyName: string
   date: string
   value: string
   paid: boolean
   paymentDate: string
 }
 
-const initialRows: InvoiceRow[] = [
-  {
-    invoiceNumber: "INV-001",
-    date: "2024-06-01",
-    value: "$1,000.00",
-    paid: true,
-    paymentDate: "2024-06-05",
-  },
-  {
-    invoiceNumber: "INV-002",
-    date: "2024-06-03",
-    value: "$2,500.00",
-    paid: false,
-    paymentDate: "",
-  },
-  {
-    invoiceNumber: "INV-003",
-    date: "2024-06-05",
-    value: "$750.00",
-    paid: true,
-    paymentDate: "2024-06-10",
-  },
-  {
-    invoiceNumber: "INV-004",
-    date: "2024-06-07",
-    value: "$1,200.00",
-    paid: false,
-    paymentDate: "",
-  },
-  {
-    invoiceNumber: "INV-005",
-    date: "2024-06-10",
-    value: "$3,000.00",
-    paid: true,
-    paymentDate: "2024-06-15",
-  },
-  {
-    invoiceNumber: "INV-006",
-    date: "2024-06-12",
-    value: "$500.00",
-    paid: false,
-    paymentDate: "",
-  },
-]
+function mapToInvoiceRow(inv: MonthlyInvoice): InvoiceRow {
+  return {
+    id: inv.id,
+    invoiceNumber: inv.invoice_number || "N/A",
+    companyName: inv.company_name || "Unknown",
+    date: inv.created_at ? format(new Date(inv.created_at), "yyyy-MM-dd") : `${inv.year}-${String(inv.month).padStart(2, '0')}-01`,
+    value: inv.amount ? `£${parseFloat(inv.amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : "£0.00",
+    paid: inv.is_paid,
+    paymentDate: inv.payment_date ? format(new Date(inv.payment_date), "yyyy-MM-dd") : "",
+  }
+}
 
 function buildInvoiceDocHtml(invoice: InvoiceRow) {
   const paidText = invoice.paid ? "Yes" : "No"
@@ -120,11 +93,29 @@ function buildInvoiceDocHtml(invoice: InvoiceRow) {
 }
 
 export default function Page() {
-  const [rows, setRows] = useState<InvoiceRow[]>(initialRows)
+  const [rows, setRows] = useState<InvoiceRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRow | null>(
     null
   )
+
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const data = await getAllInvoices()
+      setRows(data.map(mapToInvoiceRow))
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to load invoices")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   function openInvoice(invoice: InvoiceRow) {
     setSelectedInvoice(invoice)
@@ -160,33 +151,31 @@ export default function Page() {
         </button>
       ),
     },
+    { field: "companyName", headerName: "Company" },
     { field: "date", headerName: "Date" },
-    { field: "value", headerName: "Value" },
+    { field: "value", headerName: "Amount" },
     {
       field: "paid",
       headerName: "Paid",
       cellRenderer: (params: { data?: InvoiceRow; value: boolean }) => (
         <Switch
           checked={Boolean(params.value)}
-          onCheckedChange={(checked) => {
-            const invoiceNumber = params.data?.invoiceNumber
-            if (!invoiceNumber) return
+          onCheckedChange={async (checked) => {
+            const invoice = params.data
+            if (!invoice) return
 
-            const nextPaymentDate = checked
-              ? format(new Date(), "yyyy-MM-dd")
-              : ""
-
-            setRows((currentRows) =>
-              currentRows.map((row) =>
-                row.invoiceNumber === invoiceNumber
-                  ? {
-                      ...row,
-                      paid: checked,
-                      paymentDate: nextPaymentDate,
-                    }
-                  : row
+            try {
+              const updated = await updateInvoicePayment(invoice.id, checked)
+              setRows((currentRows) =>
+                currentRows.map((row) =>
+                  row.id === invoice.id ? mapToInvoiceRow(updated) : row
+                )
               )
-            )
+              toast.success("Payment status updated")
+            } catch (err) {
+              console.error(err)
+              toast.error("Failed to update payment status")
+            }
           }}
         />
       ),
@@ -199,14 +188,22 @@ export default function Page() {
       headerName: "Date of confirmed payment",
     },
   ]
+
+  const totalInvoices = rows.length
+  const confirmedCount = rows.filter(r => r.paid).length
+  const outstandingCount = totalInvoices - confirmedCount
+
   return (
     <div className="space-y-4">
-      <h1>Invoice List</h1>
+      <div className="flex justify-between items-center">
+        <h1>Invoice List</h1>
+        {loading && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+      </div>
       <TableStat
         summaryRows={[
-          { label: "Invoices", qty: "0", value: "0" },
-          { label: "Confirmed Payments", qty: "0", value: "0" },
-          { label: "Outstanding Payments", qty: "0", value: "0" },
+          { label: "Invoices", qty: totalInvoices.toString(), value: totalInvoices.toString() },
+          { label: "Confirmed Payments", qty: confirmedCount.toString(), value: confirmedCount.toString() },
+          { label: "Outstanding Payments", qty: outstandingCount.toString(), value: outstandingCount.toString() },
         ]}
       />
 

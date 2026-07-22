@@ -17,17 +17,53 @@ import { getMyProjects, getProjectFinancialBreakdown, type FinancialBreakdownRow
 import type { ProjectItem } from "@/constants/projects"
 
 
+function gbp(value: number): string {
+  return value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })
+}
+
+function GreenCell({ value }: { value: number }) {
+  return <span className="text-green-400">{gbp(value)}</span>
+}
+function RedCell({ value }: { value: number }) {
+  return <span className="text-red-500">{gbp(value)}</span>
+}
+function OrangeCell({ value }: { value: number }) {
+  return <span className="text-orange-400">{gbp(value)}</span>
+}
+function DefaultCell({ value }: { value: number }) {
+  return <span>{gbp(value)}</span>
+}
+
 const columns: ColDef<FinancialBreakdownRow>[] = [
-  { headerName: "Date 15th to 15th", field: "period", minWidth: 180 },
+  {
+    headerName: "#",
+    valueGetter: (params) => (params.node?.rowIndex ?? 0) + 1,
+    minWidth: 60,
+    maxWidth: 70,
+    pinned: "left" as const,
+    cellStyle: { fontWeight: 600, color: "#94a3b8" },
+    sortable: false,
+    filter: false,
+  },
+  {
+    headerName: "Period (Month)",
+    field: "period",
+    minWidth: 220,
+    pinned: "left" as const,
+    cellStyle: { fontWeight: 600 },
+  },
   {
     headerName: "Application Value",
-    field: "applicationValue",
+    field: "projectValue",
     headerClass: "text-green-500",
+    minWidth: 170,
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
   },
   {
     headerName: "Total Spent",
     field: "totalSpent",
     headerClass: "text-green-500",
+    minWidth: 150,
     valueGetter: (params) => {
       const data = params.data as FinancialBreakdownRow
       return (
@@ -39,77 +75,106 @@ const columns: ColDef<FinancialBreakdownRow>[] = [
         data.proformaNR
       )
     },
-    cellRenderer: (params: { value: number }) => {
-      const value = params.value as number
-      return (
-        <span className="text-green-400">
-          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
-        </span>
-      )
-    },
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
   },
-  { headerName: "Labour Target", field: "labourTarget", headerClass: "text-green-400" },
+  {
+    headerName: "Labour Target",
+    field: "labourTarget",
+    headerClass: "text-green-400",
+    minWidth: 150,
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
+  },
   {
     headerName: "Overspend",
     field: "overspend",
     headerClass: "text-red-500",
-    cellRenderer: (params: { value: number }) => {
-      const value = params.value as number
-      return (
-        <span className="text-red-500">
-          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
-        </span>
-      )
-    },
+    minWidth: 140,
+    cellRenderer: (params: { value: number }) => <RedCell value={params.value} />,
   },
   {
     headerName: "Unclaimed",
     field: "unclaimed",
     headerClass: "text-green-400",
-    cellRenderer: (params: { value: number }) => {
-      const value = params.value as number
-      return (
-        <span className="text-green-400">
-          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
-        </span>
-      )
-    },
+    minWidth: 140,
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
   },
   {
     headerName: "Money on Hold",
     field: "moneyOnHold",
     headerClass: "text-red-500",
-    cellRenderer: (params: { value: number }) => {
-      const value = params.value as number
-      return (
-        <span className="text-red-500">
-          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
-        </span>
-      )
-    },
+    minWidth: 150,
+    cellRenderer: (params: { value: number }) => <RedCell value={params.value} />,
   },
-  { headerName: "PO Called off", field: "poCalledOff", headerClass: "text-green-500" },
-  { headerName: "Loading and clearing", field: "loadingAndClearing", headerClass: "text-green-500" },
-  { headerName: "Management prelims", field: "managementPrelims", headerClass: "text-green-500" },
-  { headerName: "Plant Hire", field: "plantHire", headerClass: "text-green-500" },
+  {
+    headerName: "PO Called Off",
+    field: "poCalledOff",
+    headerClass: "text-green-500",
+    minWidth: 150,
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
+  },
+  {
+    headerName: "Loading & Clearing",
+    field: "loadingAndClearing",
+    headerClass: "text-green-500",
+    minWidth: 170,
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
+  },
+  {
+    headerName: "Management Prelims",
+    field: "managementPrelims",
+    headerClass: "text-green-500",
+    minWidth: 180,
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
+  },
+  {
+    headerName: "Plant Hire",
+    field: "plantHire",
+    headerClass: "text-green-500",
+    minWidth: 140,
+    cellRenderer: (params: { value: number }) => <GreenCell value={params.value} />,
+  },
   {
     headerName: "Proforma NR",
     field: "proformaNR",
     headerClass: "text-red-500",
-    cellRenderer: (params: { value: number }) => {
-      const value = params.value as number
-      return (
-        <span className="text-red-500">
-          {value.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}
-        </span>
-      )
-    },
+    minWidth: 150,
+    cellRenderer: (params: { value: number }) => <RedCell value={params.value} />,
   },
-  { headerName: "Variation Value", field: "variationValue", headerClass: "text-orange-400" },
-  { headerName: "Variations Labour Value", field: "variationLabourValue", headerClass: "text-orange-400" },
-  { headerName: "Variation Labour Target", field: "variationLabourTarget", headerClass: "text-orange-400" },
-  { headerName: "Variation PO Called Off", field: "variationPoCalledOff", headerClass: "text-orange-400" },
-  { headerName: "Variation Claimed", field: "variationClaimed", headerClass: "text-orange-400" },
+  {
+    headerName: "Variation Value",
+    field: "variationValue",
+    headerClass: "text-orange-400",
+    minWidth: 160,
+    cellRenderer: (params: { value: number }) => <OrangeCell value={params.value} />,
+  },
+  {
+    headerName: "Variation Labour Value",
+    field: "variationLabourValue",
+    headerClass: "text-orange-400",
+    minWidth: 190,
+    cellRenderer: (params: { value: number }) => <OrangeCell value={params.value} />,
+  },
+  {
+    headerName: "Variation Labour Target",
+    field: "variationLabourTarget",
+    headerClass: "text-orange-400",
+    minWidth: 200,
+    cellRenderer: (params: { value: number }) => <OrangeCell value={params.value} />,
+  },
+  {
+    headerName: "Variation PO Called Off",
+    field: "variationPoCalledOff",
+    headerClass: "text-orange-400",
+    minWidth: 200,
+    cellRenderer: (params: { value: number }) => <OrangeCell value={params.value} />,
+  },
+  {
+    headerName: "Variation Claimed",
+    field: "variationClaimed",
+    headerClass: "text-orange-400",
+    minWidth: 170,
+    cellRenderer: (params: { value: number }) => <OrangeCell value={params.value} />,
+  },
 ]
 
 function fmt(value: number | string | undefined): string {
@@ -131,6 +196,7 @@ export default function Page() {
   const [selectedId, setSelectedId] = useState<string>("")
   const [loading, setLoading] = useState(true)
   const [breakdownData, setBreakdownData] = useState<FinancialBreakdownRow[]>([])
+  const [totalPoRaised, setTotalPoRaised] = useState<number>(0)
   const [loadingBreakdown, setLoadingBreakdown] = useState(false)
 
   useEffect(() => {
@@ -156,6 +222,7 @@ export default function Page() {
       getProjectFinancialBreakdown(selectedId)
         .then((res) => {
           setBreakdownData(res.breakdown)
+          setTotalPoRaised(res.totalPoRaised)
         })
         .catch((err) => console.error("Failed to fetch breakdown:", err))
         .finally(() => setLoadingBreakdown(false))
@@ -262,20 +329,21 @@ export default function Page() {
             { label: "Labour Estimate", value: selectedProject ? fmt(selectedProject.labourEstimate) : "—" },
             { label: "Prelims Estimate", value: selectedProject ? fmt(selectedProject.prelimsEstimate) : "—" },
             { label: "Estimate Profit", value: selectedProject ? fmt(selectedProject.estimateProfit) : "—" },
-            { label: "Total Invoiced", value: fmt(breakdownData.reduce((acc, r) => acc + r.applicationValue, 0)) },
-            { label: "Total Spend", value: fmt(breakdownData.reduce((acc, r) => {
+            { label: "Total Project Value", value: fmt(breakdownData.reduce((acc, r) => acc + r.projectValue, 0)) },
+            {
+              label: "Total Spend", value: fmt(breakdownData.reduce((acc, r) => {
                 const rowSpend = r.projectValue + r.overspend + r.poCalledOff + r.managementPrelims + r.loadingAndClearing + r.proformaNR;
                 return acc + rowSpend;
-              }, 0)) 
+              }, 0))
             },
           ]}
         />
         <TableStat
           summaryRows={[
-            { label: "Total PO Raised", value: fmt(breakdownData.reduce((acc, r) => acc + r.poCalledOff, 0)) },
-            { label: "Proforma NR", value: fmt(breakdownData.reduce((acc, r) => acc + r.proformaNR, 0)), valueColor: "red" },
-            { label: "Total Unclaimed", value: fmt(breakdownData.reduce((acc, r) => acc + r.unclaimed, 0)), valueColor: "green" },
-            { label: "Total Overspend", value: fmt(breakdownData.reduce((acc, r) => acc + r.overspend, 0)), valueColor: "red" },
+            { label: "Total PO Raised", value: fmt(totalPoRaised) },
+            { label: "Proforma NR", value: selectedProject ? fmt(selectedProject.proformaNr) : "—", valueColor: "red" },
+            { label: "Total Unclaimed", value: selectedProject ? fmt(selectedProject.totalUnclaimed) : "—", valueColor: "green" },
+            { label: "Total Overspend", value: selectedProject ? fmt(selectedProject.totalOverspend) : "—", valueColor: "red" },
           ]}
         />
         <TableStat

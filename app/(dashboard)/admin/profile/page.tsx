@@ -107,6 +107,9 @@ export default function AdminProfilePage() {
             iban: c.iban || "",
             swift: c.swift_bic || "",
           })
+          if (c.company_logo) {
+            setLogoPreview(c.company_logo)
+          }
         }
       })
       .catch((err) => {
@@ -141,22 +144,33 @@ export default function AdminProfilePage() {
     setSaving(true)
     setError(null)
     try {
-      await updateProfile({
-        company: {
-          company_name: details.companyName,
-          company_number: Number(details.companyNumber) || undefined,
-          building_number: Number(details.buildingNumber) || undefined,
-          street: details.street,
-          postcode: details.postcode,
-          vat_number: details.vat,
-          bank_name: details.bankName,
-          bank_address: details.bankAddress,
-          sort_code: details.sortCode,
-          account_number: details.accountNumber,
-          iban: details.iban,
-          swift_bic: details.swift,
-        }
-      })
+      const companyPayload = {
+        company_name: details.companyName,
+        company_number: Number(details.companyNumber) || undefined,
+        building_number: Number(details.buildingNumber) || undefined,
+        street: details.street,
+        postcode: details.postcode,
+        vat_number: details.vat,
+        bank_name: details.bankName,
+        bank_address: details.bankAddress,
+        sort_code: details.sortCode,
+        account_number: details.accountNumber,
+        iban: details.iban,
+        swift_bic: details.swift,
+      }
+
+      const file = fileInputRef.current?.files?.[0]
+      if (file) {
+        const formData = new FormData()
+        formData.append("company", JSON.stringify(companyPayload))
+        formData.append("company_logo", file)
+        await updateProfile(formData)
+      } else {
+        await updateProfile({
+          company: companyPayload
+        })
+      }
+
       setSaved(true)
     } catch (err: any) {
       setError(err.message || "Failed to save profile.")

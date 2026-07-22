@@ -47,6 +47,9 @@ export type ProjectItem = {
   prelimsEstimate?: string
   estimateProfit?: string
   currency?: string
+  totalUnclaimed?: number
+  totalOverspend?: number
+  proformaNr?: number
 }
 
 export const projects: ProjectItem[] = [

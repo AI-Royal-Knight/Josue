@@ -37,14 +37,26 @@ import {
   AlertCircleIcon,
   XIcon,
   Download,
+  Eye,
 } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
-import { getQuotations, ProcurementProject, createQuotation, type QuotationLineItem } from "@/lib/api/quotations"
+import { getQuotations, ProcurementProject, createQuotation, approveQuotation, type QuotationLineItem } from "@/lib/api/quotations"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PurchaseOrderRow = {
+  id: string
   no: string
   quotationRef: string
   project: string
@@ -297,6 +309,20 @@ function CreatePODialog({
       setStep("review")
     }
   }, [droppedFile])
+
+  const handleViewBrandedPDF = useCallback(async () => {
+    if (!parsedData) return
+    setGeneratingPdf(true)
+    try {
+      const blob = await generateBrandedPOPDF(parsedData)
+      const url = URL.createObjectURL(blob)
+      window.open(url, "_blank")
+    } catch (err) {
+      console.error("Failed to generate branded PDF:", err)
+    } finally {
+      setGeneratingPdf(false)
+    }
+  }, [parsedData])
 
   const handleDownloadBrandedPDF = useCallback(async () => {
     if (!parsedData) return
@@ -656,17 +682,30 @@ function CreatePODialog({
                 ← Back
               </Button>
               {parsedData && (
-                <Button
-                  variant="outline"
-                  onClick={() => void handleDownloadBrandedPDF()}
-                  disabled={generatingPdf}
-                  className="border-blue-800/60 text-blue-300 hover:bg-blue-900/20"
-                >
-                  {generatingPdf
-                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    : <Download className="mr-2 h-4 w-4" />}
-                  {generatingPdf ? "Generating…" : "Download Branded PDF"}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleViewBrandedPDF()}
+                    disabled={generatingPdf}
+                    className="border-blue-800/60 text-blue-300 hover:bg-blue-900/20"
+                  >
+                    {generatingPdf
+                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      : <Eye className="mr-2 h-4 w-4" />}
+                    {generatingPdf ? "Generating…" : "View PDF"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleDownloadBrandedPDF()}
+                    disabled={generatingPdf}
+                    className="border-blue-800/60 text-blue-300 hover:bg-blue-900/20"
+                  >
+                    {generatingPdf
+                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      : <Download className="mr-2 h-4 w-4" />}
+                    {generatingPdf ? "Generating…" : "Download PDF"}
+                  </Button>
+                </>
               )}
               <Button
                 onClick={handleCreate}
@@ -686,11 +725,31 @@ function CreatePODialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+
 export default function Page() {
   const [data, setData] = useState<PurchaseOrderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewPO, setViewPO] = useState<POPreviewData | null>(null)
+  
+  // Approval state
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false)
+  const [pendingApprovalId, setPendingApprovalId] = useState<string | null>(null)
+
+  const handleApprovePO = async () => {
+    if (!pendingApprovalId) return
+    try {
+      setLoading(true)
+      await approveQuotation(pendingApprovalId)
+      await fetchData() // refresh
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+      setApproveConfirmOpen(false)
+      setPendingApprovalId(null)
+    }
+  }
   const [selectedProject, setSelectedProject] = useState<ProcurementProject | null>(null)
 
   const role = useRoleStore((state) => state.role)
@@ -700,6 +759,7 @@ export default function Page() {
       setLoading(true)
       const res = await getQuotations()
       const mapped: PurchaseOrderRow[] = res.map((q, index) => ({
+        id: q.id,
         no: String(index + 1),
         quotationRef: q.quote_ref || "",
         project: q.project_name || "",
@@ -780,6 +840,34 @@ export default function Page() {
           </a>
         ) : null,
     },
+    {
+      headerName: "Action",
+      field: "id",
+      cellRenderer: (params: { data?: PurchaseOrderRow }) => {
+        if (!params.data) return null
+        
+        // If it's already approved, just show text or nothing
+        if (params.data.approvalQuotation === "Approved") {
+          return <span className="text-emerald-400 text-xs font-medium">Approved</span>
+        }
+        
+        // Show Approve button for any unapproved Purchase Order
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-xs"
+            onClick={(e) => {
+              e.stopPropagation()
+              setPendingApprovalId(params.data!.id)
+              setApproveConfirmOpen(true)
+            }}
+          >
+            Approve
+          </Button>
+        )
+      }
+    }
   ]
 
   const handleCreated = (row: PurchaseOrderRow) => {
@@ -864,6 +952,31 @@ export default function Page() {
           selectedProject={selectedProject}
         />
       )}
+
+      {/* Approval Confirmation */}
+      <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Purchase Order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will approve the Purchase Order and send its line items to the Call Off List. This action cannot be easily undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleApprovePO()
+              }}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {loading ? "Approving..." : "Yes, Approve PO"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -225,51 +225,82 @@ function FolderGrid({
     [folder, onChange]
   )
 
+  const handleAddRow = useCallback(() => {
+    if (isLocked) return
+    const updatedFolder = { ...folder }
+    // determine current max rows
+    const currentRowCount = Math.max(
+      ROWS_PER_FOLDER,
+      ...folder.subfolders.map((s) => (s.rows || []).length)
+    )
+    updatedFolder.subfolders = folder.subfolders.map((sub) => {
+      const newSubRows = [...(sub.rows || [])]
+      // ensure we pad up to the max rows across subfolders
+      while (newSubRows.length < currentRowCount) {
+        newSubRows.push({ id: uid(), workSection: "", workArea: "", projectValue: "", labourTarget: "" })
+      }
+      // append the new row
+      newSubRows.push({ id: uid(), workSection: "", workArea: "", projectValue: "", labourTarget: "" })
+      return { ...sub, rows: newSubRows }
+    })
+    onChange?.(updatedFolder)
+  }, [folder, isLocked, onChange])
+
   const fg = colors.foreground ?? "#e2e8f0"
 
   return (
-    <DataGrid
-      rows={rows}
-      columns={columns}
-      columnGroupingModel={columnGroupingModel}
-      slots={undefined}
-      processRowUpdate={handleProcessRowUpdate}
-      hideFooter
-      disableRowSelectionOnClick
-      showCellVerticalBorder
-      showColumnVerticalBorder
-      disableColumnResize
-      disableColumnSorting
-      disableColumnMenu
-      rowHeight={ROW_HEIGHT}
-      isCellEditable={() => !isLocked}
-      sx={{
-        ...agTableDataGridSx,
-        ...sx,
-        "& .MuiDataGrid-columnHeaderTitleContainer": {
-          justifyContent: "center",
-        },
-        "& .MuiDataGrid-columnHeaderTitle": {
-          textAlign: "center",
-          width: "100%",
-        },
-        "& .MuiDataGrid-cell--editing": {
-          backgroundColor: "transparent !important",
-          boxShadow: "none",
-          padding: 0,
-        },
-        "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
-          backgroundColor: "transparent",
-          color: fg,
-          fontSize: "0.875rem",
-          padding: "0 8px",
-        },
-        "& .MuiDataGrid-cell--editing .MuiInputBase-input": {
-          color: fg,
-          padding: 0,
-        },
-      }}
-    />
+    <div className="flex flex-col h-full bg-[#111827]">
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        columnGroupingModel={columnGroupingModel}
+        slots={undefined}
+        processRowUpdate={handleProcessRowUpdate}
+        hideFooter
+        disableRowSelectionOnClick
+        showCellVerticalBorder
+        showColumnVerticalBorder
+        disableColumnResize
+        disableColumnSorting
+        disableColumnMenu
+        rowHeight={ROW_HEIGHT}
+        isCellEditable={() => !isLocked}
+        sx={{
+          ...agTableDataGridSx,
+          ...sx,
+          "& .MuiDataGrid-columnHeaderTitleContainer": {
+            justifyContent: "center",
+          },
+          "& .MuiDataGrid-columnHeaderTitle": {
+            textAlign: "center",
+            width: "100%",
+          },
+          "& .MuiDataGrid-cell--editing": {
+            backgroundColor: "transparent !important",
+            boxShadow: "none",
+            padding: 0,
+          },
+          "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
+            backgroundColor: "transparent",
+            color: fg,
+            fontSize: "0.875rem",
+            padding: "0 8px",
+          },
+          "& .MuiDataGrid-cell--editing .MuiInputBase-input": {
+            color: fg,
+            padding: 0,
+          },
+        }}
+      />
+      {!isLocked && (
+        <button
+          onClick={handleAddRow}
+          className="flex h-8 w-full items-center justify-center gap-2 border-t border-white/10 bg-slate-900/50 text-xs font-semibold uppercase tracking-widest text-slate-400 hover:bg-white/[0.04] hover:text-white transition-colors shrink-0"
+        >
+          <Plus size={14} /> Add Row
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -582,7 +613,11 @@ export default function DynamicFolderTable() {
         <div className="min-w-[1200px]">
           {folders.map((folder) => {
             const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
-            const sectionH = hh + ROWS_PER_FOLDER * ROW_HEIGHT
+            const maxRows = Math.max(ROWS_PER_FOLDER, ...(folder.subfolders || []).map(s => (s.rows || []).length))
+            // Base section height: headers + rows
+            let sectionH = hh + maxRows * ROW_HEIGHT
+            // If unlocked, account for the 32px (h-8) "Add Row" button at the bottom of the grid
+            if (!isLocked) sectionH += 32
 
             return (
               <div
@@ -705,8 +740,8 @@ export default function DynamicFolderTable() {
           copiedValue={copiedValue}
           onCopy={setCopiedValue}
           isManagement={activeFolder.is_management}
-          onSave={(rows, assignments) =>
-            saveSubfolder(activeFolder.id, activeSubfolder.id, rows, assignments)
+          onSave={(rows) =>
+            saveSubfolder(activeFolder.id, activeSubfolder.id, rows)
           }
           onClose={() => setModalState(null)}
         />

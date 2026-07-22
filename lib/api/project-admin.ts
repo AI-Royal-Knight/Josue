@@ -96,6 +96,9 @@ export async function getMyProjects(): Promise<{ projects: ProjectItem[]; total_
       completionDate: p.completion_date,
       overdue: p.is_overdue,
       completed: p.is_completed,
+      totalUnclaimed: p.total_unclaimed,
+      totalOverspend: p.total_overspend,
+      proformaNr: p.proforma_nr,
     })),
   }
 }
@@ -122,8 +125,12 @@ export interface FinancialBreakdownRow {
   variationClaimed: number
 }
 
-export async function getProjectFinancialBreakdown(projectId: string): Promise<{ breakdown: FinancialBreakdownRow[] }> {
-  return apiRequest<{ breakdown: FinancialBreakdownRow[] }>(`/project-admin/projects/${projectId}/financial-breakdown/`)
+export async function getProjectFinancialBreakdown(projectId: string): Promise<{ breakdown: FinancialBreakdownRow[], totalPoRaised: number }> {
+  return apiRequest<{ breakdown: FinancialBreakdownRow[], total_po_raised: number }>(`/project-admin/projects/${projectId}/financial-breakdown/`)
+    .then(res => ({
+      breakdown: res.breakdown,
+      totalPoRaised: res.total_po_raised || 0
+    }))
 }
 
 export async function getCompanyUsers(roleKey?: string): Promise<{ users: ProjectUser[] }> {

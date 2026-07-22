@@ -25,6 +25,7 @@ export interface ProfileResponse {
   company: {
     id?: number
     company_name?: string | null
+    company_logo?: string | null
     company_number?: number | null
     building_number?: number | null
     street?: string | null
@@ -48,7 +49,7 @@ export async function getProfile(): Promise<ProfileResponse> {
   return apiRequest<ProfileResponse>("/account/profile/")
 }
 
-export async function updateProfile(data: ProfileUpdateRequest): Promise<ProfileResponse> {
+export async function updateProfile(data: ProfileUpdateRequest | FormData): Promise<ProfileResponse> {
   return apiRequest<ProfileResponse>("/account/profile/", {
     method: "PUT",
     body: data,

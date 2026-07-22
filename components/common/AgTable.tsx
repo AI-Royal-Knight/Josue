@@ -280,7 +280,7 @@ export function AgTable<TData extends object>({
       if (suppressCellClickAction) return
 
       const target = event.event?.target
-      if (target instanceof HTMLElement) {
+      if (target instanceof Element) {
         const interactiveElement = target.closest(
           "button, input, select, textarea, a, label, [role='switch'], [data-cell-click-ignore]"
         )

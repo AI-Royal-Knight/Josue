@@ -7,7 +7,7 @@ import { AgTable } from "@/components/common/AgTable"
 import SelectProject from "@/components/shared/select-project"
 import { Button } from "@/components/ui/button"
 import { getBucketItems, submitBucketItems } from "@/lib/api/user-invoices"
-import type { UserInvoiceApi } from "@/types/api"
+import type { UserInvoiceApi } from "@/lib/api/user-invoices"
 
 export default function BucketPage() {
   const [rows, setRows] = useState<UserInvoiceApi[]>([])
@@ -49,7 +49,7 @@ export default function BucketPage() {
     },
     { 
       headerName: "Source", 
-      field: "sourceName",
+      field: "sourceType",
       width: 150,
     },
     { 
@@ -104,9 +104,7 @@ export default function BucketPage() {
         <div className="flex items-center gap-4">
           <SelectProject
             value={selectedProject}
-            onValueChange={setSelectedProject}
-            showAllOption
-            className="w-[240px]"
+            onChange={setSelectedProject}
           />
           <Button 
             onClick={handleSubmit} 

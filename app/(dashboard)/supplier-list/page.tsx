@@ -1,43 +1,44 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import type { ColDef } from "ag-grid-community"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { AgTable } from "@/components/common/AgTable"
-import Filters from "@/components/shared/filters"
 import { Switch } from "@/components/ui/switch"
 import ConfirmPaymentDialog from "@/components/common/confirm-payment"
 import TableStat from "@/components/common/table-stat"
+import { getFinanceSupplierInvoices, patchFinanceSupplierInvoice } from "@/lib/api/finance"
+import type { FinanceSupplierInvoice } from "@/lib/api/finance"
+import { MessageSquarePlus, Pencil } from "lucide-react"
 
 type SupplierRow = {
+  id: string
   no: string
-  invoiceNumber?: string
-  date?: string
-  project?: string
-  userName?: string
-  sortCode?: string
-  accountNumber?: string
-  total?: string
-  paymentDueDate?: string
-  paidBy?: string
+  invoiceNumber: string
+  date: string
+  project: string
+  userName: string
+  sortCode: string
+  accountNumber: string
+  total: string
+  paymentDueDate: string
+  paidBy: string
   paid: boolean
-  dateScheduled?: string
-  releaseDate?: string
-  financeComments?: string
-  procurementComments?: string
-  commercialComments?: string
+  dateScheduled: string
+  releaseDate: string
+  financeComments: string
+  procurementComments: string
+  commercialComments: string
   supplierName: string
   creditLimit: string
   eomPaymentTerms: string
@@ -47,30 +48,72 @@ type SupplierRow = {
   invoiceDueThisMonth: string
 }
 
-function buildInvoiceDocHtml(invoice: any) {
+function fmt(n: number | null | undefined) {
+  return `£${Number(n ?? 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function fmtDate(d: string | null | undefined) {
+  if (!d) return "-"
+  try {
+    return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  } catch {
+    return d
+  }
+}
+
+function mapToRow(inv: FinanceSupplierInvoice, index: number): SupplierRow {
+  return {
+    id: inv.id,
+    no: String(index + 1).padStart(3, "0"),
+    invoiceNumber: inv.quote_ref,
+    date: fmtDate(inv.date_of_quote),
+    project: inv.project_name || "-",
+    userName: inv.user_name || "-",
+    sortCode: inv.sort_code || "-",
+    accountNumber: inv.account_number || "-",
+    total: fmt(inv.quote_total),
+    paymentDueDate: "-",
+    paidBy: inv.paid_by_name || "-",
+    paid: inv.paid,
+    dateScheduled: fmtDate(inv.date_scheduled),
+    releaseDate: fmtDate(inv.release_date),
+    financeComments: inv.finance_comments || "",
+    procurementComments: inv.procurement_comments || "",
+    commercialComments: inv.commercial_comments || "",
+    supplierName: inv.supplier_name || "-",
+    creditLimit: fmt(inv.credit_limit),
+    eomPaymentTerms: `${inv.eom_payment_terms ?? 30} days`,
+    monthCreditUsed: fmt(inv.month_credit_used),
+    availableCredit: fmt(inv.available_credit),
+    previousMonth: fmt(inv.previous_month),
+    invoiceDueThisMonth: fmt(inv.invoice_due_this_month),
+  }
+}
+
+function buildInvoiceDocHtml(invoice: SupplierRow) {
   const paidText = invoice.paid ? "Yes" : "No"
-  const confirmedDate = invoice.releaseDate || invoice.paymentDueDate || "-"
-  const value = invoice.total || "-"
-  const invoiceNumber = invoice.invoiceNumber || invoice.no
+  const confirmedDate = invoice.releaseDate !== "-" ? invoice.releaseDate : invoice.paymentDueDate
 
   return `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Invoice ${invoiceNumber}</title>
+    <title>Invoice ${invoice.invoiceNumber}</title>
   </head>
   <body style="font-family: Arial, Helvetica, sans-serif; color: #111;">
     <div style="max-width: 720px; margin: 0 auto; padding: 24px;">
       <h1 style="margin: 0 0 8px;">INVOICE</h1>
       <div style="margin: 0 0 16px; font-size: 12px;">
-        <div><strong>Invoice Number:</strong> ${invoiceNumber}</div>
-        <div><strong>Invoice Date:</strong> ${invoice.date || "-"}</div>
+        <div><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</div>
+        <div><strong>Supplier:</strong> ${invoice.supplierName}</div>
+        <div><strong>Invoice Date:</strong> ${invoice.date}</div>
+        <div><strong>Project:</strong> ${invoice.project}</div>
         <div><strong>Paid:</strong> ${paidText}</div>
         <div><strong>Date of confirmed payment:</strong> ${confirmedDate}</div>
+        <div><strong>Sort Code:</strong> ${invoice.sortCode}</div>
+        <div><strong>Account Number:</strong> ${invoice.accountNumber}</div>
       </div>
-
       <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
-
       <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
         <thead>
           <tr>
@@ -80,169 +123,93 @@ function buildInvoiceDocHtml(invoice: any) {
         </thead>
         <tbody>
           <tr>
-            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">Work completed (sample)</td>
-            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${value}</td>
+            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">Work completed</td>
+            <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${invoice.total}</td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
             <td style="padding: 12px 4px; text-align: right;"><strong>Total</strong></td>
-            <td style="padding: 12px 4px; text-align: right;"><strong>${value}</strong></td>
+            <td style="padding: 12px 4px; text-align: right;"><strong>${invoice.total}</strong></td>
           </tr>
         </tfoot>
       </table>
-
-      <p style="margin-top: 16px; font-size: 11px; color: #444;">
-        This is a sample invoice document generated from the supplier list.
-      </p>
     </div>
   </body>
 </html>`
 }
 
-const summaryRows = [
-  { label: "Approved Invoices", qty: "1000", value: "£400" },
-  { label: "Invoices Due This Week", qty: "184", value: "£200" },
-  { label: "Invoices Paid", qty: "156", value: "£200" },
-]
-
-const initialData: SupplierRow[] = [
-  {
-    no: "SUP-001",
-    invoiceNumber: "INV-2024-001",
-    date: "2024-01-15",
-    project: "Project Alpha",
-    userName: "John Smith",
-    sortCode: "12-34-56",
-    accountNumber: "12345678",
-    total: "£2,500",
-    paymentDueDate: "2024-02-15",
-    paidBy: "John Smith",
-    paid: false,
-    dateScheduled: "2024-01-20",
-    releaseDate: "2024-02-15",
-    financeComments: "Urgent payment required",
-    procurementComments: "Invoice matches PO #12345",
-    commercialComments: "Approved for payment",
-    supplierName: "Hilti Supply Co",
-    creditLimit: "",
-    eomPaymentTerms: "",
-    monthCreditUsed: "",
-    availableCredit: "",
-    previousMonth: "",
-    invoiceDueThisMonth: "",
-  },
-  {
-    no: "SUP-002",
-    invoiceNumber: "INV-2024-002",
-    date: "2024-01-20",
-    project: "Project Beta",
-    userName: "Jane Doe",
-    sortCode: "65-43-21",
-    accountNumber: "87654321",
-    total: "£5,000",
-    paymentDueDate: "2024-02-20",
-    paidBy: "Jane Doe",
-    paid: true,
-    dateScheduled: "2024-01-25",
-    releaseDate: "2024-02-20",
-    financeComments: "Payment processed on time",
-    procurementComments: "Invoice matches PO #54321",
-    commercialComments: "Approved for payment",
-    supplierName: "BuildRight Materials",
-    creditLimit: "",
-    eomPaymentTerms: "",
-    monthCreditUsed: "",
-    availableCredit: "",
-    previousMonth: "",
-    invoiceDueThisMonth: "",
-  },
-  {
-    no: "SUP-004",
-    invoiceNumber: "INV-2024-003",
-    date: "2024-01-20",
-    project: "Project Beta",
-    userName: "Jane Doe",
-    sortCode: "65-43-21",
-    accountNumber: "87654321",
-    total: "£5,000",
-    paymentDueDate: "2024-02-20",
-    paidBy: "Jane Doe",
-    paid: true,
-    dateScheduled: "2024-01-25",
-    releaseDate: "2024-02-20",
-    financeComments: "Payment processed on time",
-    procurementComments: "Invoice matches PO #54321",
-    commercialComments: "Approved for payment",
-    supplierName: "Cement Bros",
-    creditLimit: "",
-    eomPaymentTerms: "",
-    monthCreditUsed: "",
-    availableCredit: "",
-    previousMonth: "",
-    invoiceDueThisMonth: "",
-  },
-]
-
-function InviteSupplierDialog() {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Invite Supplier</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-[420px]">
-        <DialogHeader>
-          <DialogTitle className="text-3xl font-semibold">
-            Supplier Invitation
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-5 pt-2">
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Name</Label>
-            <Input />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Supplier Email</Label>
-            <Input type="email" className="border-white/10 bg-[#182742]" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Credit Limit</Label>
-            <Input className="border-white/10 bg-[#182742]" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">EOM payment terms</Label>
-            <Input className="border-white/10 bg-[#182742]" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Password</Label>
-            <Input type="password" className="border-white/10 bg-[#182742]" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm text-slate-300">Confirm Password</Label>
-            <Input type="password" className="border-white/10 bg-[#182742]" />
-          </div>
-
-          <div className="pt-2">
-            <Button className="w-full bg-[#1fb656] text-white hover:bg-[#18a34b]">
-              Send Invite
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export default function Page() {
-  const [rows, setRows] = useState<SupplierRow[]>(initialData)
+  const [rows, setRows] = useState<SupplierRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [summaryRows, setSummaryRows] = useState([
+    { label: "Approved Invoices", qty: "0", value: "£0" },
+    { label: "Invoices Due This Month", qty: "0", value: "£0" },
+    { label: "Invoices Paid", qty: "0", value: "£0" },
+  ])
+
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingRowId, setPendingRowId] = useState<string | null>(null)
   const [nextPaid, setNextPaid] = useState(false)
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<SupplierRow | null>(null)
+
+  // Finance comment dialog
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false)
+  const [commentRow, setCommentRow] = useState<SupplierRow | null>(null)
+  const [commentDraft, setCommentDraft] = useState("")
+  const [commentSaving, setCommentSaving] = useState(false)
+
+  function openCommentDialog(row: SupplierRow) {
+    setCommentRow(row)
+    setCommentDraft(row.financeComments ?? "")
+    setCommentDialogOpen(true)
+  }
+
+  async function saveComment() {
+    if (!commentRow) return
+    setCommentSaving(true)
+    try {
+      await patchFinanceSupplierInvoice(commentRow.id, { finance_comments: commentDraft })
+      setRows((current) =>
+        current.map((r) =>
+          r.id === commentRow.id ? { ...r, financeComments: commentDraft } : r
+        )
+      )
+      setCommentDialogOpen(false)
+    } catch (err) {
+      console.error("Failed to save comment", err)
+    } finally {
+      setCommentSaving(false)
+    }
+  }
+
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const data = await getFinanceSupplierInvoices()
+      const mapped = data.map(mapToRow)
+      setRows(mapped)
+
+      const paidCount = data.filter((d) => d.paid).length
+      const paidTotal = data.filter((d) => d.paid).reduce((s, d) => s + Number(d.quote_total ?? 0), 0)
+      const totalCount = data.length
+
+      setSummaryRows([
+        { label: "Approved Invoices", qty: String(totalCount), value: fmt(data.reduce((s, d) => s + Number(d.quote_total ?? 0), 0)) },
+        { label: "Invoices Due This Month", qty: String(data.filter((d) => !d.paid).length), value: fmt(data.filter((d) => !d.paid).reduce((s, d) => s + Number(d.quote_total ?? 0), 0)) },
+        { label: "Invoices Paid", qty: String(paidCount), value: fmt(paidTotal) },
+      ])
+    } catch (err) {
+      console.error("Failed to load finance invoices", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   function openInvoice(invoice: SupplierRow) {
     setSelectedInvoice(invoice)
@@ -255,7 +222,7 @@ export default function Page() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `${invoice.invoiceNumber || invoice.no}.doc`
+    anchor.download = `${invoice.invoiceNumber}.doc`
     anchor.click()
     URL.revokeObjectURL(url)
   }
@@ -266,63 +233,106 @@ export default function Page() {
     setConfirmOpen(true)
   }
 
-  function handleConfirmPaymentChange() {
+  async function handleConfirmPaymentChange() {
     if (!pendingRowId) return
-
-    setRows((currentRows) =>
-      currentRows.map((row) =>
-        row.no === pendingRowId ? { ...row, paid: nextPaid } : row
+    try {
+      await patchFinanceSupplierInvoice(pendingRowId, { paid: nextPaid })
+      setRows((current) =>
+        current.map((row) => (row.id === pendingRowId ? { ...row, paid: nextPaid } : row))
       )
-    )
-    setConfirmOpen(false)
-    setPendingRowId(null)
+      // Refresh summary
+      await loadData()
+    } catch (err) {
+      console.error("Failed to update paid status", err)
+    } finally {
+      setConfirmOpen(false)
+      setPendingRowId(null)
+    }
   }
 
+
   const columnDefs: ColDef<SupplierRow>[] = [
-    { headerName: "No", field: "no" },
+    { headerName: "No", field: "no", maxWidth: 70 },
     {
       headerName: "Invoice Number",
       field: "invoiceNumber",
+      minWidth: 160,
       cellRenderer: (params: { data?: SupplierRow; value: string }) => (
         <button
           type="button"
-          className={`hover:underline ${params.data?.paid ? "text-green-500" : "text-red-500"}`}
-          onClick={(event) => {
-            event.stopPropagation()
-            if (!params.data) return
-            openInvoice(params.data)
+          className={`hover:underline font-medium ${params.data?.paid ? "text-green-600" : "text-red-500"}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (params.data) openInvoice(params.data)
           }}
         >
           {params.value}
         </button>
       ),
     },
-    { headerName: "Date(Supplier sent)", field: "date", minWidth: 150 },
+    { headerName: "Date (Supplier sent)", field: "date", minWidth: 150 },
     { headerName: "Project", field: "project" },
-    { headerName: "Supplier name", field: "supplierName" },
+    { headerName: "Supplier name", field: "supplierName", minWidth: 200 },
     { headerName: "Sort code", field: "sortCode" },
     { headerName: "Account number", field: "accountNumber" },
     { headerName: "Total", field: "total" },
-    { headerName: "Payment due date", field: "paymentDueDate" },
+    { headerName: "EOM Payment Terms", field: "eomPaymentTerms" },
+    { headerName: "Credit Limit", field: "creditLimit" },
+    { headerName: "Month Credit Used", field: "monthCreditUsed" },
+    { headerName: "Available Credit", field: "availableCredit" },
+    { headerName: "Previous Month", field: "previousMonth" },
+    { headerName: "Due This Month", field: "invoiceDueThisMonth" },
     { headerName: "Paid by", field: "paidBy" },
     {
       headerName: "Paid",
       field: "paid",
+      maxWidth: 90,
       cellRenderer: (params: { data?: SupplierRow; value: boolean }) => (
         <Switch
           checked={params.value}
           onCheckedChange={(checked) => {
-            if (!params.data) return
-            openPaymentConfirm(params.data.no, checked)
+            if (params.data?.id) openPaymentConfirm(params.data.id, checked)
           }}
         />
       ),
     },
     { headerName: "Date scheduled", field: "dateScheduled" },
     { headerName: "Release date", field: "releaseDate" },
-    { headerName: "Finance comments", field: "financeComments" },
-    { headerName: "Procurement Comments", field: "procurementComments" },
-    { headerName: "Commercial comments", field: "commercialComments" },
+    {
+      headerName: "Finance comments",
+      field: "financeComments",
+      minWidth: 200,
+      suppressCellFocus: true,
+      cellRenderer: (params: { data?: SupplierRow; value: string }) => {
+        const hasComment = !!params.value
+        return (
+          <button
+            type="button"
+            data-cell-click-ignore="true"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (params.data) openCommentDialog(params.data)
+            }}
+            className="group flex h-full w-full items-center gap-2 py-1 text-left"
+            title={params.value || "Add comment"}
+          >
+            {hasComment ? (
+              <>
+                <Pencil className="h-3 w-3 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span className="truncate text-sm text-foreground">{params.value}</span>
+              </>
+            ) : (
+              <>
+                <MessageSquarePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span className="text-sm text-muted-foreground italic group-hover:text-primary transition-colors">Add comment...</span>
+              </>
+            )}
+          </button>
+        )
+      },
+    },
+    { headerName: "Procurement Comments", field: "procurementComments", minWidth: 180 },
+    { headerName: "Commercial comments", field: "commercialComments", minWidth: 180 },
   ]
 
   return (
@@ -331,21 +341,58 @@ export default function Page() {
 
       <TableStat summaryRows={summaryRows} />
 
-      {/* <div className="flex justify-between"> */}
-      {/* <InviteSupplierDialog /> */}
-      {/* <Filters /> */}
-      {/* </div> */}
-
       <ConfirmPaymentDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        supplierName={
-          rows.find((row) => row.no === pendingRowId)?.supplierName ??
-          "this supplier"
-        }
+        supplierName={rows.find((r) => r.id === pendingRowId)?.supplierName ?? "this supplier"}
         nextPaid={nextPaid}
         onConfirm={handleConfirmPaymentChange}
       />
+
+      {/* Finance Comment Dialog */}
+      <Dialog open={commentDialogOpen} onOpenChange={setCommentDialogOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquarePlus className="h-4 w-4" />
+              Finance Comment
+            </DialogTitle>
+            {commentRow && (
+              <DialogDescription className="text-xs text-muted-foreground">
+                {commentRow.supplierName} — {commentRow.invoiceNumber}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <Textarea
+              value={commentDraft}
+              onChange={(e) => setCommentDraft(e.target.value)}
+              placeholder="Type your finance comment here..."
+              className="min-h-[140px] resize-y text-sm leading-relaxed"
+              autoFocus
+            />
+            {commentRow?.financeComments && commentDraft !== commentRow.financeComments && (
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium">Previous:</span> {commentRow.financeComments}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCommentDialogOpen(false)}
+              disabled={commentSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={saveComment} disabled={commentSaving}>
+              {commentSaving ? "Saving..." : "Save Comment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AgTable
         columnDefs={columnDefs}
@@ -368,28 +415,40 @@ export default function Page() {
               <div className="flex items-start justify-between gap-6">
                 <div>
                   <h2 className="text-lg font-semibold">INVOICE</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Sample document preview
-                  </p>
+                  <p className="text-sm text-muted-foreground">{selectedInvoice.supplierName}</p>
                 </div>
-                <div className="text-right text-sm">
+                <div className="text-right text-sm space-y-1">
                   <div>
                     <span className="font-medium">Invoice Number:</span>{" "}
-                    {selectedInvoice.invoiceNumber || selectedInvoice.no}
+                    {selectedInvoice.invoiceNumber}
                   </div>
                   <div>
                     <span className="font-medium">Invoice Date:</span>{" "}
-                    {selectedInvoice.date || "-"}
+                    {selectedInvoice.date}
+                  </div>
+                  <div>
+                    <span className="font-medium">Project:</span>{" "}
+                    {selectedInvoice.project}
                   </div>
                   <div>
                     <span className="font-medium">Paid:</span>{" "}
-                    {selectedInvoice.paid ? "Yes" : "No"}
+                    {selectedInvoice.paid ? (
+                      <span className="text-green-600 font-semibold">Yes</span>
+                    ) : (
+                      <span className="text-red-500 font-semibold">No</span>
+                    )}
                   </div>
                   <div>
-                    <span className="font-medium">
-                      Date of confirmed payment:
-                    </span>{" "}
-                    {selectedInvoice.releaseDate || selectedInvoice.paymentDueDate || "-"}
+                    <span className="font-medium">Date of confirmed payment:</span>{" "}
+                    {selectedInvoice.releaseDate !== "-" ? selectedInvoice.releaseDate : "-"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Sort Code:</span>{" "}
+                    {selectedInvoice.sortCode}
+                  </div>
+                  <div>
+                    <span className="font-medium">Account Number:</span>{" "}
+                    {selectedInvoice.accountNumber}
                   </div>
                 </div>
               </div>
@@ -405,36 +464,46 @@ export default function Page() {
                 </thead>
                 <tbody>
                   <tr className="border-b border-border/60">
-                    <td className="py-3">Work completed (sample)</td>
-                    <td className="py-3 text-right">{selectedInvoice.total || "-"}</td>
+                    <td className="py-3">Work completed</td>
+                    <td className="py-3 text-right">{selectedInvoice.total}</td>
                   </tr>
                 </tbody>
                 <tfoot>
                   <tr>
                     <td className="py-3 text-right font-semibold">Total</td>
                     <td className="py-3 text-right font-semibold">
-                      {selectedInvoice.total || "-"}
+                      {selectedInvoice.total}
                     </td>
                   </tr>
                 </tfoot>
               </table>
+
+              <div className="mt-6 grid grid-cols-3 gap-4 text-sm">
+                <div className="space-y-1 rounded border p-3">
+                  <div className="font-medium text-muted-foreground">Credit Limit</div>
+                  <div className="font-semibold">{selectedInvoice.creditLimit}</div>
+                </div>
+                <div className="space-y-1 rounded border p-3">
+                  <div className="font-medium text-muted-foreground">Month Credit Used</div>
+                  <div className="font-semibold">{selectedInvoice.monthCreditUsed}</div>
+                </div>
+                <div className="space-y-1 rounded border p-3">
+                  <div className="font-medium text-muted-foreground">Available Credit</div>
+                  <div className={`font-semibold ${Number(selectedInvoice.availableCredit.replace(/[^0-9.-]/g, "")) < 0 ? "text-red-500" : "text-green-600"}`}>
+                    {selectedInvoice.availableCredit}
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null}
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => setInvoiceDialogOpen(false)}
-            >
+            <Button variant="outline" type="button" onClick={() => setInvoiceDialogOpen(false)}>
               Close
             </Button>
             <Button
               type="button"
-              onClick={() => {
-                if (!selectedInvoice) return
-                downloadInvoiceDoc(selectedInvoice)
-              }}
+              onClick={() => selectedInvoice && downloadInvoiceDoc(selectedInvoice)}
               disabled={!selectedInvoice}
             >
               Download Invoice

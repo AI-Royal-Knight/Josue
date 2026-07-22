@@ -52,7 +52,7 @@ export default function PODialog({
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-xs tracking-wide text-slate-400 uppercase">
                 {[
-                  "Call Off Ref",
+                  "SL",
                   "Description",
                   "Unit",
                   "Unit Price",
@@ -71,7 +71,7 @@ export default function PODialog({
               </tr>
             </thead>
             <tbody>
-              {dialogState?.lines.map((line) => {
+              {dialogState?.lines.map((line, index) => {
                 const isFocused = line.callOffRef === dialogState.focusRef
                 const lineTotal = line.orderQty * line.unitPriceNum
                 return (
@@ -85,7 +85,7 @@ export default function PODialog({
                     )}
                   >
                     <td className="border-r border-white/10 px-3 py-2 font-medium text-blue-300">
-                      {line.callOffRef}
+                      {index + 1}
                     </td>
                     <td className="border-r border-white/10 px-3 py-2 text-slate-200">
                       {line.productDescription}

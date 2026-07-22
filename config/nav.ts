@@ -21,6 +21,7 @@ export const DASHBOARD_NAV: Record<string, NavItem[]> = {
     { title: "Project Overview", url: "/project-overview" },
     { title: "Create Variation", url: "/create-variation" },
     { title: "Variation List", url: "/variation-list" },
+    { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Bucket", url: "/bucket" },
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Daily Register", url: "/daily-register" },

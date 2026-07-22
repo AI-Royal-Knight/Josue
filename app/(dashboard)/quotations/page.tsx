@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import type { ColDef } from "ag-grid-community"
-import { BellRing, CheckCircle2, FileText, Plus, RotateCcw } from "lucide-react"
+import { BellRing, CheckCircle2, FileText, Plus, RotateCcw, Loader2 } from "lucide-react"
 import { AgTable } from "@/components/common/AgTable"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,12 +27,14 @@ import CreateQuotationForm from "./_components/create-quotation-form"
 import { addOrder } from "@/lib/po-store"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
-import { getQuotations } from "@/lib/api/quotations"
+import { getQuotations, requestRequote } from "@/lib/api/quotations"
+import { toast } from "sonner"
 import { useRoleStore } from "@/lib/role-store"
 
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
 type QuotationRow = {
+  id: string
   no: number
   quotesRef: string
   project: string
@@ -48,6 +50,9 @@ type QuotationRow = {
   procurementComments: string
   approveQuotesStatus: ApprovalStatus
   quoteApprovalReasons: string
+  supplierQuotePdf?: string | null
+  lineItems?: any[]
+  history?: any[]
 }
 
 type PendingAction =
@@ -160,6 +165,7 @@ export default function Page() {
       setErrorMsg(null)
       const data = await getQuotations()
       const formatted = data.map((q: any, i: number) => ({
+        id: q.id,
         no: i + 1,
         quotesRef: q.quote_ref,
         project: q.project_name,
@@ -176,6 +182,9 @@ export default function Page() {
         approveQuotesStatus: q.status,
         quoteApprovalReasons: q.quote_approval_reasons || "-",
         requoteComments: q.requote_comments || "",
+        supplierQuotePdf: q.supplier_quote_pdf || null,
+        lineItems: q.line_items || [],
+        history: q.history || [],
       }))
       setRows(formatted)
     } catch (err: any) {
@@ -195,16 +204,18 @@ export default function Page() {
   }, [])
 
 
-  const handleReQuote = (comments: string) => {
+  const handleReQuote = async (comments: string) => {
     if (!reQuoteTarget) return
-    setRows((prev) =>
-      prev.map((r) =>
-        r.no === reQuoteTarget.no
-          ? { ...r, requoteComments: comments }
-          : r
-      )
-    )
-    setReQuoteTarget(null)
+    try {
+      await requestRequote(reQuoteTarget.id, comments)
+      toast.success("Re-quote requested successfully. An email has been sent to the supplier.")
+      fetchQuotations() // Reload quotations
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to request re-quote. Please try again.")
+    } finally {
+      setReQuoteTarget(null)
+    }
   }
 
   const handleConfirm = () => {
@@ -299,6 +310,25 @@ export default function Page() {
       field: "quoteTotal",
       cellStyle: { textAlign: "right" },
       minWidth: 140,
+    },
+    {
+      headerName: "Supplier Reply",
+      field: "supplierQuotePdf",
+      minWidth: 150,
+      cellRenderer: (params: { data?: QuotationRow }) => {
+        const row = params.data
+        if (!row || !row.supplierQuotePdf) return <span className="text-slate-500 text-xs italic">-</span>
+        return (
+          <a
+            href={row.supplierQuotePdf}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-[#3467df] hover:underline text-xs font-medium"
+          >
+            <FileText className="size-3.5" /> View PDF
+          </a>
+        )
+      },
     },
     // ── Approve / Reject ────────────────────────────────────────────────────
     {
@@ -458,7 +488,13 @@ export default function Page() {
           <Button
             variant="outline"
             className="h-7 rounded-none border-white/10 bg-slate-700 px-2 text-xs text-slate-200 hover:bg-slate-600"
-            onClick={() => setReQuoteTarget({ no: row.no })}
+            onClick={() => setReQuoteTarget({ 
+              id: row.id,
+              no: row.no, 
+              quotesRef: row.quotesRef, 
+              supplierName: row.supplierName, 
+              quoteTotal: row.quoteTotal 
+            })}
           >
             <RotateCcw className="size-3.5" />
             Re-quote
@@ -575,7 +611,8 @@ export default function Page() {
       <ReQuoteDialog
         open={!!reQuoteTarget}
         onOpenChange={(open) => !open && setReQuoteTarget(null)}
-        onConfirm={handleReQuote}
+        target={reQuoteTarget}
+        onSubmit={handleReQuote}
       />
 
     </div>

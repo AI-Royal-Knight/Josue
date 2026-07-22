@@ -131,16 +131,33 @@ export async function acceptCompanyInvitation(
 // ── Invoices ──────────────────────────────────────────────────────────────
 
 export interface MonthlyInvoice {
-  id: number
-  company_id: string
+  id: string
+  company_id?: string
+  company_name?: string
   year: number
   month: number
   amount: string | null
   is_sent: boolean
+  is_paid: boolean
+  payment_date: string | null
+  invoice_number: string | null
+  created_at?: string
 }
 
-export async function getInvoices(year: number): Promise<MonthlyInvoice[]> {
-  return apiRequest<MonthlyInvoice[]>(`/super-admin/invoices/?year=${year}`)
+export async function getInvoices(year?: number): Promise<MonthlyInvoice[]> {
+  const url = year ? `/super-admin/invoices/?year=${year}` : `/super-admin/invoices/`
+  return apiRequest<MonthlyInvoice[]>(url)
+}
+
+export async function getAllInvoices(): Promise<MonthlyInvoice[]> {
+  return apiRequest<MonthlyInvoice[]>("/super-admin/invoices/")
+}
+
+export async function updateInvoicePayment(id: string, isPaid: boolean): Promise<MonthlyInvoice> {
+  return apiRequest<MonthlyInvoice>(`/super-admin/invoices/${id}/`, {
+    method: "PATCH",
+    body: { is_paid: isPaid },
+  })
 }
 
 export interface SubmitInvoicePayload {
