@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState, Suspense, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 
 import VariationSummaryView from "./_components/VariationSummaryView"
 import WhiteCardView from "./_components/WhiteCardView"
@@ -9,81 +10,58 @@ import ApplicationView from "./_components/ApplicationView"
 import SelectProject from "@/components/shared/select-project"
 import TableStat from "@/components/common/table-stat"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
-import { formatGBP } from "../variations/utils"
-import { getMonthlyApplications, MonthlyApplicationApi } from "@/lib/api/monthly-application"
+import { getMonthlyApplications, CurrentDraft, MonthlyApplicationApi } from "@/lib/api/monthly-application"
+import { formatCurrency } from "@/lib/utils"
 
 type MonthlyTab = "variation-summary" | "white-card" | "application"
 
-export default function Page() {
-  const [activeTab, setActiveTab] = useState<MonthlyTab>("variation-summary")
-  const [selectedProject, setSelectedProject] = useState("")
-  const [applications, setApplications] = useState<MonthlyApplicationApi[]>([])
-  const [loading, setLoading] = useState(false)
+function MonthlyApplicationContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
 
-  useEffect(() => {
-    if (!selectedProject || selectedProject === "none") {
-      setApplications([])
-      return
-    }
+  const tabParam = searchParams.get("tab") as MonthlyTab
+  const activeTab: MonthlyTab = ["variation-summary", "white-card", "application"].includes(tabParam) 
+    ? tabParam 
+    : "variation-summary"
 
-    async function load() {
-      setLoading(true)
-      try {
-        const res = await getMonthlyApplications(selectedProject)
-        setApplications(res.monthly_applications)
-      } catch (e) {
-        console.error("Failed to load applications", e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [selectedProject])
-
-  const latestApp = applications.length > 0 ? applications[0] : null
-  const previousApp = applications.length > 1 ? applications[1] : null
-
-  // Calculate Net Application correctly based on contract_works_total + variations_total - retention - discount
-  const getNet = (app: MonthlyApplicationApi | null) => {
-    if (!app) return 0
-    const gross = parseFloat(app.contract_works_total) + parseFloat(app.variations_total)
-    const retAmount = gross * (parseFloat(app.retention_percentage) / 100)
-    const discAmount = gross * (parseFloat(app.discount_percentage) / 100)
-    return gross - retAmount - discAmount
+  const setActiveTab = (tab: MonthlyTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("tab", tab)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
-  const currentNet = getNet(latestApp)
-  const previousNet = getNet(previousApp)
+  const [selectedProject, setSelectedProject] = useState<string>("")
+  const [applications, setApplications] = useState<MonthlyApplicationApi[]>([])
+  const [draft, setDraft] = useState<CurrentDraft | null>(null)
+
+  useEffect(() => {
+    if (!selectedProject) return
+    async function loadData() {
+      try {
+        const res = await getMonthlyApplications(selectedProject)
+        setApplications(res.monthly_applications || [])
+        setDraft(res.current_draft || null)
+      } catch (e) {
+        console.error("Failed to load summary stats", e)
+      }
+    }
+    loadData()
+  }, [selectedProject])
+
+  const prevClaim = applications.length > 0 ? parseFloat(applications[0].amount_claimed) : 0
+  const thisMonthClaim = draft?.gross_total || 0
+  const retentionHold = (draft?.gross_total || 0) * 0.025
   
-  const contractWorksTotal = latestApp ? parseFloat(latestApp.contract_works_total) : 0
-  const variationsTotal = latestApp ? parseFloat(latestApp.variations_total) : 0
-  const currentGross = contractWorksTotal + variationsTotal
-  const retentionHold = latestApp ? currentGross * (parseFloat(latestApp.retention_percentage) / 100) : 0
-
-  const summaryRows = [
-    {
-      label: "Previous Month claim",
-      value: formatGBP(previousNet),
-      valueColor: "yellow" as const,
-    },
-    {
-      label: "This Months claim",
-      value: formatGBP(currentNet),
-      valueColor: "green" as const,
-    },
-    {
-      label: "Retention hold",
-      value: formatGBP(retentionHold),
-      valueColor: "red" as const,
-    },
-  ]
-
   const content = useMemo(() => {
-    if (!selectedProject || selectedProject === "none") return <div className="text-slate-400 p-8 text-center border border-white/10 mt-4 rounded">Please select a project to view application details.</div>
+    if (!selectedProject) {
+      return <div className="p-8 text-center text-slate-400 border border-white/10 rounded-lg mt-6">Please select a project from the dropdown above first.</div>
+    }
+    
     if (activeTab === "variation-summary") return <VariationSummaryView projectId={selectedProject} />
     if (activeTab === "white-card") return <WhiteCardView projectId={selectedProject} />
-    return <ApplicationView projectId={selectedProject} latestApp={latestApp} previousApp={previousApp} applications={applications} setApplications={setApplications} />
-  }, [activeTab, selectedProject, latestApp, previousApp, applications])
+    return <ApplicationView projectId={selectedProject} />
+  }, [activeTab, selectedProject])
 
   return (
     <div className="w-full space-y-4 p-6">
@@ -135,7 +113,25 @@ export default function Page() {
               Application
             </Button>
           </div>
-          <TableStat summaryRows={summaryRows} />
+          <TableStat
+            summaryRows={[
+              {
+                label: "Previous Month claim",
+                value: formatCurrency(prevClaim),
+                valueColor: "yellow",
+              },
+              {
+                label: "This Months claim",
+                value: formatCurrency(thisMonthClaim),
+                valueColor: "green",
+              },
+              {
+                label: "Retention hold",
+                value: formatCurrency(retentionHold),
+                valueColor: "red",
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -145,11 +141,35 @@ export default function Page() {
             { header: "Metric", field: "label" },
             { header: "Value", field: "value" },
           ]}
-          rows={summaryRows}
+          rows={[
+            {
+              label: "Previous Month claim",
+              value: formatCurrency(prevClaim),
+              valueColor: "yellow",
+            },
+            {
+              label: "This Months claim",
+              value: formatCurrency(thisMonthClaim),
+              valueColor: "green",
+            },
+            {
+              label: "Retention hold",
+              value: formatCurrency(retentionHold),
+              valueColor: "red",
+            },
+          ]}
           fileName="monthly-application-summary.csv"
         />
       </div>
       {content}
     </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading...</div>}>
+      <MonthlyApplicationContent />
+    </Suspense>
   )
 }

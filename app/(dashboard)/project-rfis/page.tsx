@@ -15,9 +15,15 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Send, Paperclip, X, CheckCircle2, Lock } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
-import { getRFIs, closeRFI, sendRFIMessage } from "@/lib/api/rfis"
+import { getRFIs, closeRFI, sendRFIMessage, assignRFIToTechnical, createRFI } from "@/lib/api/rfis"
+import { getMyProjects } from "@/lib/api/project-admin"
 import type { RFI, ChatMessage } from "@/lib/api/rfis"
+import type { ProjectItem } from "@/constants/projects"
 import { useAuthStore } from "@/lib/auth-store"
 import { format } from "date-fns"
 
@@ -219,15 +225,26 @@ function RFIDetailDialog({
 
 export default function ProjectRFIsPage() {
   const [rfis, setRfis] = useState<RFI[]>([])
+  const [projects, setProjects] = useState<ProjectItem[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("all")
   const [selectedRFI, setSelectedRFI] = useState<RFI | null>(null)
   const [loading, setLoading] = useState(true)
   const [viewDocumentUrl, setViewDocumentUrl] = useState<string | null>(null)
 
-  const fetchRFIs = async () => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [createData, setCreateData] = useState({ project_id: "", description: "", trade: "General" })
+  const [createFile, setCreateFile] = useState<File | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+
+  const fetchData = async () => {
     setLoading(true)
     try {
-      const data = await getRFIs()
-      setRfis(data)
+      const [rfiData, projectData] = await Promise.all([
+        getRFIs(),
+        getMyProjects(),
+      ])
+      setRfis(rfiData)
+      setProjects(projectData.projects)
     } catch (e) {
       console.error(e)
     } finally {
@@ -236,12 +253,16 @@ export default function ProjectRFIsPage() {
   }
 
   useEffect(() => {
-    fetchRFIs()
+    fetchData()
   }, [])
 
-  const totalCount = rfis.length
-  const openCount = rfis.filter((r) => r.status === "OPEN").length
-  const closedCount = rfis.filter((r) => r.status === "CLOSED").length
+  const filteredRfis = selectedProjectId === "all" 
+    ? rfis 
+    : rfis.filter(rfi => rfi.project === selectedProjectId)
+
+  const totalCount = filteredRfis.length
+  const openCount = filteredRfis.filter((r) => r.status === "OPEN").length
+  const closedCount = filteredRfis.filter((r) => r.status === "CLOSED").length
 
   const handleCloseRFI = async (id: string) => {
     try {
@@ -271,7 +292,43 @@ export default function ProjectRFIsPage() {
     }
   }
 
-  const columnDefs: ColDef<RFI>[] = [
+  const handleAssignTechnical = async (rfiId: string, assigned: boolean) => {
+    try {
+      const updatedRfi = await assignRFIToTechnical(rfiId, assigned)
+      setRfis((prev) => prev.map((r) => (r.id === rfiId ? updatedRfi : r)))
+      setSelectedRFI((prev) => (prev?.id === rfiId ? updatedRfi : prev))
+    } catch (e) {
+      console.error("Failed to assign technical", e)
+    }
+  }
+
+  const handleCreateRFI = async () => {
+    if (!createData.project_id || !createData.description) return
+    setIsCreating(true)
+    try {
+      const formData = new FormData()
+      formData.append("project_id", createData.project_id)
+      formData.append("description", createData.description)
+      formData.append("trade", createData.trade)
+      if (createFile) {
+        formData.append("document", createFile)
+      }
+      const newRfi = await createRFI(formData)
+      setRfis((prev) => [newRfi, ...prev])
+      setIsCreateOpen(false)
+      setCreateData({ project_id: "", description: "", trade: "General" })
+      setCreateFile(null)
+    } catch (e) {
+      console.error("Failed to create RFI", e)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const userRole = useAuthStore.getState().user?.role
+  const showAssignColumn = ["contracts_manager", "manager", "managers", "supervisor"].includes(userRole || "")
+
+  const baseColumnDefs: ColDef<RFI>[] = [
     { field: "rfi_number", headerName: "RFI ref", width: 110, minWidth: 90 },
     { field: "created_at", headerName: "Date", width: 120, minWidth: 100, valueFormatter: (params) => params.value ? format(new Date(params.value), "yyyy-MM-dd") : "" },
     { field: "project_name", headerName: "Project", flex: 1, minWidth: 140 },
@@ -349,15 +406,86 @@ export default function ProjectRFIsPage() {
         </span>
       ),
     },
+    {
+      headerName: "Action",
+      width: 110,
+      minWidth: 100,
+      cellRenderer: (params: ICellRendererParams<RFI>) => (
+        <div className="flex h-full w-full items-center justify-center p-2">
+          <Button
+            size="sm"
+            onClick={() => params.data && setSelectedRFI(params.data)}
+            className="h-7 whitespace-nowrap bg-indigo-600 px-3 text-[11px] font-semibold tracking-wider text-white hover:bg-indigo-700"
+          >
+            RESPOND
+          </Button>
+        </div>
+      ),
+    },
   ]
+
+  const columnDefs: ColDef<RFI>[] = showAssignColumn
+    ? [
+        ...baseColumnDefs,
+        {
+          field: "assigned_to_technical_department",
+          headerName: "Assign to Tech",
+          width: 120,
+          minWidth: 100,
+          cellRenderer: (params: ICellRendererParams<RFI>) => (
+            <div className="flex items-center h-full">
+              <div
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+              >
+                <Switch
+                  checked={params.value}
+                  onCheckedChange={(checked) => {
+                    if (params.data) {
+                      handleAssignTechnical(params.data.id, checked)
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          ),
+        },
+      ]
+    : baseColumnDefs
 
   return (
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-100">Project RFIs</h2>
-        <p className="text-[12px] text-slate-500">
-          Click any row to open the RFI chat thread
-        </p>
+        <div>
+          <h2 className="text-xl font-semibold text-slate-100">Project RFIs</h2>
+          <p className="text-[12px] text-slate-500">
+            Click any row to open the RFI chat thread
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+            <SelectTrigger className="w-[250px] bg-[#0f1b2d] border-[#1e3a5f] text-slate-200 h-9">
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="bg-[#0f1b2d] border-[#1e3a5f] text-slate-200">
+              <SelectItem value="all">All Projects</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.projectName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-4 text-sm font-medium"
+          >
+            Create RFI
+          </Button>
+        </div>
       </div>
 
       <TableStat
@@ -369,7 +497,7 @@ export default function ProjectRFIsPage() {
       />
 
       <AgTable
-        rowData={rfis}
+        rowData={filteredRfis}
         columnDefs={columnDefs}
         height="60vh"
         pagination
@@ -377,7 +505,11 @@ export default function ProjectRFIsPage() {
         suppressCellClickAction
         gridOptions={{
           rowClass: "cursor-pointer",
-          onRowClicked: (event) => {
+          onCellClicked: (event) => {
+            const ignoreFields = ["assigned_to_technical_department", "document_url"]
+            if (ignoreFields.includes(event.colDef.field || "") || event.colDef.headerName === "Action") {
+              return
+            }
             if (event.data) {
               setSelectedRFI(event.data as RFI)
             }
@@ -405,12 +537,74 @@ export default function ProjectRFIsPage() {
             <DialogHeader className="px-4 py-3 border-b border-[#1e3a5f] flex flex-row items-center justify-between shrink-0">
               <DialogTitle className="text-sm font-semibold text-slate-200">View Document</DialogTitle>
             </DialogHeader>
-            <div className="flex-1 overflow-hidden bg-white/5">
-              <iframe 
-                src={viewDocumentUrl} 
-                className="w-full h-full border-0" 
-                title="Document Viewer"
-              />
+            <div className="flex-1 w-full h-full p-4 overflow-auto">
+              <iframe src={viewDocumentUrl} className="w-full h-full rounded-md border border-[#1e3a5f]" title="Document Viewer" />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {isCreateOpen && (
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogContent className="sm:max-w-[500px] bg-[#0a1428] border-[#1e3a5f]">
+            <DialogHeader>
+              <DialogTitle className="text-slate-100">Create New RFI</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 mt-4">
+              <div className="flex flex-col gap-2">
+                <Label className="text-slate-300">Project</Label>
+                <Select
+                  value={createData.project_id}
+                  onValueChange={(val) => setCreateData((prev) => ({ ...prev, project_id: val }))}
+                >
+                  <SelectTrigger className="bg-[#0f1b2d] border-[#1e3a5f] text-slate-200">
+                    <SelectValue placeholder="Select a project" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="bg-[#0f1b2d] border-[#1e3a5f] text-slate-200">
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.projectName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className="text-slate-300">Trade</Label>
+                <Input
+                  className="bg-[#0f1b2d] border-[#1e3a5f] text-slate-200"
+                  value={createData.trade}
+                  onChange={(e) => setCreateData((prev) => ({ ...prev, trade: e.target.value }))}
+                  placeholder="e.g. General"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className="text-slate-300">Description</Label>
+                <Textarea
+                  className="bg-[#0f1b2d] border-[#1e3a5f] text-slate-200 h-24"
+                  value={createData.description}
+                  onChange={(e) => setCreateData((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter RFI details..."
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className="text-slate-300">Attachment (Optional)</Label>
+                <Input
+                  type="file"
+                  className="bg-[#0f1b2d] border-[#1e3a5f] text-slate-200"
+                  onChange={(e) => setCreateFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="text-slate-300">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateRFI}
+                  disabled={!createData.project_id || !createData.description || isCreating}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  {isCreating ? "Creating..." : "Create RFI"}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

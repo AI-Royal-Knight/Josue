@@ -20,6 +20,7 @@ const roleLabels: Record<string, string> = {
   contracts_manager: "Contracts Manager",
   managers: "Managers",
   supervisor: "Supervisor",
+  technical_department: "Technical Department",
 }
 
 type RoleKey =

@@ -22,3 +22,10 @@ export function cn(...inputs: ClassValue[]) {
     if (s === "inactive") return "inactive"
     return "secondary"
   }
+
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  }).format(value)
+}

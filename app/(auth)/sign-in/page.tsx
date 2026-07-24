@@ -197,6 +197,7 @@ function getDashboardUrl(role: string): string {
     employee: "/home",
     supplier: "/supplier",
     finance_department: "/invoice-list",
+    technical_department: "/project-rfis",
   }
   return map[role] ?? "/home"
 }

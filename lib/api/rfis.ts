@@ -12,6 +12,7 @@ export type ChatMessage = {
 export type RFI = {
   id: string
   rfi_number: string
+  project: string
   project_name: string
   description: string
   trade: string
@@ -21,6 +22,7 @@ export type RFI = {
   closed_at: string | null
   created_by_name: string
   messages: ChatMessage[]
+  assigned_to_technical_department: boolean
 }
 
 export async function getRFIs(): Promise<RFI[]> {
@@ -42,5 +44,19 @@ export async function sendRFIMessage(id: string, text: string, files: File[]): P
   return await apiRequest<ChatMessage>(`/project-admin/rfis/${id}/messages/`, {
     method: "POST",
     body: formData
+  })
+}
+
+export async function assignRFIToTechnical(id: string, assigned: boolean): Promise<RFI> {
+  return await apiRequest<RFI>(`/project-admin/rfis/${id}/assign-technical/`, {
+    method: "PATCH",
+    body: { assigned_to_technical_department: assigned }
+  })
+}
+
+export async function createRFI(data: FormData): Promise<RFI> {
+  return await apiRequest<RFI>("/project-admin/rfis/", {
+    method: "POST",
+    body: data
   })
 }

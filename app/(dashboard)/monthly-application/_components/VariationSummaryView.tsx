@@ -1,71 +1,118 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useMemo } from "react"
 import type { ColDef } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import { File } from "lucide-react"
-import { getVariations } from "@/lib/api/variations"
-import { formatGBP } from "../../variations/utils"
+
+type VariationSummaryRow = {
+  no: string
+  siteInstructionNumber: string
+  evidence: string
+  date: string
+  variationSheetNumber: string
+  workArea: string
+  workSection: string
+  descriptionOfWorks: string
+  labourCost: string
+  materialCost: string
+  valuationAmount: string
+  percentClaimed: string
+  amountClaimed: string
+  clientCertifiedAmount: string
+  difference: string
+  correspondingNoticeNo: string
+  clientQsComment: string
+  comments: string
+}
+
+const variationRows: VariationSummaryRow[] = [
+  {
+    no: "1",
+    siteInstructionNumber: "SI-001",
+    evidence: "Yes",
+    date: "15/01/2026",
+    variationSheetNumber: "VS-001",
+    workArea: "Area A",
+    workSection: "Section 1",
+    descriptionOfWorks: "Sample work",
+    labourCost: "£100",
+    materialCost: "£200",
+    valuationAmount: "£300",
+    percentClaimed: "%",
+    amountClaimed: "£300",
+    clientCertifiedAmount: "£290",
+    difference: "£10",
+    correspondingNoticeNo: "",
+    clientQsComment: "",
+    comments: "",
+  },
+  {
+    no: "2",
+    siteInstructionNumber: "SI-002",
+    evidence: "No",
+    date: "20/01/2026",
+    variationSheetNumber: "VS-002",
+    workArea: "Area B",
+    workSection: "Section 2",
+    descriptionOfWorks: "Another sample work",
+    labourCost: "£150",
+    materialCost: "£250",
+    valuationAmount: "£400",
+    percentClaimed: "%",
+    amountClaimed: "£400",
+    clientCertifiedAmount: "£380",
+    difference: "£20",
+    correspondingNoticeNo: "",
+    clientQsComment: "",
+    comments: "",
+  },
+  {
+    no: "3",
+    siteInstructionNumber: "SI-003",
+    evidence: "Yes",
+    date: "25/01/2026",
+    variationSheetNumber: "VS-003",
+    workArea: "Area C",
+    workSection: "Section 3",
+    descriptionOfWorks: "Yet another sample work",
+    labourCost: "£200",
+    materialCost: "£300",
+    valuationAmount: "£500",
+    percentClaimed: "%",
+    amountClaimed: "£500",
+    clientCertifiedAmount: "£450",
+    difference: "£50",
+    correspondingNoticeNo: "",
+    clientQsComment: "",
+    comments: "",
+  },
+]
+
+const totalRow: VariationSummaryRow = {
+  no: "",
+  siteInstructionNumber: "",
+  evidence: "",
+  date: "",
+  variationSheetNumber: "",
+  workArea: "",
+  workSection: "",
+  descriptionOfWorks: "Total",
+  labourCost: "£450",
+  materialCost: "£750",
+  valuationAmount: "£1,200",
+  percentClaimed: "",
+  amountClaimed: "£1,200",
+  clientCertifiedAmount: "£1,120",
+  difference: "£80",
+  correspondingNoticeNo: "",
+  clientQsComment: "",
+  comments: "",
+}
 
 export default function VariationSummaryView({ projectId }: { projectId: string }) {
-  const [variationRows, setVariationRows] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!projectId || projectId === "none") {
-      setVariationRows([])
-      return
-    }
-
-    async function load() {
-      setLoading(true)
-      try {
-        const data = await getVariations(projectId)
-        setVariationRows(data.variations)
-      } catch (e) {
-        console.error("Failed to load variations", e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [projectId])
-
-  const totalRow = useMemo(() => {
-    if (!variationRows.length) return null
-
-    let totalValuation = 0
-    let totalClaimed = 0
-    let totalCertified = 0
-    let totalDifference = 0
-
-    variationRows.forEach((row) => {
-      totalValuation += parseFloat(row.valuation_amount || "0")
-      totalClaimed += parseFloat(row.amount_claimed || "0")
-      totalCertified += parseFloat(row.client_certified_amount || "0")
-      totalDifference += parseFloat(row.difference || "0")
-    })
-
-    return {
-      no: "1",
-      siteInstructionNumber: "",
-      evidence: "",
-      date: "",
-      variationSheetNumber: "",
-      descriptionOfWorks: "Total",
-      valuationAmount: formatGBP(totalValuation),
-      percentClaimed: "",
-      amountClaimed: formatGBP(totalClaimed),
-      clientCertifiedAmount: formatGBP(totalCertified),
-      difference: formatGBP(totalDifference),
-      correspondingNoticeNo: "",
-      clientQsComment: "",
-      comments: "",
-    }
-  }, [variationRows])
-  const columns = useMemo<ColDef<any>[]>(
+  const columns = useMemo<ColDef<VariationSummaryRow>[]>(
     () => [
-      { headerName: "No.", field: "no", minWidth: 70, filter: false },
       {
         headerName: "Variation Number",
         field: "variationSheetNumber",
@@ -79,20 +126,11 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
       {
         headerName: "Evidence",
         field: "evidence",
-        cellRenderer: (params: { data: { evidence_url?: string }; value: string }) => {
-          if (params.data?.evidence_url) {
-            return (
-              <a href={params.data.evidence_url} target="_blank" rel="noopener noreferrer" className="p-2 inline-block text-blue-400 hover:text-blue-300">
-                <File size={18} />
-              </a>
-            )
-          }
-          return (
-            <div className="p-2 text-slate-500">
-              <File size={18} />
-            </div>
-          )
-        },
+        cellRenderer: (params: { value: string }) => (
+          <div className="p-2">
+            <File size={18} />
+          </div>
+        ),
       },
       { headerName: "Date", field: "date" },
       {
@@ -100,11 +138,12 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
         field: "descriptionOfWorks",
         minWidth: 260,
       },
+      // { headerName: "Labour cost", field: "labourCost", minWidth: 120 },
+      // { headerName: "Material Cost", field: "materialCost", minWidth: 120 },
       {
         headerName: "Valuation Amount",
-        field: "valuation_amount",
+        field: "valuationAmount",
         minWidth: 140,
-        valueFormatter: (params) => params.value && params.value !== "Total" && !params.value.includes("£") ? formatGBP(parseFloat(params.value)) : params.value
       },
       { headerName: "% Claimed", field: "percentClaimed", minWidth: 100 },
       { headerName: "Amount Claimed", field: "amountClaimed", minWidth: 140 },
@@ -113,15 +152,15 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
         field: "clientCertifiedAmount",
         minWidth: 160,
       },
-      { headerName: "Difference", field: "diffrenceAmount", minWidth: 120 },
+      { headerName: "Difference", field: "difference", minWidth: 120 },
       {
         headerName: "Corresponding Client Payment Notice No",
-        field: "paymentStatusNr",
+        field: "correspondingNoticeNo",
         minWidth: 220,
       },
       {
         headerName: "Client QS Comment",
-        field: "claimGQComment",
+        field: "clientQsComment",
         minWidth: 200,
       },
       { headerName: "Comments", field: "comments", minWidth: 200 },
@@ -136,7 +175,7 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
           rowData={variationRows}
           columnDefs={columns}
           gridOptions={{
-            pinnedBottomRowData: totalRow ? [totalRow] : [],
+            pinnedBottomRowData: [totalRow],
             getRowStyle: (params: any) => {
               if (params.node.isRowPinned()) {
                 return {
