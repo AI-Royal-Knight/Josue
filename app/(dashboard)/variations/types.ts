@@ -32,6 +32,17 @@ export type VariationRow = {
   approvedBy: string
   submittedToClient: boolean
   signedByClient: boolean
+
+  // Role Signatures
+  sigCommercialDepartment?: boolean
+  sigCommercialDepartmentDate?: string | null
+  sigContractsManager?: boolean
+  sigContractsManagerDate?: string | null
+  sigProjectDirector?: boolean
+  sigProjectDirectorDate?: string | null
+  sigManagingDirector?: boolean
+  sigManagingDirectorDate?: string | null
+  fullyApproved?: boolean
 }
 
 export type VariationFormData = {

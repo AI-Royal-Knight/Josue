@@ -138,29 +138,29 @@ function ThresholdInput({
   initialValue: number | undefined
   onSave: (val: number) => void
 }) {
-  const [value, setValue] = useState(initialValue !== undefined ? String(initialValue) : "1")
+  const [value, setValue] = useState(initialValue !== undefined ? String(initialValue) : "0")
 
   // Sync if the row data changes externally
   useEffect(() => {
-    setValue(initialValue !== undefined ? String(initialValue) : "1")
+    setValue(initialValue !== undefined ? String(initialValue) : "0")
   }, [initialValue])
 
   return (
     <Input
       type="number"
-      min="1"
+      min="0"
       className="h-6 w-16 px-1.5 text-[11px] font-medium text-right bg-slate-900/50 border-slate-700 focus-visible:ring-1 focus-visible:ring-emerald-500/50"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => {
         const valStr = value
         const parsed = parseFloat(valStr)
-        const budget = isNaN(parsed) ? 1 : Math.max(1, parsed)
+        const budget = isNaN(parsed) ? 0 : Math.max(0, parsed)
         if (budget !== initialValue) {
           onSave(budget)
         }
         // Always reset UI to the sanitized budget if they typed something invalid
-        if (isNaN(parsed) || parsed < 1) {
+        if (isNaN(parsed) || parsed < 0) {
           setValue(String(budget))
         }
       }}
@@ -352,7 +352,7 @@ export default function ActionsPage() {
                           
                           if (checked) {
                             nextSigs.add(role.roleKey)
-                            nextThresholds[role.roleKey] = 1 // default to 1
+                            nextThresholds[role.roleKey] = 0 // default to 0
                           } else {
                             nextSigs.delete(role.roleKey)
                             delete nextThresholds[role.roleKey]

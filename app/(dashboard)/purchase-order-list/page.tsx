@@ -41,7 +41,10 @@ import {
 } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
-import { getQuotations, ProcurementProject, createQuotation, approveQuotation, type QuotationLineItem } from "@/lib/api/quotations"
+import { getQuotations, ProcurementProject, createQuotation, approveQuotation, toggleQuotationSignature, type QuotationLineItem } from "@/lib/api/quotations"
+import { getApprovalConfigs, type ApprovalConfigurationData } from "@/lib/api/project-admin"
+import { Switch } from "@/components/ui/switch"
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,6 +80,80 @@ type PurchaseOrderRow = {
   sourceFile?: string
   sourceFileUrl?: string
   lineItems?: QuotationLineItem[]
+
+  // Approval chain
+  sigProcurementDepartment?: boolean
+  sigProcurementDepartmentDate?: string
+  sigContractsManager?: boolean
+  sigContractsManagerDate?: string
+  sigProjectDirector?: boolean
+  sigProjectDirectorDate?: string
+  sigManagingDirector?: boolean
+  sigManagingDirectorDate?: string
+  sigCommercialDepartment?: boolean
+  sigCommercialDepartmentDate?: string
+  fullyApproved?: boolean
+}
+
+type ApprovalField =
+  | "sigProcurementDepartment"
+  | "sigContractsManager"
+  | "sigProjectDirector"
+  | "sigManagingDirector"
+  | "sigCommercialDepartment"
+
+type PendingToggle = {
+  id: string
+  ref: string
+  field: ApprovalField
+  nextValue: boolean
+  label: string
+}
+
+function ApprovalToggleCell({
+  row,
+  field,
+  dateField,
+  canToggle,
+  isDisabled,
+  disabledReason,
+  onRequest,
+}: {
+  row: PurchaseOrderRow
+  field: ApprovalField
+  dateField: keyof PurchaseOrderRow
+  canToggle: boolean
+  isDisabled: boolean
+  disabledReason?: string
+  onRequest: (field: ApprovalField, nextValue: boolean) => void
+}) {
+  const checked = row[field] as boolean
+  const date = row[dateField] as string
+
+  return (
+    <div className="flex flex-col justify-center gap-0.5 py-1">
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={checked}
+          disabled={!canToggle || isDisabled}
+          title={isDisabled ? disabledReason : undefined}
+          onCheckedChange={(next) => onRequest(field, next)}
+        />
+        <span
+          className={
+            checked
+              ? "text-xs font-medium text-emerald-400"
+              : "text-xs font-medium text-slate-400"
+          }
+        >
+          {checked ? "Yes" : "No"}
+        </span>
+      </div>
+      {date && (
+        <span className="text-[10px] text-slate-500 leading-none">{date}</span>
+      )}
+    </div>
+  )
 }
 
 type POFormData = {
@@ -125,6 +202,7 @@ async function parsePDFQuote(file: File): Promise<POFormData & { _parsed?: Parse
 
 const INITIAL_DATA: PurchaseOrderRow[] = [
   {
+    id: "po-1",
     no: "1",
     quotationRef: "QR-2023-0891",
     project: "Downtown Tower A",
@@ -144,6 +222,7 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
     approvalRelatedRequests: "Lowest bidder. Meets all specs.",
   },
   {
+    id: "po-2",
     no: "2",
     quotationRef: "QR-2023-0892",
     project: "Downtown Tower A",
@@ -163,6 +242,7 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
     approvalRelatedRequests: "-",
   },
   {
+    id: "po-3",
     no: "3",
     quotationRef: "QR-2023-0895",
     project: "Riverside Complex",
@@ -182,6 +262,7 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
     approvalRelatedRequests: "Preferred vendor, lead time ok",
   },
   {
+    id: "po-4",
     no: "4",
     quotationRef: "QR-2023-0898",
     project: "Riverside Complex",
@@ -201,6 +282,7 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
     approvalRelatedRequests: "-",
   },
   {
+    id: "po-5",
     no: "5",
     quotationRef: "QR-2023-0901",
     project: "Westside Mall",
@@ -220,6 +302,7 @@ const INITIAL_DATA: PurchaseOrderRow[] = [
     approvalRelatedRequests: "Rejected due to budget constraints.",
   },
   {
+    id: "po-6",
     no: "6",
     quotationRef: "QR-2023-0905",
     project: "Westside Mall",
@@ -732,9 +815,12 @@ export default function Page() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewPO, setViewPO] = useState<POPreviewData | null>(null)
   
-  // Approval state
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false)
   const [pendingApprovalId, setPendingApprovalId] = useState<string | null>(null)
+  
+  const [config, setConfig] = useState<ApprovalConfigurationData | null>(null)
+  const [pendingToggle, setPendingToggle] = useState<PendingToggle | null>(null)
+  const [submittingToggle, setSubmittingToggle] = useState(false)
 
   const handleApprovePO = async () => {
     if (!pendingApprovalId) return
@@ -753,6 +839,84 @@ export default function Page() {
   const [selectedProject, setSelectedProject] = useState<ProcurementProject | null>(null)
 
   const role = useRoleStore((state) => state.role)
+  
+  const isProcurement = role === "procurement_department"
+  const isContractsManager = role === "contracts_manager"
+  const isProjectDirector = role === "project_director"
+  const isManagingDirector = role === "managing_director"
+  const isCommercial = role === "commercial_department"
+
+  useEffect(() => {
+    async function loadConfig() {
+      if (!selectedProject?.id) {
+        setConfig(null)
+        return
+      }
+      try {
+        const configs = await getApprovalConfigs(selectedProject.id)
+        const poConfig = configs.find(c => c.action_type === "purchase_order") || null
+        setConfig(poConfig)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    loadConfig()
+  }, [selectedProject])
+
+  const requestSignatureToggle = useCallback(
+    (
+      row: PurchaseOrderRow,
+      field: ApprovalField,
+      nextValue: boolean,
+      label: string
+    ) => {
+      setPendingToggle({
+        id: row.id,
+        ref: row.quotationRef || `Row ${row.no}`,
+        field,
+        nextValue,
+        label,
+      })
+    },
+    []
+  )
+
+  const confirmToggle = useCallback(async () => {
+    if (!pendingToggle || submittingToggle) return
+    setSubmittingToggle(true)
+    try {
+      await toggleQuotationSignature(pendingToggle.id, pendingToggle.nextValue)
+      await fetchData() // refresh
+      toast.success(
+        pendingToggle.nextValue
+          ? `Signed as ${pendingToggle.label}`
+          : `Revoked ${pendingToggle.label} signature`
+      )
+    } catch (e) {
+      toast.error("Failed to update approval.")
+      console.error(e)
+    } finally {
+      setSubmittingToggle(false)
+      setPendingToggle(null)
+    }
+  }, [pendingToggle, submittingToggle])
+
+  const isRoleConfigured = useCallback((roleKey: string) => {
+    if (!config) return false // fallback
+    return config.required_roles.split(',').includes(roleKey)
+  }, [config])
+
+  const isRoleRequired = useCallback((roleKey: string, row: PurchaseOrderRow) => {
+    if (!config) return false // fallback to required if no config
+    if (!config.required_roles.split(',').includes(roleKey)) return false
+
+    let threshold = config.role_thresholds?.[roleKey]
+    if (threshold === undefined) threshold = 0 // default to 0 if no budget set
+
+    if (threshold === 0) return true
+    const totalRaw = parseFloat(row.quoteTotal.replace(/[^0-9.-]+/g, "")) || 0
+    return totalRaw > threshold
+  }, [config])
 
   const fetchData = async () => {
     try {
@@ -778,6 +942,17 @@ export default function Page() {
         approvalQuotation: q.status || "Pending",
         approvalRelatedRequests: q.quote_approval_reasons || "-",
         lineItems: q.line_items || [],
+        sigProcurementDepartment: q.sig_procurement_department || false,
+        sigProcurementDepartmentDate: q.sig_procurement_department_date || "",
+        sigContractsManager: q.sig_contracts_manager || false,
+        sigContractsManagerDate: q.sig_contracts_manager_date || "",
+        sigProjectDirector: q.sig_project_director || false,
+        sigProjectDirectorDate: q.sig_project_director_date || "",
+        sigManagingDirector: q.sig_managing_director || false,
+        sigManagingDirectorDate: q.sig_managing_director_date || "",
+        sigCommercialDepartment: q.sig_commercial_department || false,
+        sigCommercialDepartmentDate: q.sig_commercial_department_date || "",
+        fullyApproved: q.fully_approved || false,
       }))
       setData(mapped)
     } catch (err) {
@@ -817,6 +992,114 @@ export default function Page() {
     { headerName: "Supplier Email", field: "supplierEmail" },
     { headerName: "Date Quote Approved", field: "dateOfQuoteApproved" },
     { headerName: "PO Total", field: "quoteTotal" },
+    
+    // -- Signatures --
+    {
+      headerName: "Procurement",
+      colId: "sig_procurement",
+      minWidth: 150,
+      hide: !isRoleConfigured("procurement_department"),
+      cellRenderer: (params: { data?: PurchaseOrderRow }) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <ApprovalToggleCell
+            row={row}
+            field="sigProcurementDepartment"
+            dateField="sigProcurementDepartmentDate"
+            canToggle={isProcurement}
+            isDisabled={false}
+            onRequest={(field, next) => requestSignatureToggle(row, field, next, "Procurement")}
+          />
+        )
+      },
+    },
+    {
+      headerName: "Contracts Manager",
+      colId: "sig_contracts_manager",
+      minWidth: 170,
+      hide: !isRoleConfigured("contracts_manager"),
+      cellRenderer: (params: { data?: PurchaseOrderRow }) => {
+        const row = params.data
+        if (!row) return null
+        if (!isRoleRequired("contracts_manager", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+        return (
+          <ApprovalToggleCell
+            row={row}
+            field="sigContractsManager"
+            dateField="sigContractsManagerDate"
+            canToggle={isContractsManager}
+            isDisabled={false}
+            onRequest={(field, next) => requestSignatureToggle(row, field, next, "Contracts Manager")}
+          />
+        )
+      },
+    },
+    {
+      headerName: "Project Director",
+      colId: "sig_project_director",
+      minWidth: 160,
+      hide: !isRoleConfigured("project_director"),
+      cellRenderer: (params: { data?: PurchaseOrderRow }) => {
+        const row = params.data
+        if (!row) return null
+        if (!isRoleRequired("project_director", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+        return (
+          <ApprovalToggleCell
+            row={row}
+            field="sigProjectDirector"
+            dateField="sigProjectDirectorDate"
+            canToggle={isProjectDirector}
+            isDisabled={false}
+            onRequest={(field, next) => requestSignatureToggle(row, field, next, "Project Director")}
+          />
+        )
+      },
+    },
+    {
+      headerName: "Managing Director",
+      colId: "sig_managing_director",
+      minWidth: 170,
+      hide: !isRoleConfigured("managing_director"),
+      cellRenderer: (params: { data?: PurchaseOrderRow }) => {
+        const row = params.data
+        if (!row) return null
+        if (!isRoleRequired("managing_director", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+        return (
+          <ApprovalToggleCell
+            row={row}
+            field="sigManagingDirector"
+            dateField="sigManagingDirectorDate"
+            canToggle={isManagingDirector}
+            isDisabled={false}
+            onRequest={(field, next) => requestSignatureToggle(row, field, next, "Managing Director")}
+          />
+        )
+      },
+    },
+    {
+      headerName: "Commercial",
+      colId: "sig_commercial",
+      minWidth: 150,
+      hide: !isRoleConfigured("commercial_department"),
+      cellRenderer: (params: { data?: PurchaseOrderRow }) => {
+        const row = params.data
+        if (!row) return null
+        if (!isRoleRequired("commercial_department", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+        return (
+          <ApprovalToggleCell
+            row={row}
+            field="sigCommercialDepartment"
+            dateField="sigCommercialDepartmentDate"
+            canToggle={isCommercial}
+            isDisabled={false}
+            onRequest={(field, next) => requestSignatureToggle(row, field, next, "Commercial")}
+          />
+        )
+      },
+    },
+    // ----------------
+    
     { headerName: "Date PO Created", field: "datePOCreated" },
     {
       headerName: "Procurement Comments",
@@ -927,12 +1210,41 @@ export default function Page() {
             
             <AgTable
               rowData={filteredData}
-              columnDefs={columns}
+              columnDefs={columns.filter(c => !c.hide)}
               height="auto"
               defaultColDef={{ flex: 1, minWidth: 150 }}
               suppressCellClickAction
               loading={loading}
             />
+
+            {/* Toggle Confirmation */}
+            <AlertDialog
+              open={!!pendingToggle}
+              onOpenChange={(open) => !open && setPendingToggle(null)}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {pendingToggle?.nextValue
+                      ? `Sign as ${pendingToggle?.label}?`
+                      : `Revoke ${pendingToggle?.label} signature?`}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {pendingToggle?.nextValue
+                      ? `You are adding your signature as ${pendingToggle?.label} to PO ${pendingToggle?.ref}.`
+                      : `This will remove your ${pendingToggle?.label} signature from PO ${pendingToggle?.ref}.`}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setPendingToggle(null)}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmToggle} disabled={submittingToggle}>
+                    {submittingToggle ? "Saving..." : pendingToggle?.nextValue ? "Confirm" : "Revoke"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )
       })()}

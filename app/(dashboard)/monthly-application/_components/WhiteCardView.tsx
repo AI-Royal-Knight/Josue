@@ -64,30 +64,66 @@ const DEFAULT_FOLDERS: FolderType[] = [
 ]
 
 function SummaryGrid({
+  folder,
   isLocked,
   sx,
   rowCount = ROWS_PER_FOLDER,
 }: {
+  folder: FolderType
   isLocked: boolean
   sx?: object
   rowCount?: number
 }) {
   const rows = useMemo(
     () =>
-      Array.from({ length: rowCount }, (_, i) => ({
-        id: i + 1,
-        pj_total: "",
-        total_claim: "",
-        percent_claim: "",
-      })),
-    [rowCount]
+      Array.from({ length: rowCount }, (_, i) => {
+        let pv_total = 0
+        let total_claim = 0
+
+        const parseFloatSafe = (val: any) => {
+          if (typeof val === "number") return val;
+          if (!val) return 0;
+          const parsed = parseFloat(val.toString().replace(/[^0-9.-]+/g, ""));
+          return isNaN(parsed) ? 0 : parsed;
+        };
+
+        folder.subfolders.forEach((sub: any) => {
+          const subRow = sub.rows?.[i]
+          
+          const pvStr = subRow?.projectValue || (i === 0 ? sub.project_value?.toFixed(2) || "" : "")
+          const pv = parseFloatSafe(pvStr)
+          
+          pv_total += pv
+
+          const bookedLtStr = subRow?.labourTarget || (i === 0 ? sub.labour_target?.toFixed(2) || "" : "")
+          const bookedLt = parseFloatSafe(bookedLtStr)
+          
+          const totalLt = parseFloatSafe(sub.labour_target)
+          
+          if (totalLt > 0) {
+            total_claim += (bookedLt / totalLt) * pv
+          } else {
+            total_claim += bookedLt
+          }
+        })
+
+        const percent_claim = pv_total > 0 ? (total_claim / pv_total) * 100 : 0
+
+        return {
+          id: i + 1,
+          pv_total: pv_total !== 0 ? `£${pv_total.toFixed(2)}` : "",
+          total_claim: total_claim !== 0 ? `£${total_claim.toFixed(2)}` : "",
+          percent_claim: percent_claim !== 0 ? `${percent_claim.toFixed(1)}%` : "",
+        }
+      }),
+    [folder, rowCount]
   )
 
   const columns: GridColDef[] = useMemo(
     () => [
       {
-        field: "pj_total",
-        headerName: "PJ Total",
+        field: "pv_total",
+        headerName: "PV Total",
         width: 100,
         editable: true,
         hideable: false,
@@ -117,7 +153,7 @@ function SummaryGrid({
         groupId: "summary-group",
         headerName: "",
         children: [
-          { field: "pj_total" },
+          { field: "pv_total" },
           { field: "total_claim" },
           { field: "percent_claim" },
         ],
@@ -130,6 +166,7 @@ function SummaryGrid({
 
   return (
     <DataGrid
+      autoHeight
       rows={rows}
       columns={columns}
       columnGroupingModel={columnGroupingModel}
@@ -250,6 +287,7 @@ function FolderGrid({
 
   return (
     <DataGrid
+      autoHeight
       rows={rows}
       columns={columns}
       columnGroupingModel={columnGroupingModel}
@@ -632,9 +670,10 @@ export default function DynamicFolderTable({ projectId }: { projectId: string })
                       rowCount={maxRows}
                     />
                   </Box>
-                  {/* Summary columns (PJ Total, Total Claim, % Claim) — always right-aligned */}
+                  {/* Summary columns (PV Total, Total Claim, % Claim) — always right-aligned */}
                   <Box sx={{ flexShrink: 0, width: 302 }}>
                     <SummaryGrid
+                      folder={folder}
                       isLocked={isLocked}
                       sx={isNotFirst ? borderTopNone : undefined}
                       rowCount={maxRows}

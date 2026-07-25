@@ -45,6 +45,19 @@ export interface Quotation {
   sub_folder_name?: string | null
   line_items?: QuotationLineItem[]
   history?: QuotationHistory[]
+  
+  // Signatures
+  sig_procurement_department?: boolean
+  sig_procurement_department_date?: string | null
+  sig_contracts_manager?: boolean
+  sig_contracts_manager_date?: string | null
+  sig_project_director?: boolean
+  sig_project_director_date?: string | null
+  sig_managing_director?: boolean
+  sig_managing_director_date?: string | null
+  sig_commercial_department?: boolean
+  sig_commercial_department_date?: string | null
+  fully_approved?: boolean
 }
 
 export interface ProjectSubfolder {
@@ -120,5 +133,15 @@ export const patchQuotationComments = async (
 export const approveQuotation = async (id: string): Promise<Quotation> => {
   return apiRequest<Quotation>(`/procurement/quotations/${id}/approve/`, {
     method: "PATCH",
+  })
+}
+
+export const toggleQuotationSignature = async (
+  id: string,
+  approve: boolean
+): Promise<Quotation> => {
+  return apiRequest<Quotation>(`/procurement/quotations/${id}/toggle_signature/`, {
+    method: "POST",
+    body: { approve },
   })
 }

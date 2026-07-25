@@ -35,6 +35,21 @@ export type VariationApi = {
   created_by_name: string
   lines: VariationLineApi[]
   assigned_user_ids?: string[]
+
+  // Signatures
+  supervisor_approved?: boolean
+  supervisor_approved_date?: string | null
+  manager_approved?: boolean
+  manager_approved_date?: string | null
+  contracts_manager_approved?: boolean
+  contracts_manager_approved_date?: string | null
+  project_director_approved?: boolean
+  project_director_approved_date?: string | null
+  managing_director_approved?: boolean
+  managing_director_approved_date?: string | null
+  commercial_department_approved?: boolean
+  commercial_department_approved_date?: string | null
+  fully_approved?: boolean
 }
 
 export type CreateVariationPayload = {
@@ -99,5 +114,12 @@ export async function assignVariationUsers(id: string, assignedUserIds: string[]
   return apiRequest(`/commercial/variations/${id}/assign/`, {
     method: "POST",
     body: { assigned_user_ids: assignedUserIds },
+  })
+}
+
+export async function toggleVariationSignature(id: string, approve: boolean): Promise<VariationApi> {
+  return apiRequest(`/commercial/variations/${id}/toggle-signature/`, {
+    method: "POST",
+    body: { approve },
   })
 }

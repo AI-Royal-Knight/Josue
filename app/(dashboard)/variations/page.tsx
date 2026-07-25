@@ -10,7 +10,18 @@ import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Plus, XCircle, Loader2, UserPlus } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
+import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 import { VariationRow, VariationFormData } from "./types"
 import { formatGBP, buildVariationDocHtml } from "./utils"
@@ -26,9 +37,10 @@ import {
   approveVariation,
   submitVariationToClient,
   assignVariationUsers,
+  toggleVariationSignature,
   type VariationApi,
 } from "@/lib/api/variations"
-import { getMyProjects } from "@/lib/api/project-admin"
+import { getMyProjects, getApprovalConfigs, type ApprovalConfigurationData } from "@/lib/api/project-admin"
 import type { ProjectItem } from "@/constants/projects"
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -67,7 +79,80 @@ function apiToRow(v: VariationApi): VariationRow {
     approvedBy: v.approved_by_name,
     submittedToClient: v.submitted_to_client,
     signedByClient: v.signed_by_client,
+    
+    // Signatures
+    sigCommercialDepartment: v.commercial_department_approved || false,
+    sigCommercialDepartmentDate: v.commercial_department_approved_date || null,
+    sigContractsManager: v.contracts_manager_approved || false,
+    sigContractsManagerDate: v.contracts_manager_approved_date || null,
+    sigProjectDirector: v.project_director_approved || false,
+    sigProjectDirectorDate: v.project_director_approved_date || null,
+    sigManagingDirector: v.managing_director_approved || false,
+    sigManagingDirectorDate: v.managing_director_approved_date || null,
+    fullyApproved: v.fully_approved || false,
   }
+}
+
+// ── Toggle Cell ────────────────────────────────────────────────────────────
+
+type ApprovalField =
+  | "sigCommercialDepartment"
+  | "sigContractsManager"
+  | "sigProjectDirector"
+  | "sigManagingDirector"
+
+type PendingToggle = {
+  id: string
+  ref: string
+  field: ApprovalField
+  nextValue: boolean
+  label: string
+}
+
+function ApprovalToggleCell({
+  row,
+  field,
+  dateField,
+  canToggle,
+  isDisabled,
+  disabledReason,
+  onRequest,
+}: {
+  row: VariationRow
+  field: ApprovalField
+  dateField: keyof VariationRow
+  canToggle: boolean
+  isDisabled: boolean
+  disabledReason?: string
+  onRequest: (field: ApprovalField, nextValue: boolean) => void
+}) {
+  const checked = row[field] as boolean
+  const date = row[dateField] as string
+
+  return (
+    <div className="flex flex-col justify-center gap-0.5 py-1">
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={checked}
+          disabled={!canToggle || isDisabled}
+          title={isDisabled ? disabledReason : undefined}
+          onCheckedChange={(next) => onRequest(field, next)}
+        />
+        <span
+          className={
+            checked
+              ? "text-xs font-medium text-emerald-400"
+              : "text-xs font-medium text-slate-400"
+          }
+        >
+          {checked ? "Yes" : "No"}
+        </span>
+      </div>
+      {date && (
+        <span className="text-[10px] text-slate-500 leading-none">{date}</span>
+      )}
+    </div>
+  )
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -79,6 +164,16 @@ export default function Page() {
   const [loading, setLoading] = useState(true)
 
   const role = useRoleStore((state) => state.role)
+  
+  const isContractsManager = role === "contracts_manager"
+  const isProjectDirector = role === "project_director"
+  const isManagingDirector = role === "managing_director"
+  const isCommercial = role === "commercial_department"
+
+  // ── Approval state ───────────────────────────────────────────────────────
+  const [config, setConfig] = useState<ApprovalConfigurationData | null>(null)
+  const [pendingToggle, setPendingToggle] = useState<PendingToggle | null>(null)
+  const [submittingToggle, setSubmittingToggle] = useState(false)
 
   // ── Fetch data ──────────────────────────────────────────────────────────
 
@@ -101,6 +196,80 @@ export default function Page() {
     }
     load()
   }, [])
+  
+  useEffect(() => {
+    async function loadConfig() {
+      if (!selectedProject || selectedProject === "all") {
+        setConfig(null)
+        return
+      }
+      try {
+        const configs = await getApprovalConfigs(selectedProject)
+        const vConfig = configs.find(c => c.action_type === "variations") || null
+        setConfig(vConfig)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    loadConfig()
+  }, [selectedProject])
+
+  const requestSignatureToggle = useCallback(
+    (
+      row: VariationRow,
+      field: ApprovalField,
+      nextValue: boolean,
+      label: string
+    ) => {
+      setPendingToggle({
+        id: row.id,
+        ref: row.voNo,
+        field,
+        nextValue,
+        label,
+      })
+    },
+    []
+  )
+
+  const confirmToggle = useCallback(async () => {
+    if (!pendingToggle || submittingToggle) return
+    setSubmittingToggle(true)
+    try {
+      await toggleVariationSignature(pendingToggle.id, pendingToggle.nextValue)
+      // refresh just the row or all rows
+      const { variations } = await getVariations(selectedProject === "all" ? undefined : selectedProject)
+      setRows(variations.map(apiToRow))
+      
+      toast.success(
+        pendingToggle.nextValue
+          ? `Signed as ${pendingToggle.label}`
+          : `Revoked ${pendingToggle.label} signature`
+      )
+    } catch (e) {
+      toast.error("Failed to update approval.")
+      console.error(e)
+    } finally {
+      setSubmittingToggle(false)
+      setPendingToggle(null)
+    }
+  }, [pendingToggle, submittingToggle, selectedProject])
+
+  const isRoleConfigured = useCallback((roleKey: string) => {
+    if (!config) return false // fallback
+    return config.required_roles.split(',').includes(roleKey)
+  }, [config])
+
+  const isRoleRequired = useCallback((roleKey: string, row: VariationRow) => {
+    if (!config) return false // fallback to required if no config
+    if (!config.required_roles.split(',').includes(roleKey)) return false
+
+    let threshold = config.role_thresholds?.[roleKey]
+    if (threshold === undefined) threshold = 0 // default to 0 if no budget set
+
+    if (threshold === 0) return true
+    return row.totalAmount > threshold
+  }, [config])
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ id: p.id, name: p.projectName })),
@@ -357,6 +526,94 @@ export default function Page() {
         },
       })
     }
+    
+    // -- Signature Columns --
+    base.push(
+      {
+        headerName: "Commercial Manager",
+        colId: "sig_commercial",
+        minWidth: 170,
+        hide: !isRoleConfigured("commercial_department"),
+        cellRenderer: (params: { data?: VariationRow }) => {
+          const row = params.data
+          if (!row) return null
+          if (!isRoleRequired("commercial_department", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="sigCommercialDepartment"
+              dateField="sigCommercialDepartmentDate"
+              canToggle={isCommercial}
+              isDisabled={false}
+              onRequest={(field, next) => requestSignatureToggle(row, field, next, "Commercial Manager")}
+            />
+          )
+        },
+      },
+      {
+        headerName: "Contracts Manager",
+        colId: "sig_contracts_manager",
+        minWidth: 170,
+        hide: !isRoleConfigured("contracts_manager"),
+        cellRenderer: (params: { data?: VariationRow }) => {
+          const row = params.data
+          if (!row) return null
+          if (!isRoleRequired("contracts_manager", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="sigContractsManager"
+              dateField="sigContractsManagerDate"
+              canToggle={isContractsManager}
+              isDisabled={false}
+              onRequest={(field, next) => requestSignatureToggle(row, field, next, "Contracts Manager")}
+            />
+          )
+        },
+      },
+      {
+        headerName: "Project Director",
+        colId: "sig_project_director",
+        minWidth: 160,
+        hide: !isRoleConfigured("project_director"),
+        cellRenderer: (params: { data?: VariationRow }) => {
+          const row = params.data
+          if (!row) return null
+          if (!isRoleRequired("project_director", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="sigProjectDirector"
+              dateField="sigProjectDirectorDate"
+              canToggle={isProjectDirector}
+              isDisabled={false}
+              onRequest={(field, next) => requestSignatureToggle(row, field, next, "Project Director")}
+            />
+          )
+        },
+      },
+      {
+        headerName: "Managing Director",
+        colId: "sig_managing_director",
+        minWidth: 170,
+        hide: !isRoleConfigured("managing_director"),
+        cellRenderer: (params: { data?: VariationRow }) => {
+          const row = params.data
+          if (!row) return null
+          if (!isRoleRequired("managing_director", row)) return <span className="text-[11px] italic text-slate-500">N/A</span>
+          return (
+            <ApprovalToggleCell
+              row={row}
+              field="sigManagingDirector"
+              dateField="sigManagingDirectorDate"
+              canToggle={isManagingDirector}
+              isDisabled={false}
+              onRequest={(field, next) => requestSignatureToggle(row, field, next, "Managing Director")}
+            />
+          )
+        },
+      }
+    )
 
     base.push(
       { headerName: "Approved By", field: "approvedBy" },
@@ -469,7 +726,7 @@ export default function Page() {
 
       <AgTable
         rowData={filteredRows}
-        columnDefs={columns}
+        columnDefs={columns.filter(c => !c.hide)}
         suppressCellClickAction
         height="auto"
         defaultColDef={{ flex: 1, minWidth: 150 }}
