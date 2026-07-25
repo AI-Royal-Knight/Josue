@@ -101,45 +101,45 @@ export default function SignInPage() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* Email */}
-        <div>
-          <label className="mb-2 block text-xs font-semibold tracking-[0.2em] text-slate-300 uppercase">
+        <div className="space-y-1">
+          <label className="block text-xs font-semibold tracking-[0.15em] text-slate-300 uppercase transition-colors group-focus-within:text-blue-400">
             Email
           </label>
-          <div className="relative">
-            <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-300" />
+          <div className="relative group/input">
+            <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within/input:text-blue-400" />
             <Input
               id="sign-in-email"
               type="email"
               placeholder="Enter email"
               autoComplete="email"
               {...register("email")}
-              className="h-11 rounded-md border-white/30 bg-transparent pl-9 text-sm text-white placeholder:text-slate-400"
+              className="h-12 rounded-xl border-white/20 bg-white/5 pl-10 text-sm text-white placeholder:text-slate-500 backdrop-blur-md transition-all focus:border-blue-500/50 focus:bg-white/10 focus:ring-4 focus:ring-blue-500/10"
             />
           </div>
           {errors.email && (
-            <p className="mt-1 text-xs text-red-400">{errors.email.message}</p>
+            <p className="animate-in fade-in slide-in-from-top-1 mt-1 text-xs text-red-400">{errors.email.message}</p>
           )}
         </div>
 
         {/* Password */}
-        <div>
-          <label className="mb-2 block text-xs font-semibold tracking-[0.2em] text-slate-300 uppercase">
+        <div className="space-y-1">
+          <label className="block text-xs font-semibold tracking-[0.15em] text-slate-300 uppercase transition-colors group-focus-within:text-blue-400">
             Password
           </label>
-          <div className="relative">
-            <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-300" />
+          <div className="relative group/input">
+            <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within/input:text-blue-400" />
             <Input
               id="sign-in-password"
               type={showPassword ? "text" : "password"}
               placeholder="Enter password"
               autoComplete="current-password"
               {...register("password")}
-              className="h-11 rounded-md border-white/30 bg-transparent pl-9 pr-9 text-sm text-white placeholder:text-slate-400"
+              className="h-12 rounded-xl border-white/20 bg-white/5 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 backdrop-blur-md transition-all focus:border-blue-500/50 focus:bg-white/10 focus:ring-4 focus:ring-blue-500/10"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 hover:text-white"
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-white focus:outline-none focus:text-blue-400"
               tabIndex={-1}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
@@ -151,7 +151,7 @@ export default function SignInPage() {
             </button>
           </div>
           {errors.password && (
-            <p className="mt-1 text-xs text-red-400">
+            <p className="animate-in fade-in slide-in-from-top-1 mt-1 text-xs text-red-400">
               {errors.password.message}
             </p>
           )}
@@ -159,7 +159,8 @@ export default function SignInPage() {
 
         {/* Server error */}
         {serverError && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+          <div className="animate-in fade-in slide-in-from-top-2 flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300 backdrop-blur-sm">
+            <div className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
             {serverError}
           </div>
         )}
@@ -168,10 +169,10 @@ export default function SignInPage() {
           id="sign-in-submit"
           type="submit"
           disabled={isSubmitting}
-          className="mt-2 h-11 w-full rounded-md text-sm font-semibold tracking-[0.2em] uppercase"
+          className="mt-4 h-12 w-full rounded-xl bg-blue-600 text-sm font-semibold tracking-[0.2em] uppercase text-white shadow-sm transition-colors hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/30"
         >
           {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             "Sign in"
           )}

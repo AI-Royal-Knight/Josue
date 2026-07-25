@@ -61,7 +61,7 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && !isPublic) {
       if (typeof window !== "undefined") {
         // Clear token directly to ensure it's removed immediately
         localStorage.removeItem("tresta:accessToken")

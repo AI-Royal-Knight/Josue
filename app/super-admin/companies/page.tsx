@@ -323,11 +323,37 @@ export default function CompaniesPage() {
   }, [])
 
   const handleUpdate = async (id: string, payload: Partial<CompanyRecord>) => {
+    // Optimistically update the local state for a smooth UI experience
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          return {
+            ...r,
+            activated: payload.activate !== undefined ? payload.activate : r.activated,
+            automaticMonthlyInvoices:
+              payload.auto_monthly_inv !== undefined
+                ? payload.auto_monthly_inv
+                : r.automaticMonthlyInvoices,
+            monthlySubscriptionGbp:
+              payload.monthly_subscription !== undefined
+                ? parseFloat(payload.monthly_subscription)
+                : r.monthlySubscriptionGbp,
+            perUserRateGbp:
+              payload.per_user_rate !== undefined
+                ? parseFloat(payload.per_user_rate)
+                : r.perUserRateGbp,
+          }
+        }
+        return r
+      })
+    )
+
     try {
       await updateCompany(id, payload)
-      fetchData()
     } catch (err) {
       alert("Failed to update company.")
+      // Revert changes by refetching from the server
+      fetchData()
     }
   }
 

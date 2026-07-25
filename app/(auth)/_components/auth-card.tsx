@@ -19,20 +19,20 @@ export default function AuthCard({
   return (
     <div
       className={cn(
-        "auth-glass w-full max-w-[420px] rounded-2xl border border-white/20 bg-white/10 p-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.75)] backdrop-blur-sm",
+        "auth-glass w-full max-w-[440px] rounded-3xl border border-white/20 bg-black/40 p-10 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.7)] backdrop-blur-md relative overflow-hidden",
         className
       )}
     >
-      <div className="text-center">
-        <h1 className="text-xl font-semibold tracking-[0.2em] uppercase">
+      <div className="relative z-10 text-center mb-8">
+        <h1 className="text-2xl font-bold tracking-[0.15em] uppercase text-white">
           {title}
         </h1>
         {subtitle ? (
-          <p className="mt-2 text-xs text-slate-300">{subtitle}</p>
+          <p className="mt-3 text-sm text-slate-300 tracking-wide">{subtitle}</p>
         ) : null}
       </div>
-      <div className="mt-6 space-y-5">{children}</div>
-      {footer ? <div className="mt-6 text-center">{footer}</div> : null}
+      <div className="relative z-10 space-y-6">{children}</div>
+      {footer ? <div className="relative z-10 mt-8 text-center">{footer}</div> : null}
     </div>
   )
 }
