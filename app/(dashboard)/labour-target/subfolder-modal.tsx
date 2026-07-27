@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { X, Plus, Save, Upload, Loader2 } from "lucide-react"
+import { X, Plus, Save, Upload, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -48,16 +48,26 @@ export function SubfolderModal({
     const reader = new FileReader()
     reader.onload = (ev) => {
       const text = ev.target?.result as string
-      const lines = text.split("\n").filter((l) => l.trim())
+      // Split by any newline character (\r\n, \n, or \r)
+      const lines = text.split(/\r\n|\n|\r/).filter((l) => l.trim())
       const start = lines[0]?.toLowerCase().includes("work") ? 1 : 0
       const parsed: Row[] = lines.slice(start).map((line) => {
-        const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""))
+        // Split by comma, but ignore commas inside double quotes
+        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((c) => c.trim().replace(/^"|"$/g, ""))
+        
+        // Helper to strip currency symbols and commas (e.g. " £16,522.11 " -> "16522.11")
+        const cleanNumber = (val: string) => {
+          if (!val) return "0.00"
+          const cleaned = val.replace(/[^0-9.-]+/g, "")
+          return cleaned ? cleaned : "0.00"
+        }
+
         return {
           id: uid(),
           workSection: cols[0] ?? "",
           workArea: cols[1] ?? "",
-          projectValue: cols[2] ?? "0.00",
-          labourTarget: cols[3] ?? "0",
+          projectValue: cleanNumber(cols[2]),
+          labourTarget: cleanNumber(cols[3]),
         }
       })
       if (parsed.length) setRows(parsed)
@@ -66,6 +76,18 @@ export function SubfolderModal({
     reader.onerror = () => setIsImporting(false)
     reader.readAsText(file)
     e.target.value = ""
+  }
+
+  const handleDownloadDemo = () => {
+    const csvContent = "Work Section,Work Area,Project Value,Labour Target\ne.g. Electrical Rough-in,e.g. Level 1 - Unit 101,0.00,0"
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", "subfolder_demo.csv")
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
@@ -80,6 +102,7 @@ export function SubfolderModal({
       */}
       <DialogContent
         showCloseButton={false}
+        onOpenAutoFocus={(e) => e.preventDefault()}
         className="flex max-h-[90vh] w-[60%] max-w-none flex-col gap-0 overflow-hidden p-0"
       >
         {/* ── Fixed header ── */}
@@ -94,13 +117,21 @@ export function SubfolderModal({
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
+                onClick={handleDownloadDemo}
+                title="Download demo CSV format"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Demo CSV
+              </Button>
+              <Button
+                variant="outline"
                 disabled={isImporting}
                 onClick={() => fileRef.current?.click()}
               >
                 {isImporting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-4 w-4 mr-2" />
                 )}
                 {isImporting ? "Importing…" : "Import"}
               </Button>

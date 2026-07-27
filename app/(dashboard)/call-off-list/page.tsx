@@ -24,6 +24,7 @@ import {
   XCircle,
   ChevronRight,
   ChevronDown,
+  Loader2,
 } from "lucide-react"
 import SelectProject from "@/components/shared/select-project"
 import { colors } from "@/constants/colors"
@@ -34,8 +35,9 @@ import type { CallOffRow, PODialogState, HistoryDialogState, CallOffHistoryEntry
 import { formatGBP, initialData, summaryMetrics, baseTheme } from "./utils"
 import HistoryDialog from "./_components/HistoryDialog"
 import PODialog from "./_components/PODialog"
-import { getCallOffList, toggleCallOffManagementApproval, createCallOff } from "@/lib/api/call-off"
+import { getCallOffList, toggleCallOffManagementApproval, createCallOff, approveCallOff, approveAllCallOffs } from "@/lib/api/call-off"
 import { useEffect } from "react"
+import { toast } from "sonner"
 
 type GroupHeaderRow = {
   _kind: "group"
@@ -46,10 +48,10 @@ type GroupHeaderRow = {
   totalValue: number
   // filler fields so ColDef<VirtualRow> doesn't complain
   callOffRef: ""
-  project: ""
-  mainFolder: ""
-  subFolder: ""
-  variationRef: ""
+  project: string
+  mainFolder: string
+  subFolder: string
+  variationRef: string
   productDescription: ""
   totalQty: 0
   unit: ""
@@ -108,6 +110,7 @@ export default function Page() {
           callOffBy: lastCO ? (lastCO.call_off_by_name || "-") : "-",
           approveBy: lastCO ? (lastCO.approve_by_name || "Pending") : "-",
           history: r.history.map(h => ({
+            id: h.id,
             callOffRef: h.call_off_ref,
             callOffDate: h.date,
             callOffQty: Number(h.qty),
@@ -118,6 +121,7 @@ export default function Page() {
           })) as CallOffHistoryEntry[],
           managementApproved: r.management_approved,
           managementApprovedDate: r.management_approved_date,
+          latestCallOffId: lastCO ? lastCO.id : null,
         }
       })
       setData(mapped)
@@ -136,9 +140,47 @@ export default function Page() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sentPO, setSentPO] = useState<string | null>(null)
   const [historyDialog, setHistoryDialog] = useState<HistoryDialogState | null>(null)
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false)
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null)
+  const [approveAllConfirmOpen, setApproveAllConfirmOpen] = useState(false)
+  const [approveAllTargetRef, setApproveAllTargetRef] = useState<string | null>(null)
 
   const role = useRoleStore((s) => s.role)
   const isProcurement = role === "procurement_department"
+
+  const handleApproveCallOff = useCallback(async () => {
+    if (approveTargetId === null) return
+    try {
+      setLoading(true)
+      await approveCallOff(approveTargetId)
+      setApproveConfirmOpen(false)
+      setApproveTargetId(null)
+      toast.success("Call-off approved and sent to supplier successfully.")
+      await fetchData()
+    } catch (err) {
+      toast.error("Failed to approve call-off.")
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [approveTargetId, fetchData])
+
+  const handleApproveAllCallOffs = useCallback(async () => {
+    if (approveAllTargetRef === null) return
+    try {
+      setLoading(true)
+      await approveAllCallOffs(approveAllTargetRef)
+      setApproveAllConfirmOpen(false)
+      setApproveAllTargetRef(null)
+      toast.success("All pending call-offs approved and sent to supplier successfully.")
+      await fetchData()
+    } catch (err) {
+      toast.error("Failed to approve call-offs.")
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [approveAllTargetRef, fetchData])
 
   const toggleExpanded = useCallback((poRef: string) => {
     setExpanded((prev) => {
@@ -195,11 +237,11 @@ export default function Page() {
     setPoDialog((prev) =>
       prev
         ? {
-            ...prev,
-            lines: prev.lines.map((l) =>
-              l.callOffRef === callOffRef ? { ...l, orderQty: qty } : l
-            ),
-          }
+          ...prev,
+          lines: prev.lines.map((l) =>
+            l.callOffRef === callOffRef ? { ...l, orderQty: qty } : l
+          ),
+        }
         : null
     )
 
@@ -215,7 +257,7 @@ export default function Page() {
       setLoading(true)
       // Generate a shared call_off_ref for this batch
       const sharedRef = `CO-${Math.random().toString(36).substring(2, 10).toUpperCase()}`
-      
+
       // Send a call off creation request for each line item that has an orderQty > 0
       for (const line of poDialog.lines) {
         if (line.orderQty > 0) {
@@ -230,9 +272,11 @@ export default function Page() {
       }
       setSentPO(poDialog.poRef)
       setConfirmOpen(false)
+      toast.success("Call-offs created successfully.")
       // We don't close poDialog yet so user sees success state, but we fetch latest data
       await fetchData()
     } catch (err) {
+      toast.error("Failed to create call-offs.")
       console.error(err)
     } finally {
       setLoading(false)
@@ -248,6 +292,8 @@ export default function Page() {
       unit: row.unit,
       unitPrice: row.unitPrice,
       history: row.history,
+      supplierName: row.supplierName,
+      supplierEmail: row.supplierEmail,
     })
   }, [])
 
@@ -295,20 +341,24 @@ export default function Page() {
       // Child rows — only include when this PO is expanded
       if (expanded.has(poRef)) {
         children.forEach((r) => {
-          r.history.forEach((h) => {
-            rows.push({
-              ...r,
-              _kind: "child",
-              lineItemRef: r.callOffRef,
-              callOffRef: h.callOffRef,
-              callOffQty: h.callOffQty,
-              callOffPrice: h.callOffPrice,
-              callOffDate: h.callOffDate,
-              expectedDeliveryDate: h.expectedDeliveryDate,
-              callOffBy: h.callOffBy,
-              approveBy: h.approveBy,
+          if (r.history.length > 0) {
+            r.history.forEach((h) => {
+              rows.push({
+                ...r,
+                _kind: "child",
+                lineItemRef: r.callOffRef,
+                // Override with specific call-off data
+                callOffRef: h.callOffRef,
+                callOffQty: h.callOffQty,
+                callOffPrice: h.callOffPrice,
+                callOffDate: h.callOffDate,
+                expectedDeliveryDate: h.expectedDeliveryDate,
+                callOffBy: h.callOffBy,
+                approveBy: h.approveBy,
+                latestCallOffId: h.id, // Ensure action button uses THIS call off's ID
+              })
             })
-          })
+          }
         })
       }
     })
@@ -492,61 +542,80 @@ export default function Page() {
           p.data?._kind === "group" ? null : p.value,
       },
 
-      // ── Procurement-only ──────────────────────────────────────────────
       {
-        headerName: "Management Approved",
-        field: "managementApproved",
-        minWidth: 210,
-        hide: !isProcurement,
-        cellRenderer: (params: { data?: VirtualRow; value: boolean }) => {
-          if (params.data?._kind !== "child") return null
+        headerName: "Action",
+        minWidth: 150,
+        cellRenderer: (params: { data?: VirtualRow }) => {
+          if (params.data?._kind === "group") {
+            const group = params.data as GroupHeaderRow
+            const hasPending = data.some(r => r.poRef === group.poRef && r.latestCallOffId && !isApproved(r))
+            const isApprovingAll = loading && approveAllTargetRef === group.poRef
+            if (hasPending && isProcurement) {
+              return (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setApproveAllTargetRef(group.poRef)
+                    setApproveAllConfirmOpen(true)
+                  }}
+                  disabled={loading}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity",
+                    "bg-blue-600/80 text-blue-100 hover:bg-blue-600",
+                    isApprovingAll && "cursor-default opacity-50 pointer-events-none"
+                  )}
+                >
+                  {isApprovingAll ? (
+                    <><Loader2 className="size-3 animate-spin" /> Approving All</>
+                  ) : (
+                    <><CheckCircle2 className="size-3" /> Approve All</>
+                  )}
+                </button>
+              )
+            }
+            return (
+              <span className="text-xs italic text-slate-500">
+                Expand to view
+              </span>
+            )
+          }
           const row = params.data as ChildRow
-          const approved = params.value
+          // Only show approve button if there's a latest call off to approve
+          if (!row.latestCallOffId) {
+            return (
+              <span className="text-[11px] italic text-slate-500">
+                No Call-Off
+              </span>
+            )
+          }
+
+          const approved = isApproved(row)
+          const isApprovingThis = loading && approveTargetId === row.latestCallOffId
+
           return (
             <button
-              onClick={() => isProcurement && toggleManagementApproval(row.callOffRef)}
-              title={isProcurement ? (approved ? "Click to revoke" : "Click to approve") : undefined}
+              onClick={() => {
+                if (isProcurement && !approved && row.latestCallOffId && !isApprovingThis) {
+                  setApproveTargetId(row.latestCallOffId)
+                  setApproveConfirmOpen(true)
+                }
+              }}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity",
                 approved
-                  ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
-                  : "bg-slate-700/60 text-slate-400 hover:bg-slate-700",
-                !isProcurement && "cursor-default pointer-events-none"
+                  ? "bg-emerald-500/20 text-emerald-300 pointer-events-none"
+                  : "bg-blue-600/80 text-blue-100 hover:bg-blue-600",
+                (!isProcurement || approved || isApprovingThis) && "cursor-default opacity-50 pointer-events-none"
               )}
             >
-              {approved ? (
+              {isApprovingThis ? (
+                <><Loader2 className="size-3 animate-spin" /> Approving</>
+              ) : approved ? (
                 <><CheckCircle2 className="size-3" /> Approved</>
               ) : (
-                <><XCircle className="size-3" /> Pending</>
+                <><CheckCircle2 className="size-3" /> Approve</>
               )}
             </button>
-          )
-        },
-      },
-      {
-        headerName: "Management Approved Date",
-        field: "managementApprovedDate",
-        minWidth: 220,
-        hide: !isProcurement,
-        cellRenderer: (params: { data?: VirtualRow; value: string | null }) => {
-          if (params.data?._kind !== "child") return null
-          if (!params.value) return <span className="text-xs italic text-slate-500">Not yet approved</span>
-          return <span className="text-xs text-emerald-300">{params.value}</span>
-        },
-      },
-
-      {
-        headerName: "Approve By",
-        field: "approveBy",
-        minWidth: 130,
-        cellRenderer: (params: { data?: VirtualRow; value: string }) => {
-          if (params.data?._kind !== "child") return null
-          const row = params.data as ChildRow
-          const approved = isApproved(row)
-          return (
-            <span className={cn("text-[12px] font-medium", approved ? "text-emerald-400" : "text-amber-400")}>
-              {params.value}
-            </span>
           )
         },
       },
@@ -560,6 +629,10 @@ export default function Page() {
     openHistoryDialog,
     isProcurement,
     toggleManagementApproval,
+    loading,
+    approveTargetId,
+    approveAllTargetRef,
+    data,
   ])
 
   const getRowStyle = useCallback(
@@ -615,7 +688,7 @@ export default function Page() {
             getRowId={(p) =>
               p.data._kind === "group"
                 ? `group__${p.data.poRef}`
-                : `child__${(p.data as ChildRow).callOffRef}`
+                : `child__${(p.data as ChildRow).lineItemRef}_${(p.data as ChildRow).latestCallOffId}`
             }
           />
         </div>
@@ -650,8 +723,62 @@ export default function Page() {
             <AlertDialogCancel onClick={() => setConfirmOpen(false)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleSendToSupplier}>
-              <Send className="mr-2 size-4" /> Confirm &amp; Send
+            <AlertDialogAction disabled={loading} onClick={handleSendToSupplier}>
+              {loading ? (
+                <><Loader2 className="mr-2 size-4 animate-spin" /> Sending...</>
+              ) : (
+                <><Send className="mr-2 size-4" /> Confirm &amp; Send</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Call-Off?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will approve the call-off and send an automatic email to the supplier with the call-off details.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setApproveConfirmOpen(false)
+              setApproveTargetId(null)
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction disabled={loading} onClick={handleApproveCallOff}>
+              {loading ? (
+                <><Loader2 className="mr-2 size-4 animate-spin" /> Approving...</>
+              ) : (
+                <><CheckCircle2 className="mr-2 size-4" /> Approve &amp; Send</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={approveAllConfirmOpen} onOpenChange={setApproveAllConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve All Call-Offs?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will approve all pending call-offs for PO <strong>{approveAllTargetRef}</strong> and send a single combined email to the supplier with the PDF attached.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setApproveAllConfirmOpen(false)
+              setApproveAllTargetRef(null)
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction disabled={loading} onClick={handleApproveAllCallOffs}>
+              {loading ? (
+                <><Loader2 className="mr-2 size-4 animate-spin" /> Approving...</>
+              ) : (
+                <><CheckCircle2 className="mr-2 size-4" /> Approve All &amp; Send</>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

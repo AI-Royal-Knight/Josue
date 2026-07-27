@@ -50,6 +50,10 @@ export interface CompanyRecord {
   per_user_rate: string
   auto_monthly_inv: boolean
   status: "active" | "suspended"
+  invoices_count: number
+  rfis_count: number
+  storage_usage: string
+  uploaded_files_count: number
 }
 
 export interface CompaniesResponse {

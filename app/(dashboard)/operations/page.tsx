@@ -214,6 +214,12 @@ export default function Page() {
         flex: 1, 
         cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View</a> : "–"
       },
+      { 
+        headerName: "Signature", 
+        field: "signed_document_url", 
+        flex: 1, 
+        cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View Signature</a> : (p.data.completed_at ? <span className="text-emerald-500">Completed</span> : "–")
+      },
     ],
     []
   )
@@ -228,6 +234,12 @@ export default function Page() {
         field: "document_url", 
         flex: 1, 
         cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View</a> : "–"
+      },
+      { 
+        headerName: "Signature", 
+        field: "signed_document_url", 
+        flex: 1, 
+        cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View Signature</a> : (p.data.completed_at ? <span className="text-emerald-500">Completed</span> : "–")
       },
     ],
     []
@@ -244,6 +256,12 @@ export default function Page() {
         flex: 1, 
         cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View</a> : "–"
       },
+      { 
+        headerName: "Signature", 
+        field: "signed_document_url", 
+        flex: 1, 
+        cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View Signature</a> : (p.data.completed_at ? <span className="text-emerald-500">Completed</span> : "–")
+      },
     ],
     []
   )
@@ -255,6 +273,12 @@ export default function Page() {
       { headerName: "Date", field: "date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
       { headerName: "Completion Date", field: "completion_date", flex: 1, valueFormatter: (p) => formatDate(p.value) },
       { headerName: "User", field: "assign_user", flex: 1 },
+      { 
+        headerName: "Signature", 
+        field: "signed_document_url", 
+        flex: 1, 
+        cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-400 hover:underline">View Signature</a> : (p.data.completed_at ? <span className="text-emerald-500">Completed</span> : "–")
+      },
     ],
     []
   )

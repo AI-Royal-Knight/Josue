@@ -29,3 +29,24 @@ export function formatCurrency(value: number): string {
     currency: "GBP",
   }).format(value)
 }
+
+export function getDashboardUrl(role: string): string {
+  const map: Record<string, string> = {
+    super_admin: "/super-admin",
+    admin: "/home",
+    project_admin: "/projects",
+    managing_director: "/project-overview",
+    document_controller: "/users",
+    commercial_department: "/variations",
+    procurement_department: "/supplier-lists",
+    contracts_manager: "/users",
+    managers: "/users",
+    supervisor: "/users",
+    project_director: "/project-overview",
+    employee: "/projects",
+    supplier: "/supplier",
+    finance_department: "/invoice-list",
+    technical_department: "/project-rfis",
+  }
+  return map[role] ?? "/home"
+}

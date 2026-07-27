@@ -43,6 +43,7 @@ export interface Quotation {
   supplier_name: string
   main_folder_name?: string | null
   sub_folder_name?: string | null
+  supplier_quote_pdf?: string | null
   line_items?: QuotationLineItem[]
   history?: QuotationHistory[]
   

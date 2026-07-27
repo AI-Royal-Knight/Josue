@@ -120,6 +120,7 @@ function FolderGrid({
   sx?: object
   onChange?: (newFolder: FolderType) => void
   onSubfolderAssign?: (subfolderId: string) => void
+  onAddSubfolder?: (folderId: string) => void
 }) {
   const rows = useMemo(
     () =>
@@ -256,13 +257,13 @@ function FolderGrid({
         columnGroupingModel={columnGroupingModel}
         slots={undefined}
         processRowUpdate={handleProcessRowUpdate}
-        hideFooter
+        initialState={{
+          pagination: { paginationModel: { pageSize: 100 } },
+        }}
+        pageSizeOptions={[25, 50, 100]}
         disableRowSelectionOnClick
         showCellVerticalBorder
         showColumnVerticalBorder
-        disableColumnResize
-        disableColumnSorting
-        disableColumnMenu
         rowHeight={ROW_HEIGHT}
         isCellEditable={() => !isLocked}
         sx={{
@@ -295,9 +296,9 @@ function FolderGrid({
       {!isLocked && (
         <button
           onClick={handleAddRow}
-          className="flex h-8 w-full items-center justify-center gap-2 border-t border-white/10 bg-slate-900/50 text-xs font-semibold uppercase tracking-widest text-slate-400 hover:bg-white/[0.04] hover:text-white transition-colors shrink-0"
+          className="group flex h-8 w-full items-center justify-center gap-2 border-t border-white/10 bg-[rgba(255,255,255,0.04)] text-xs font-semibold uppercase tracking-widest text-slate-400 hover:bg-amber-400/10 hover:text-amber-400 transition-colors shrink-0"
         >
-          <Plus size={14} /> Add Row
+          <Plus size={14} className="opacity-60 group-hover:opacity-100 transition-opacity" /> Add Row
         </button>
       )}
     </div>
@@ -535,13 +536,6 @@ export default function DynamicFolderTable() {
       )
       setFolders(newFolders)
       setModalState(null)
-
-      // Auto-save to backend
-      if (projectId) {
-        import("@/lib/api/project-admin").then(({ updateProjectFolders }) => {
-          updateProjectFolders(projectId, newFolders as any).catch(console.error)
-        })
-      }
     },
     [folders, projectId]
   )
@@ -550,25 +544,18 @@ export default function DynamicFolderTable() {
     const newFolders = folders.map((f) => {
       if (f.id === folderId) {
         const isNowManagement = !f.is_management
-        return { 
-          ...f, 
+        return {
+          ...f,
           is_management: isNowManagement,
-          subfolders: isNowManagement 
-            ? f.subfolders.map(sf => ({ ...sf, assignments: [] })) 
+          subfolders: isNowManagement
+            ? f.subfolders.map(sf => ({ ...sf, assignments: [] }))
             : f.subfolders
         }
       }
       return { ...f, is_management: false }
     })
     setFolders(newFolders)
-
-    // Auto-save to backend
-    if (projectId) {
-      import("@/lib/api/project-admin").then(({ updateProjectFolders }) => {
-        updateProjectFolders(projectId, newFolders as any).catch(console.error)
-      })
-    }
-  }, [folders, projectId])
+  }, [folders])
 
   const activeFolder = modalState
     ? folders.find((f) => f.id === modalState.folderId)
@@ -610,52 +597,73 @@ export default function DynamicFolderTable() {
         </div>
 
         {/* ── One row per folder: sidebar label + its own DataGrid  */}
-        <div className="min-w-[1200px]">
+        <div className="flex flex-col gap-8 w-full min-w-0">
           {folders.map((folder) => {
             const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
-            const maxRows = Math.max(ROWS_PER_FOLDER, ...(folder.subfolders || []).map(s => (s.rows || []).length))
-            // Base section height: headers + rows
-            let sectionH = hh + maxRows * ROW_HEIGHT
-            // If unlocked, account for the 32px (h-8) "Add Row" button at the bottom of the grid
-            if (!isLocked) sectionH += 32
+
+            // Constrain the table container to the viewport height so internal scrollbars work perfectly
+            const sectionH = "calc(100vh - 250px)"
 
             return (
               <div
                 key={folder.id}
-                className="flex items-stretch"
+                className="flex items-stretch w-full min-w-0"
               >
                 {/* Sidebar label — full height of header + data rows */}
                 <ContextMenu>
-                  <ContextMenuTrigger disabled={isLocked} asChild>
+                  <ContextMenuTrigger asChild>
                     <div
-                      title={
-                        isLocked ? undefined : "Right-click to add subfolder"
-                      }
                       style={{
                         flexShrink: 0,
                         width: 48,
                         height: sectionH,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        writingMode: "vertical-lr",
-                        transform: "rotate(180deg)",
-                        fontWeight: 700,
-                        fontSize: 11,
-                        letterSpacing: "0.12em",
-                        userSelect: "none",
-                        cursor: isLocked ? "default" : "context-menu",
-                        color: fg,
-                        backgroundColor: sectionBg,
+                        position: "relative",
                         border: `1px solid ${borderColor}`,
+                        backgroundColor: sectionBg,
                         transition: "background-color 140ms",
                       }}
-                      className={!isLocked ? "hover:bg-amber-400/10" : ""}
+                      className={!isLocked ? "group hover:bg-amber-400/10" : ""}
                     >
-                      <div className="flex items-center gap-1.5">
-                        {folder.is_management && <Briefcase size={12} className="text-blue-400" />}
-                        <span>{folder.name}</span>
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          writingMode: "vertical-lr",
+                          transform: "rotate(180deg)",
+                          fontWeight: 700,
+                          fontSize: 11,
+                          letterSpacing: "0.12em",
+                          userSelect: "none",
+                          cursor: isLocked ? "default" : "context-menu",
+                          color: fg,
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {folder.is_management && <Briefcase size={12} className="text-blue-400" />}
+                          <span>{folder.name}</span>
+                        </div>
                       </div>
+
+                      {!isLocked && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            setSubfolderTarget({
+                              folderId: folder.id,
+                              folderName: folder.name,
+                            })
+                            setNewSubfolderNameCtx("")
+                          }}
+                          className="absolute top-2 left-1/2 -translate-x-1/2 flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-black/20 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                          title="Add Subfolder"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      )}
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent className="w-52 border-white/10 bg-slate-900">
@@ -726,6 +734,27 @@ export default function DynamicFolderTable() {
                     }
                   />
                 </div>
+
+                {/* Right sidebar for Add Subfolder */}
+                {!isLocked && (
+                  <button
+                    onClick={() => {
+                      setSubfolderTarget({
+                        folderId: folder.id,
+                        folderName: folder.name,
+                      })
+                      setNewSubfolderNameCtx("")
+                    }}
+                    className="flex-shrink-0 flex items-center justify-center w-12 border border-l-0 border-white/10 bg-[rgba(255,255,255,0.04)] text-slate-400 hover:bg-amber-400/10 hover:text-amber-400 transition-colors group"
+                    title="Add Subfolder"
+                    style={{
+                      height: sectionH,
+                      borderTop: folders.indexOf(folder) > 0 ? "none" : undefined,
+                    }}
+                  >
+                    <FolderPlus size={18} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
               </div>
             )
           })}
@@ -789,6 +818,7 @@ export default function DynamicFolderTable() {
               onKeyDown={(e) => {
                 if (e.key === "Escape") resetCreateDialog()
                 if (e.key === "Enter") {
+                  e.preventDefault()
                   const t = newFolderName.trim()
                   if (!t) return
                   setNewFolderName(t)
@@ -805,6 +835,7 @@ export default function DynamicFolderTable() {
               onKeyDown={(e) => {
                 if (e.key === "Escape") resetCreateDialog()
                 if (e.key === "Enter") {
+                  e.preventDefault()
                   const f = newFolderName.trim(),
                     s = newSubfolderName.trim()
                   if (!f || !s) return

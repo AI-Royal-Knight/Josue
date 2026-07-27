@@ -425,7 +425,7 @@ function ReactFlowComponentInner() {
           copiedValue={copiedValue}
           onCopy={setCopiedValue}
           onSave={(rows) =>
-            saveSubfolder(modal.folderId, modal.subfolderId, rows)
+            saveSubfolder(modal.folderId, modal.subfolderId!, rows)
           }
           onClose={() => setModal(null)}
         />

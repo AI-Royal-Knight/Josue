@@ -90,6 +90,7 @@ function apiToRow(v: VariationApi): VariationRow {
     sigManagingDirector: v.managing_director_approved || false,
     sigManagingDirectorDate: v.managing_director_approved_date || null,
     fullyApproved: v.fully_approved || false,
+    evidence_url: (v as any).evidence_url || null,
   }
 }
 

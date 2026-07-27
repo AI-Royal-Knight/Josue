@@ -302,8 +302,7 @@ export default function Page() {
       headerName: "Finance comments",
       field: "financeComments",
       minWidth: 200,
-      suppressCellFocus: true,
-      cellRenderer: (params: { data?: SupplierRow; value: string }) => {
+            cellRenderer: (params: { data?: SupplierRow; value: string }) => {
         const hasComment = !!params.value
         return (
           <button

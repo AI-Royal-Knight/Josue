@@ -30,6 +30,7 @@ export async function validateInvitationToken(
 export interface SendInvitationPayload {
   email: string
   role: string
+  secondary_role?: string
   company_id?: number
   project_id?: number
 }

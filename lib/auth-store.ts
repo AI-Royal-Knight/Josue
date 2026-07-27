@@ -16,6 +16,7 @@ export interface AuthUserState {
   first_name: string
   last_name: string
   role: string
+  secondary_role?: string
   role_assignments?: RoleAssignment[]
 }
 

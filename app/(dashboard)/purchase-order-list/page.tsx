@@ -41,7 +41,7 @@ import {
 } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
 import { ExportCsvButton } from "@/components/common/export-csv-button"
-import { getQuotations, ProcurementProject, createQuotation, approveQuotation, toggleQuotationSignature, type QuotationLineItem } from "@/lib/api/quotations"
+import { getQuotations, patchQuotation, ProcurementProject, createQuotation, approveQuotation, toggleQuotationSignature, type QuotationLineItem } from "@/lib/api/quotations"
 import { getApprovalConfigs, type ApprovalConfigurationData } from "@/lib/api/project-admin"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
@@ -344,6 +344,7 @@ function CreatePODialog({
   const [sourceFileUrl, setSourceFileUrl] = useState("")
   const [parsedData, setParsedData] = useState<ParsedPOData | null>(null)
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [creatingPo, setCreatingPo] = useState(false)
   const [form, setForm] = useState<POFormData>({
     supplierName: "",
     supplierEmail: "",
@@ -431,7 +432,8 @@ function CreatePODialog({
     const subFolderId = selectedProject.folders.find(f => f.name === form.mainFolder)?.subfolders.find(sf => sf.name === form.subFolder)?.id
 
     try {
-      await createQuotation({
+      setCreatingPo(true)
+      const quotation = await createQuotation({
         project: selectedProject.id,
         main_folder: mainFolderId,
         sub_folder: subFolderId,
@@ -455,11 +457,20 @@ function CreatePODialog({
           }
         }) || []
       } as any) // as any since we pass supplier_name to the backend to resolve
+
+      // Upload the source PDF file
+      if (droppedFile) {
+        const formData = new FormData()
+        formData.append('supplier_quote_pdf', droppedFile, droppedFile.name)
+        await patchQuotation(quotation.id, formData as any)
+      }
       onCreated()
       onClose()
     } catch (err) {
       console.error("Failed to create PO:", err)
       alert("Failed to create PO. Check console for details.")
+    } finally {
+      setCreatingPo(false)
     }
   }
 
@@ -792,11 +803,11 @@ function CreatePODialog({
               )}
               <Button
                 onClick={handleCreate}
-                disabled={!form.supplierName.trim()}
+                disabled={!form.supplierName.trim() || creatingPo}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create PO
+                {creatingPo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                {creatingPo ? "Creating..." : "Create PO"}
               </Button>
             </>
           )}
@@ -942,6 +953,8 @@ export default function Page() {
         approvalQuotation: q.status || "Pending",
         approvalRelatedRequests: q.quote_approval_reasons || "-",
         lineItems: q.line_items || [],
+        sourceFileUrl: q.supplier_quote_pdf || undefined,
+        sourceFile: q.supplier_quote_pdf ? q.supplier_quote_pdf.split('/').pop() : undefined,
         sigProcurementDepartment: q.sig_procurement_department || false,
         sigProcurementDepartmentDate: q.sig_procurement_department_date || "",
         sigContractsManager: q.sig_contracts_manager || false,
@@ -1100,11 +1113,36 @@ export default function Page() {
     },
     // ----------------
     
-    { headerName: "Date PO Created", field: "datePOCreated" },
+    {
+      headerName: "Date PO Created",
+      field: "datePOCreated",
+      editable: isProcurement,
+      
+      onCellValueChanged: async (params: any) => {
+        if (params.newValue === params.oldValue) return;
+        try {
+          await patchQuotation(params.data.id, { date_po_created: params.newValue || null });
+          toast.success("Date updated successfully");
+        } catch (e) {
+          toast.error("Failed to update date");
+          params.node.setDataValue("datePOCreated", params.oldValue);
+        }
+      },
+    },
     {
       headerName: "Procurement Comments",
       field: "procurementComments",
-      editable: true,
+      editable: isProcurement,
+      onCellValueChanged: async (params: any) => {
+        if (params.newValue === params.oldValue) return;
+        try {
+          await patchQuotation(params.data.id, { procurement_comments: params.newValue });
+          toast.success("Comments updated successfully");
+        } catch (e) {
+          toast.error("Failed to update comments");
+          params.node.setDataValue("procurementComments", params.oldValue);
+        }
+      },
     },
     {
       headerName: "Source PDF",

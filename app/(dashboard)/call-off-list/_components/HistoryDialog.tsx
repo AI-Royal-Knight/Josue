@@ -38,6 +38,17 @@ export default function HistoryDialog({ dialogState, onOpenChange }: Props) {
                 <span className="text-slate-400">Product: </span>
                 <span className="font-medium text-slate-200">{dialogState?.productDescription}</span>
               </div>
+              <div>
+                <span className="text-slate-400">Supplier: </span>
+                <span className="font-medium text-slate-200">{dialogState?.supplierName}</span>
+                {dialogState?.supplierEmail && (
+                  <>
+                    <span className="mx-2 text-slate-600">·</span>
+                    <span className="text-slate-400">Email: </span>
+                    <span className="font-medium text-slate-200">{dialogState?.supplierEmail}</span>
+                  </>
+                )}
+              </div>
               <div className="flex gap-4">
                 <span><span className="text-slate-400">Total QTY: </span><span className="text-slate-200">{dialogState?.totalQty} {dialogState?.unit}</span></span>
                 <span><span className="text-slate-400">Unit Price: </span><span className="text-slate-200">{dialogState?.unitPrice}</span></span>
@@ -51,7 +62,7 @@ export default function HistoryDialog({ dialogState, onOpenChange }: Props) {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-wide text-slate-400">
-                  {["Call Off Ref","Date","QTY","Price","Called Off By","Approved By","Expected Delivery"].map((h) => (
+                  {["Call Off Ref", "Date", "QTY", "Price", "Called Off By", "Approved By", "Expected Delivery"].map((h) => (
                     <th key={h} className="border-r border-white/10 px-3 py-2 text-left last:border-r-0">{h}</th>
                   ))}
                 </tr>

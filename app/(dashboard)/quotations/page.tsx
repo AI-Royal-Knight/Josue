@@ -34,7 +34,7 @@ import { useRoleStore } from "@/lib/role-store"
 type ApprovalStatus = "Approved" | "Rejected" | "Pending"
 
 type QuotationRow = {
-  id: string
+  id?: string | number
   no: number
   quotesRef: string
   project: string
@@ -227,10 +227,10 @@ export default function Page() {
         prev.map((r) =>
           r.no === pending.row.no
             ? {
-                ...r,
-                approveQuotesStatus: "Approved",
-                dateOfQuoteApproved: today,
-              }
+              ...r,
+              approveQuotesStatus: "Approved",
+              dateOfQuoteApproved: today,
+            }
             : r
         )
       )
@@ -273,7 +273,7 @@ export default function Page() {
   }
 
   const columns: ColDef<QuotationRow>[] = [
-        {
+    {
       headerName: "Quotes Ref",
       field: "quotesRef",
       minWidth: 140,
@@ -342,33 +342,33 @@ export default function Page() {
 
         if (status === "Approved") {
           if (loading) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-slate-400" />
-        <span className="ml-2 text-slate-400">Loading quotations…</span>
-      </div>
-    )
-  }
+            return (
+              <div className="flex h-[80vh] items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-slate-400" />
+                <span className="ml-2 text-slate-400">Loading quotations…</span>
+              </div>
+            )
+          }
 
-  if (errorMsg) {
-    return (
-      <div className="flex h-[80vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="rounded-full bg-slate-800/50 p-4">
-          <svg className="size-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-xl font-medium text-slate-200">{errorMsg}</h3>
-          <p className="text-sm text-slate-500">
-            You must be assigned to at least one project to view or manage quotations.
-          </p>
-        </div>
-      </div>
-    )
-  }
+          if (errorMsg) {
+            return (
+              <div className="flex h-[80vh] flex-col items-center justify-center gap-4 text-center">
+                <div className="rounded-full bg-slate-800/50 p-4">
+                  <svg className="size-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xl font-medium text-slate-200">{errorMsg}</h3>
+                  <p className="text-sm text-slate-500">
+                    You must be assigned to at least one project to view or manage quotations.
+                  </p>
+                </div>
+              </div>
+            )
+          }
 
-  return (
+          return (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
               <CheckCircle2 className="size-3" /> Approved
             </span>
@@ -488,12 +488,12 @@ export default function Page() {
           <Button
             variant="outline"
             className="h-7 rounded-none border-white/10 bg-slate-700 px-2 text-xs text-slate-200 hover:bg-slate-600"
-            onClick={() => setReQuoteTarget({ 
-              id: row.id,
-              no: row.no, 
-              quotesRef: row.quotesRef, 
-              supplierName: row.supplierName, 
-              quoteTotal: row.quoteTotal 
+            onClick={() => setReQuoteTarget({
+              id: String(row.id),
+              no: row.no,
+              quotesRef: row.quotesRef,
+              supplierName: row.supplierName,
+              quoteTotal: row.quoteTotal
             })}
           >
             <RotateCcw className="size-3.5" />
@@ -507,25 +507,25 @@ export default function Page() {
   // Confirmation dialog copy
   const dialogCopy = pending
     ? {
-        approve: {
-          title: "Approve this quote?",
-          description: `Approving "${pending.row.quotesRef}" will mark it as approved and allow a PO to be created.`,
-          confirm: "Approve",
-          confirmClass: "",
-        },
-        reject: {
-          title: "Reject this quote?",
-          description: `Rejecting "${pending.row.quotesRef}" cannot be undone.`,
-          confirm: "Reject",
-          confirmClass: "bg-red-600 hover:bg-red-500",
-        },
-        createPO: {
-          title: "Create Purchase Order?",
-          description: `This will create a PO from quote "${pending.row.quotesRef}" and add it to the Purchase Order List.`,
-          confirm: "Create PO",
-          confirmClass: "bg-[#3467df] hover:bg-[#2d59c2]",
-        },
-      }[pending.type]
+      approve: {
+        title: "Approve this quote?",
+        description: `Approving "${pending.row.quotesRef}" will mark it as approved and allow a PO to be created.`,
+        confirm: "Approve",
+        confirmClass: "",
+      },
+      reject: {
+        title: "Reject this quote?",
+        description: `Rejecting "${pending.row.quotesRef}" cannot be undone.`,
+        confirm: "Reject",
+        confirmClass: "bg-red-600 hover:bg-red-500",
+      },
+      createPO: {
+        title: "Create Purchase Order?",
+        description: `This will create a PO from quote "${pending.row.quotesRef}" and add it to the Purchase Order List.`,
+        confirm: "Create PO",
+        confirmClass: "bg-[#3467df] hover:bg-[#2d59c2]",
+      },
+    }[pending.type]
     : null
 
   return (
@@ -559,7 +559,7 @@ export default function Page() {
 
       {/* New quotation form */}
       <Dialog open={newQuoteOpen} onOpenChange={setNewQuoteOpen}>
-        <DialogContent 
+        <DialogContent
           className="max-h-[90vh] max-w-5xl overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}
         >

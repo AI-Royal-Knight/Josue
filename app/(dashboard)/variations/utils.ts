@@ -72,7 +72,7 @@ export const emptyLine = (): VariationLine => ({
 
 export const defaultForm = (): VariationFormData => ({
   project: "", siteInstructionNo: "", attentionOf: "",
-  descriptionOfWorks: "", lines: [emptyLine()], comments: "",
+  descriptionOfWorks: "", lines: [emptyLine()], comments: "", evidence: null,
 })
 
 export function lineTotal(l: VariationLine) {

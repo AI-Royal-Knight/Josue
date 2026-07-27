@@ -1,77 +1,12 @@
-// import * as XLSX from "xlsx"
-// import { ApplicationPdfData } from "./generate-application-pdf"
-// import { formatCurrency } from "./utils"
-
-// export function generateApplicationExcel(data: ApplicationPdfData) {
-//   const { application, companyName, addressLine1, addressLine2 } = data
-
-//   const cw = parseFloat(application.contract_works_total) || 0
-//   const vt = parseFloat(application.variations_total) || 0
-//   const grossTotal = cw + vt
-//   const retentionPerc = parseFloat(application.retention_percentage) || 0
-//   const discountPerc = parseFloat(application.discount_percentage) || 0
-//   const retentionAmount = grossTotal * (retentionPerc / 100)
-//   const discountAmount = grossTotal * (discountPerc / 100)
-
-//   const cumulativeNetApplication = grossTotal + retentionAmount + discountAmount
-//   const netPaymentDue = parseFloat(application.amount_claimed) || 0
-
-//   const ws_data = [
-//     [companyName || "COMPANY NAME"],
-//     [addressLine1 || ""],
-//     [addressLine2 || ""],
-//     [],
-//     ["APPLICATION FOR PAYMENT"],
-//     [],
-//     [
-//       "Application No:", application.application_number.toString(), 
-//       "", 
-//       "Date:", application.date, 
-//       "", 
-//       "Ref No:", application.ref_no || "—"
-//     ],
-//     [],
-//     ["Breakdown of Application", "Amount"],
-//     ["Contract Works", formatCurrency(cw)],
-//     ["Variations", formatCurrency(vt)],
-//     ["Cumulative Gross Total", formatCurrency(grossTotal)],
-//     [`Less Retention (${retentionPerc}%)`, formatCurrency(retentionAmount)],
-//     [`Less Discount (${discountPerc}%)`, formatCurrency(discountAmount)],
-//     ["Cumulative Net Application", formatCurrency(cumulativeNetApplication)],
-//     ["Cumulative Net Payment Received", "—"],
-//     [],
-//     ["Net Payment Due", formatCurrency(netPaymentDue)],
-//     [],
-//     ["If you do not agree with any items within our application, please forward full details within five days of the date of this Application."],
-//     ["Please note that in compliance with the Housing Grants Construction and Regeneration Act 1996, it is a statutory requirement that you advise us within a period of 5 days from the due date of the Application of any amount proposed to be withheld from the gross value applied for, and the ground for withholding. If there are more than one ground, each ground and the amount attributable to it must be detailed."]
-//   ]
-
-//   const ws = XLSX.utils.aoa_to_sheet(ws_data)
-
-//   // Adjust column widths to make it look nicer
-//   ws['!cols'] = [
-//     { wch: 45 }, // Description / Company Name
-//     { wch: 20 }, // Amounts / App No
-//     { wch: 5 },  // Gap
-//     { wch: 10 }, // Date Label
-//     { wch: 15 }, // Date Value
-//     { wch: 5 },  // Gap
-//     { wch: 10 }, // Ref No Label
-//     { wch: 20 }, // Ref No Value
-//   ]
-
-//   const wb = XLSX.utils.book_new()
-//   XLSX.utils.book_append_sheet(wb, ws, "Application")
-//   XLSX.writeFile(wb, `Application-${application.application_number}.xlsx`)
-// }
-
 import ExcelJS from "exceljs"
 import { ApplicationPdfData } from "./generate-application-pdf"
 
-const BRAND_COLOR = "1F4E78"      // dark blue header
-const ACCENT_COLOR = "DCE6F1"     // light blue band
-const TOTAL_COLOR = "FFF2CC"      // pale gold for totals
-const DUE_COLOR = "2E7D32"        // green for the final "due" figure
+const BORDER_COLOR = "D9D9D9"
+const TEXT_COLOR = "000000"
+const MUTED_COLOR = "555555"
+const BRAND_BLUE = "1F4E78"
+const ACCENT_BG = "F2F4F8"
+const DUE_BG = "E2EFDA" // light green
 
 export async function generateApplicationExcel(data: ApplicationPdfData) {
   const { application, companyName, addressLine1, addressLine2 } = data
@@ -81,141 +16,214 @@ export async function generateApplicationExcel(data: ApplicationPdfData) {
   const grossTotal = cw + vt
   const retentionPerc = parseFloat(application.retention_percentage) || 0
   const discountPerc = parseFloat(application.discount_percentage) || 0
+
   const retentionAmount = grossTotal * (retentionPerc / 100)
   const discountAmount = grossTotal * (discountPerc / 100)
   const cumulativeNetApplication = grossTotal + retentionAmount + discountAmount
+
+  const currentCumulative = grossTotal;
+  const previousCumulative = 0;
+  const grossMovement = currentCumulative - previousCumulative;
+
   const netPaymentDue = parseFloat(application.amount_claimed) || 0
+  const orderValue = parseFloat(application.order_value || "0")
 
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet("Application", {
-    views: [{ showGridLines: false }],
+    views: [{ showGridLines: true }],
+    properties: { defaultRowHeight: 25 },
   })
 
   ws.columns = [
-    { width: 42 }, // A - description
-    { width: 22 }, // B - amount
-    { width: 4 },  // C - gap
-    { width: 14 }, // D
-    { width: 16 }, // E
-    { width: 4 },  // F - gap
-    { width: 12 }, // G
-    { width: 20 }, // H
+    { width: 35 }, // A
+    { width: 25 }, // B
+    { width: 3 },  // C (Gap)
+    { width: 35 }, // D
+    { width: 15 }, // E
+    { width: 25 }, // F
   ]
 
-  // ---- Header banner ----
-  ws.mergeCells("A1:H1")
-  const companyCell = ws.getCell("A1")
-  companyCell.value = companyName || "COMPANY NAME"
-  companyCell.font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } }
-  companyCell.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: `FF${BRAND_COLOR}` },
+  const applyPanelStyle = (cell: ExcelJS.Cell, borderTop = true, borderBottom = true, borderLeft = true, borderRight = true) => {
+    const bColor = { argb: `FF${BORDER_COLOR}` };
+    cell.border = {
+      top: borderTop ? { style: 'thin', color: bColor } : undefined,
+      bottom: borderBottom ? { style: 'thin', color: bColor } : undefined,
+      left: borderLeft ? { style: 'thin', color: bColor } : undefined,
+      right: borderRight ? { style: 'thin', color: bColor } : undefined,
+    }
   }
-  companyCell.alignment = { vertical: "middle", horizontal: "left" }
-  ws.getRow(1).height = 32
 
-  ws.mergeCells("A2:H2")
-  ws.getCell("A2").value = addressLine1 || ""
-  ws.mergeCells("A3:H3")
-  ws.getCell("A3").value = addressLine2 || ""
-    ;["A2", "A3"].forEach((ref) => {
-      const cell = ws.getCell(ref)
-      cell.font = { size: 10, color: { argb: "FFFFFFFF" } }
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${BRAND_COLOR}` } }
-    })
+  // Rows 1-3: Header
+  ws.mergeCells("A1:F1")
+  ws.mergeCells("A2:F2")
+  ws.mergeCells("A3:F3")
 
-  ws.addRow([])
+  const c1 = ws.getCell("A1"); c1.value = companyName || "Josue Test Company"; c1.font = { bold: true, size: 20, color: { argb: `FF${BRAND_BLUE}` } }; c1.alignment = { horizontal: 'center', vertical: 'middle' }
+  const c2 = ws.getCell("A2"); c2.value = addressLine1 || "Address Line 1"; c2.font = { size: 10, color: { argb: `FF${MUTED_COLOR}` } }; c2.alignment = { horizontal: 'center', vertical: 'bottom' }
+  const c3 = ws.getCell("A3"); c3.value = addressLine2 || "Tel: +44 0000 000000"; c3.font = { size: 10, color: { argb: `FF${MUTED_COLOR}` } }; c3.alignment = { horizontal: 'center', vertical: 'top' }
 
-  // ---- Title ----
-  ws.mergeCells("A5:H5")
-  const titleCell = ws.getCell("A5")
-  titleCell.value = "APPLICATION FOR PAYMENT"
-  titleCell.font = { bold: true, size: 14, color: { argb: `FF${BRAND_COLOR}` } }
-  titleCell.alignment = { horizontal: "center" }
-  ws.getRow(5).height = 26
+  ws.getRow(1).height = 40
+  ws.getRow(2).height = 18
+  ws.getRow(3).height = 18
 
-  ws.addRow([])
+  // Row 5: Blue Bar "APPLICATION FOR PAYMENT"
+  ws.mergeCells("A5:F5")
+  const r5 = ws.getCell("A5")
+  r5.value = "APPLICATION FOR PAYMENT"
+  r5.font = { bold: true, size: 12, color: { argb: `FFFFFFFF` } }
+  r5.alignment = { horizontal: 'center', vertical: 'middle' }
+  r5.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${BRAND_BLUE}` } }
+  applyPanelStyle(r5, true, true, true, true)
+  ws.getRow(5).height = 30
 
-  // ---- Meta info row ----
-  const metaRow = ws.addRow([
-    "Application No:", application.application_number.toString(),
-    "", "Date:", application.date,
-    "", "Ref No:", application.ref_no || "—",
-  ])
-  metaRow.eachCell((cell, colNum) => {
-    if ([1, 4, 7].includes(colNum)) cell.font = { bold: true }
-  })
+  const infoStyle = (cell: ExcelJS.Cell, val: string) => {
+    applyPanelStyle(cell)
+    cell.value = val;
+    cell.font = { size: 10, color: { argb: `FF${TEXT_COLOR}` } }
+    cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  }
 
-  ws.addRow([])
+  // Row 6: Info Bar
+  ws.mergeCells("A6:B6"); ws.mergeCells("C6:D6"); ws.mergeCells("E6:F6")
+  infoStyle(ws.getCell("A6"), `Application Number: ${application.application_number} (Draft)`)
+  infoStyle(ws.getCell("C6"), `Date: ${application.date}`)
+  infoStyle(ws.getCell("E6"), `Ref No: ${application.ref_no || 'Enter Ref No'}`)
 
-  // ---- Table header ----
-  const tableHeaderRow = ws.addRow(["Breakdown of Application", "Amount"])
-  tableHeaderRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" } }
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${BRAND_COLOR}` } }
-    cell.alignment = { horizontal: cell.col === "1" ? "left" : "right" }
-    cell.border = thinBorder()
-  })
+  const headerStyle = (cell: ExcelJS.Cell, val: string) => {
+    applyPanelStyle(cell, true, false, true, true)
+    cell.value = val;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${ACCENT_BG}` } }
+    cell.font = { bold: true, size: 10, color: { argb: `FF${TEXT_COLOR}` } }
+    cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  }
 
-  // ---- Data rows ----
-  const dataRows: [string, number, "normal" | "total" | "due"][] = [
-    ["Contract Works", cw, "normal"],
-    ["Variations", vt, "normal"],
-    ["Cumulative Gross Total", grossTotal, "total"],
-    [`Less Retention (${retentionPerc}%)`, retentionAmount, "normal"],
-    [`Less Discount (${discountPerc}%)`, discountAmount, "normal"],
-    ["Cumulative Net Application", cumulativeNetApplication, "total"],
-  ]
+  // Row 7: Client headers
+  ws.mergeCells("A7:B7"); ws.mergeCells("C7:D7"); ws.mergeCells("E7:F7")
+  headerStyle(ws.getCell("A7"), "Client")
+  headerStyle(ws.getCell("C7"), "Contract Site")
+  headerStyle(ws.getCell("E7"), "Contacts")
 
-  dataRows.forEach(([label, value, kind], i) => {
-    const row = ws.addRow([label, value])
-    styleAmountCell(row.getCell(2))
-    row.eachCell({ includeEmpty: true }, (cell, col) => {
-      cell.border = thinBorder()
-      if (kind === "total") {
-        cell.font = { bold: true }
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${TOTAL_COLOR}` } }
-      } else if (i % 2 === 1) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${ACCENT_COLOR}` } }
-      }
-    })
-  })
+  // Rows 8-9: Client empty blocks
+  ws.mergeCells("A8:B9"); ws.mergeCells("C8:D9"); ws.mergeCells("E8:F9")
+  applyPanelStyle(ws.getCell("A8"), false, true, true, true)
+  applyPanelStyle(ws.getCell("C8"), false, true, true, true)
+  applyPanelStyle(ws.getCell("E8"), false, true, true, true)
+  ws.getRow(8).height = 60
 
-  // Received row
-  const receivedRow = ws.addRow(["Cumulative Net Payment Received", "—"])
-  receivedRow.eachCell((cell) => (cell.border = thinBorder()))
-  receivedRow.getCell(2).alignment = { horizontal: "right" }
+  // Row 11: Section Titles
+  ws.mergeCells("A11:B11")
+  const mcTitle = ws.getCell("A11")
+  applyPanelStyle(mcTitle)
+  mcTitle.value = "Movement Calculations"
+  mcTitle.font = { bold: true, size: 11, color: { argb: `FF${BRAND_BLUE}` } }
+  mcTitle.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  ws.getRow(11).height = 35
 
-  ws.addRow([])
+  ws.mergeCells("D11:F11")
+  const daTitle = ws.getCell("D11")
+  applyPanelStyle(daTitle)
+  daTitle.value = "Details of Application"
+  daTitle.font = { bold: true, size: 11, color: { argb: `FF${BRAND_BLUE}` } }
+  daTitle.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
 
-  // ---- Net Payment Due (highlighted) ----
-  const dueRow = ws.addRow(["Net Payment Due", netPaymentDue])
-  styleAmountCell(dueRow.getCell(2))
-  dueRow.eachCell((cell) => {
-    cell.font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } }
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${DUE_COLOR}` } }
-    cell.border = thinBorder()
-  })
-  ws.getRow(dueRow.number).height = 22
+  // Rows 12-20 Base Panel Setup
+  const setPanelRow = (r: number) => {
+    applyPanelStyle(ws.getCell(`A${r}`), true, true, true, false)
+    applyPanelStyle(ws.getCell(`B${r}`), true, true, false, true)
 
-  ws.addRow([])
-  ws.addRow([])
+    applyPanelStyle(ws.getCell(`D${r}`), true, true, true, false)
+    applyPanelStyle(ws.getCell(`E${r}`), true, true, false, false)
+    applyPanelStyle(ws.getCell(`F${r}`), true, true, false, true)
+  }
 
-  // ---- Footer notices ----
-  const notice1 = ws.addRow([
-    "If you do not agree with any items within our application, please forward full details within five days of the date of this Application.",
-  ])
-  const notice2 = ws.addRow([
-    "Please note that in compliance with the Housing Grants Construction and Regeneration Act 1996, it is a statutory requirement that you advise us within a period of 5 days from the due date of the Application of any amount proposed to be withheld from the gross value applied for, and the ground for withholding. If there are more than one ground, each ground and the amount attributable to it must be detailed.",
-  ])
-    ;[notice1, notice2].forEach((row) => {
-      ws.mergeCells(`A${row.number}:H${row.number}`)
-      const cell = row.getCell(1)
-      cell.font = { italic: true, size: 9, color: { argb: "FF555555" } }
-      cell.alignment = { wrapText: true, vertical: "top" }
-      ws.getRow(row.number).height = 30
-    })
+  for (let i = 13; i <= 20; i++) setPanelRow(i)
+
+  const formatMoney = (cell: ExcelJS.Cell, val: number | { formula: string, result: number }, bold = false) => {
+    cell.value = val;
+    cell.numFmt = '"£"#,##0.00'
+    cell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 }
+    if (bold) cell.font = { bold: true, color: { argb: `FF${TEXT_COLOR}` } }
+  }
+
+  const label = (cell: ExcelJS.Cell, txt: string, bold = false) => {
+    cell.value = txt;
+    cell.font = { bold, size: 9, color: { argb: `FF${TEXT_COLOR}` } }
+    cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  }
+
+  // Row 12
+  applyPanelStyle(ws.getCell("A12"), true, true, true, false)
+  applyPanelStyle(ws.getCell("B12"), true, true, false, true)
+  label(ws.getCell("A12"), "Current Cumulative", false)
+  formatMoney(ws.getCell("B12"), { formula: 'F15', result: currentCumulative }, true)
+
+  ws.mergeCells("D12:F12")
+  const d12 = ws.getCell("D12")
+  applyPanelStyle(d12, true, true, true, true)
+  d12.value = "Breakdown of Application"
+  d12.font = { italic: true, size: 9, color: { argb: `FF${TEXT_COLOR}` } }
+  d12.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+
+  // Row 13
+  label(ws.getCell("A13"), "Previous Cumulative", false)
+  formatMoney(ws.getCell("B13"), previousCumulative, false)
+  label(ws.getCell("D13"), "Contract Works", false)
+  label(ws.getCell("E13"), "—", false); ws.getCell("E13").alignment = { horizontal: 'center', vertical: 'middle' }
+  formatMoney(ws.getCell("F13"), cw, true)
+
+  // Row 14
+  label(ws.getCell("A14"), "Gross Movement in Period", true)
+  formatMoney(ws.getCell("B14"), { formula: 'B12-B13', result: grossMovement }, true)
+  label(ws.getCell("D14"), "Variations", false)
+  label(ws.getCell("E14"), "—", false); ws.getCell("E14").alignment = { horizontal: 'center', vertical: 'middle' }
+  formatMoney(ws.getCell("F14"), vt, false)
+
+  // Row 15
+  label(ws.getCell("A15"), "Projected Final Account", false)
+  formatMoney(ws.getCell("B15"), 0, false)
+  label(ws.getCell("D15"), "Cumulative Gross Total", true)
+  label(ws.getCell("E15"), "—", false); ws.getCell("E15").alignment = { horizontal: 'center', vertical: 'middle' }
+  formatMoney(ws.getCell("F15"), { formula: 'F13+F14', result: grossTotal }, true)
+
+  // Row 16
+  label(ws.getCell("A16"), "Order No", false)
+  const b16 = ws.getCell("B16"); b16.value = application.order_no || "—"; b16.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 }; b16.font = { color: { argb: `FF${MUTED_COLOR}` }, size: 9 }
+  label(ws.getCell("D16"), "Less Retention (%)", false)
+  const e16 = ws.getCell("E16"); e16.value = retentionPerc; e16.alignment = { horizontal: 'center', vertical: 'middle' }; e16.font = { color: { argb: `FF${TEXT_COLOR}` }, size: 9 }
+  formatMoney(ws.getCell("F16"), { formula: 'F15*(E16/100)', result: retentionAmount }, false)
+
+  // Row 17
+  label(ws.getCell("A17"), "Order Value", false)
+  formatMoney(ws.getCell("B17"), orderValue, true)
+  label(ws.getCell("D17"), "Less Discount (%)", false)
+  const e17 = ws.getCell("E17"); e17.value = discountPerc; e17.alignment = { horizontal: 'center', vertical: 'middle' }; e17.font = { color: { argb: `FF${TEXT_COLOR}` }, size: 9 }
+  formatMoney(ws.getCell("F17"), { formula: 'F15*(E17/100)', result: discountAmount }, false)
+
+  // Row 18
+  label(ws.getCell("A18"), "Works Valued to Date", false)
+  const b18 = ws.getCell("B18"); b18.value = "dd/mm/yyyy"; b18.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 }; b18.font = { color: { argb: `FF${TEXT_COLOR}` }, size: 9 }
+  label(ws.getCell("D18"), "Cumulative Net Application", false)
+  label(ws.getCell("E18"), "—", false); ws.getCell("E18").alignment = { horizontal: 'center', vertical: 'middle' }
+  formatMoney(ws.getCell("F18"), { formula: 'F15+F16+F17', result: cumulativeNetApplication }, true)
+
+  // Row 19
+  label(ws.getCell("A19"), "Payment Notice Date", false)
+  const b19 = ws.getCell("B19"); b19.value = "dd/mm/yyyy"; b19.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 }; b19.font = { color: { argb: `FF${TEXT_COLOR}` }, size: 9 }
+  label(ws.getCell("D19"), "Cumulative Net Payment Received", false)
+  label(ws.getCell("E19"), "—", false); ws.getCell("E19").alignment = { horizontal: 'center', vertical: 'middle' }
+  formatMoney(ws.getCell("F19"), 0, false)
+
+  // Row 20
+  label(ws.getCell("A20"), "Final Date for Payment", false)
+  const b20 = ws.getCell("B20"); b20.value = "dd/mm/yyyy"; b20.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 }; b20.font = { color: { argb: `FF${TEXT_COLOR}` }, size: 9 }
+  label(ws.getCell("D20"), "Net Payment Due", true)
+  label(ws.getCell("E20"), "")
+  formatMoney(ws.getCell("F20"), { formula: 'F18-F19', result: netPaymentDue }, true)
+
+  ws.getCell("D20").fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${DUE_BG}` } }
+  ws.getCell("E20").fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${DUE_BG}` } }
+  ws.getCell("F20").fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${DUE_BG}` } }
+  ws.getRow(20).height = 30
 
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], {
@@ -227,18 +235,4 @@ export async function generateApplicationExcel(data: ApplicationPdfData) {
   a.download = `Application-${application.application_number}.xlsx`
   a.click()
   URL.revokeObjectURL(url)
-}
-
-function styleAmountCell(cell: ExcelJS.Cell) {
-  cell.numFmt = '"£"#,##0.00;[Red]-"£"#,##0.00'
-  cell.alignment = { horizontal: "right" }
-}
-
-function thinBorder(): Partial<ExcelJS.Borders> {
-  return {
-    top: { style: "thin", color: { argb: "FFD9D9D9" } },
-    bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
-    left: { style: "thin", color: { argb: "FFD9D9D9" } },
-    right: { style: "thin", color: { argb: "FFD9D9D9" } },
-  }
 }

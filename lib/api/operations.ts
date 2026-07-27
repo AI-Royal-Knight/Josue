@@ -8,6 +8,8 @@ export type RAMS = {
   date: string
   review_date: string | null
   document_url: string | null
+  signed_document_url: string | null
+  completed_at: string | null
 }
 
 export type DailyBriefing = {
@@ -17,6 +19,8 @@ export type DailyBriefing = {
   title: string
   date: string
   document_url: string | null
+  signed_document_url: string | null
+  completed_at: string | null
 }
 
 export type ToolboxTalk = {
@@ -26,6 +30,8 @@ export type ToolboxTalk = {
   title: string
   date: string
   document_url: string | null
+  signed_document_url: string | null
+  completed_at: string | null
 }
 
 export type ToDoList = {
@@ -36,6 +42,8 @@ export type ToDoList = {
   date: string
   completion_date: string | null
   assign_user: string | null
+  signed_document_url: string | null
+  completed_at: string | null
 }
 
 export type OperationsData = {

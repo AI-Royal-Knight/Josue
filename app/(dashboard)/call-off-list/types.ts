@@ -1,4 +1,6 @@
 export type CallOffHistoryEntry = {
+  id?: string
+  isApproved?: boolean
   callOffRef: string
   callOffDate: string
   callOffQty: number
@@ -9,6 +11,7 @@ export type CallOffHistoryEntry = {
 }
 
 export type CallOffRow = {
+  id?: string
   poRef: string
   callOffRef: string
   project: string
@@ -35,6 +38,7 @@ export type CallOffRow = {
   managementApproved: boolean
   /** Procurement-only: date management approved, null until toggled on */
   managementApprovedDate: string | null
+  latestCallOffId?: string | null
 }
 
 export type CallOffOrderLine = {
@@ -64,4 +68,6 @@ export type HistoryDialogState = {
   unit: string
   unitPrice: string
   history: CallOffHistoryEntry[]
+  supplierName: string
+  supplierEmail: string
 }

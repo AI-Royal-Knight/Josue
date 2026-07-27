@@ -5,7 +5,8 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Loader2, RefreshCw, FolderGit2, FileText, FileQuestion, HardDrive, FileUp } from "lucide-react"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts"
 
 import { AgTable } from "@/components/common/AgTable"
 import type { ColDef, ICellRendererParams } from "ag-grid-community"
@@ -50,6 +51,10 @@ type CompanyRow = {
   perUserRateGbp: number | null
   automaticMonthlyInvoices: boolean
   status: "Active" | "Suspended"
+  invoicesCount: number
+  rfisCount: number
+  storageUsage: string
+  uploadedFilesCount: number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -73,6 +78,10 @@ function mapApiToRow(c: CompanyRecord): CompanyRow {
       : null,
     automaticMonthlyInvoices: c.auto_monthly_inv,
     status: c.status === "active" ? "Active" : "Suspended",
+    invoicesCount: c.invoices_count || 0,
+    rfisCount: c.rfis_count || 0,
+    storageUsage: c.storage_usage || "0 MB",
+    uploadedFilesCount: c.uploaded_files_count || 0,
   }
 }
 
@@ -294,6 +303,99 @@ function InviteAdminDialog({ onSuccess }: { onSuccess: () => void }) {
   )
 }
 
+// ── Company Stats Dialog ──────────────────────────────────────────────────────
+
+function CompanyStatsDialog({
+  company,
+  onClose,
+}: {
+  company: CompanyRow | null
+  onClose: () => void
+}) {
+  if (!company) return null
+
+  const chartData = [
+    { name: "Projects", count: company.projects, color: "#3b82f6" }, // blue-500
+    { name: "Invoices", count: company.invoicesCount, color: "#10b981" }, // emerald-500
+    { name: "RFIs", count: company.rfisCount, color: "#f59e0b" }, // amber-500
+    { name: "Files", count: company.uploadedFilesCount, color: "#8b5cf6" }, // violet-500
+  ]
+
+  return (
+    <Dialog open={!!company} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[700px] bg-[#0f172a] border-slate-800 text-slate-100">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">{company.name}</DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Performance and storage metrics overview.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 py-4">
+          <div className="flex flex-col gap-1 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+            <div className="flex items-center gap-2 text-blue-400 mb-1">
+              <FolderGit2 size={16} />
+              <span className="text-xs font-semibold uppercase tracking-wider">Projects</span>
+            </div>
+            <span className="text-2xl font-bold">{company.projects}</span>
+          </div>
+          <div className="flex flex-col gap-1 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+            <div className="flex items-center gap-2 text-emerald-400 mb-1">
+              <FileText size={16} />
+              <span className="text-xs font-semibold uppercase tracking-wider">Invoices</span>
+            </div>
+            <span className="text-2xl font-bold">{company.invoicesCount}</span>
+          </div>
+          <div className="flex flex-col gap-1 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+            <div className="flex items-center gap-2 text-amber-400 mb-1">
+              <FileQuestion size={16} />
+              <span className="text-xs font-semibold uppercase tracking-wider">RFIs</span>
+            </div>
+            <span className="text-2xl font-bold">{company.rfisCount}</span>
+          </div>
+          <div className="flex flex-col gap-1 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+            <div className="flex items-center gap-2 text-violet-400 mb-1">
+              <FileUp size={16} />
+              <span className="text-xs font-semibold uppercase tracking-wider">Files Uploaded</span>
+            </div>
+            <span className="text-2xl font-bold">{company.uploadedFilesCount}</span>
+          </div>
+          <div className="md:col-span-2 flex flex-col gap-1 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+            <div className="flex items-center gap-2 text-slate-300 mb-1">
+              <HardDrive size={16} />
+              <span className="text-xs font-semibold uppercase tracking-wider">Storage Usage</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-white">{company.storageUsage}</span>
+              <span className="text-xs text-slate-500 font-mono">/ ∞</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 h-[250px] w-full pt-4 border-t border-slate-800/80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+              <RechartsTooltip 
+                cursor={{ fill: '#1e293b' }}
+                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f8fafc', borderRadius: '8px' }}
+                itemStyle={{ color: '#f8fafc' }}
+              />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function CompaniesPage() {
@@ -301,6 +403,7 @@ export default function CompaniesPage() {
   const [summary, setSummary] = useState<CompanySummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedCompany, setSelectedCompany] = useState<CompanyRow | null>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -358,7 +461,21 @@ export default function CompaniesPage() {
   }
 
   const columnDefs: ColDef<CompanyRow>[] = useMemo(() => [
-    { field: "name", headerName: "Company" },
+    { 
+      field: "name", 
+      headerName: "Company",
+      cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
+        if (!params.data) return null
+        return (
+          <button 
+            className="text-amber-400 hover:text-amber-300 font-semibold underline decoration-amber-400/30 underline-offset-4 transition-colors"
+            onClick={() => setSelectedCompany(params.data || null)}
+          >
+            {params.data.name}
+          </button>
+        )
+      }
+    },
     { field: "adminFirstName", headerName: "Name" },
     { field: "adminSurname", headerName: "Surname" },
     { field: "email", headerName: "Email", minWidth: 220 },
@@ -525,6 +642,11 @@ export default function CompaniesPage() {
           />
         )}
       </div>
+
+      <CompanyStatsDialog 
+        company={selectedCompany} 
+        onClose={() => setSelectedCompany(null)} 
+      />
     </div>
   )
 }

@@ -12,10 +12,15 @@ export class ApiError extends Error {
   data: unknown
 
   constructor(status: number, data: unknown) {
-    const message =
-      typeof data === "object" && data !== null && "error" in data
-        ? String((data as Record<string, unknown>).error)
-        : `API Error: ${status}`
+    let message = `API Error: ${status}`
+    if (typeof data === "object" && data !== null) {
+      const record = data as Record<string, unknown>
+      if ("error" in record && typeof record.error === "string") {
+        message = record.error
+      } else if ("detail" in record && typeof record.detail === "string") {
+        message = record.detail
+      }
+    }
     super(message)
     this.status = status
     this.data = data
@@ -25,6 +30,11 @@ export class ApiError extends Error {
 function getToken(): string | null {
   if (typeof window === "undefined") return null
   return localStorage.getItem("tresta:accessToken")
+}
+
+function getActiveRole(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("tresta:activeRole")
 }
 
 interface ApiOptions extends Omit<RequestInit, "body"> {
@@ -40,6 +50,7 @@ export async function apiRequest<T>(
   const { body, headers, public: isPublic, ...rest } = options
 
   const token = getToken()
+  const activeRole = getActiveRole()
   const isFormData = body instanceof FormData
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -47,6 +58,7 @@ export async function apiRequest<T>(
     headers: {
       ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(token && !isPublic ? { Authorization: `Bearer ${token}` } : {}),
+      ...(activeRole && !isPublic ? { "X-Active-Role": activeRole } : {}),
       ...headers,
     },
     body: isFormData ? (body as FormData) : (body ? JSON.stringify(body) : undefined),

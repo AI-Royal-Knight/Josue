@@ -1,7 +1,7 @@
 import { apiRequest } from "./client"
 
 export interface CallOffHistoryEntryAPI {
-  id: number
+  id: string
   call_off_ref: string
   date: string
   qty: string
@@ -12,7 +12,7 @@ export interface CallOffHistoryEntryAPI {
 }
 
 export interface CallOffLineItemAPI {
-  id: number
+  id: string
   description: string
   qty: string
   per: string
@@ -51,5 +51,17 @@ export const createCallOff = async (
   return apiRequest<CallOffLineItemAPI>(`/procurement/call-offs/${id}/create_call_off/`, {
     method: "POST",
     body: payload,
+  })
+}
+
+export const approveCallOff = async (id: string): Promise<{ detail: string }> => {
+  return apiRequest<{ detail: string }>(`/procurement/call-offs-approve/${id}/`, {
+    method: "POST"
+  })
+}
+
+export const approveAllCallOffs = async (poRef: string): Promise<{ detail: string }> => {
+  return apiRequest<{ detail: string }>(`/procurement/call-offs-approve-all/${encodeURIComponent(poRef)}/`, {
+    method: "POST"
   })
 }

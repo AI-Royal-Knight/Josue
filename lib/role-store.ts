@@ -46,8 +46,18 @@ export const useRoleStore = create<RoleState>()(
   persist(
     (set) => ({
       role: null,
-      setRole: (role) => set({ role }),
-      clearRole: () => set({ role: null }),
+      setRole: (role) => {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("tresta:activeRole", role)
+        }
+        set({ role })
+      },
+      clearRole: () => {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("tresta:activeRole")
+        }
+        set({ role: null })
+      },
     }),
     {
       name: storageKey,

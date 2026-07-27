@@ -15,6 +15,7 @@ import { login } from "@/lib/api/auth"
 import { useAuthStore } from "@/lib/auth-store"
 import { useRoleStore } from "@/lib/role-store"
 import { ApiError } from "@/lib/api/client"
+import { getDashboardUrl } from "@/lib/utils"
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -52,28 +53,26 @@ export default function SignInPage() {
         first_name: res.user.first_name,
         last_name: res.user.last_name,
         role: res.user.role,
+        secondary_role: res.user.secondary_role,
         role_assignments: res.user.role_assignments,
       })
 
-      const assignments = res.user.role_assignments
-      const hasManyRoles = assignments && assignments.length > 1
+      const uniqueRoles = new Set<string>()
+      if (res.user.role) uniqueRoles.add(res.user.role)
+      if (res.user.secondary_role) uniqueRoles.add(res.user.secondary_role)
+      if (res.user.role_assignments) {
+        res.user.role_assignments.forEach((a: any) => uniqueRoles.add(a.role))
+      }
 
       if (res.user.role === "super_admin") {
         setRole("super_admin")
         window.location.href = "/super-admin"
-      } else if (
-        res.user.role === "admin" ||
-        res.user.role === "project_admin"
-      ) {
-        // Top-level roles go straight to their dedicated dashboard
-        setRole(res.user.role)
-        router.push(getDashboardUrl(res.user.role))
-      } else if (hasManyRoles) {
-        // User has multiple role assignments — show the selector page
-        router.push("/")
+      } else if (uniqueRoles.size > 1) {
+        // User has multiple roles — show the selector page
+        router.push("/select-role")
       } else {
         // Single role — go straight in
-        const role = assignments?.[0]?.role ?? res.user.role
+        const role = Array.from(uniqueRoles)[0] || res.user.role
         setRole(role)
         router.push(getDashboardUrl(role))
       }
@@ -180,25 +179,4 @@ export default function SignInPage() {
       </form>
     </AuthCard>
   )
-}
-
-function getDashboardUrl(role: string): string {
-  const map: Record<string, string> = {
-    super_admin: "/super-admin",
-    admin: "/home",
-    project_admin: "/projects",
-    managing_director: "/project-overview",
-    document_controller: "/users",
-    commercial_department: "/variations",
-    procurement_department: "/supplier-lists",
-    contracts_manager: "/users",
-    managers: "/users",
-    supervisor: "/users",
-    project_director: "/project-overview",
-    employee: "/home",
-    supplier: "/supplier",
-    finance_department: "/invoice-list",
-    technical_department: "/project-rfis",
-  }
-  return map[role] ?? "/home"
 }

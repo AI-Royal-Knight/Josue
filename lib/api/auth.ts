@@ -24,7 +24,8 @@ export interface LoginResponse {
     first_name: string
     last_name: string
     role: string
-    /** Present only if the user has multiple role assignments */
+    secondary_role?: string
+    /** Present only if the user has multiple project role assignments */
     role_assignments?: RoleAssignment[]
   }
 }

@@ -38,6 +38,7 @@ type UserRow = {
   expiryTone: "emerald" | "red"
   approvedUser: boolean
   approvedBy: string
+  secondaryRole?: string
 }
 
 type PendingToggle = {
@@ -224,6 +225,16 @@ export default function Page() {
           />
         )
       },
+    },
+    {
+      headerName: "Secondary Role",
+      field: "secondaryRole",
+      width: 150,
+      cellRenderer: (params: { value?: string }) => {
+        if (!params.value) return <span className="text-slate-500">-</span>
+        const roleName = params.value.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+        return <span>{roleName}</span>
+      }
     },
     {
       headerName: "Approved",

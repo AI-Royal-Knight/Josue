@@ -7,52 +7,58 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import React, { useState } from 'react'
+import { sendInvitation } from '@/lib/api/invitations'
+
+const ALL_ROLES = [
+  { value: "super_admin", label: "Super Admin" },
+  { value: "admin", label: "Admin" },
+  { value: "project_admin", label: "Project Admin" },
+  { value: "managing_director", label: "Managing Director" },
+  { value: "project_director", label: "Project Director" },
+  { value: "contracts_manager", label: "Contracts Manager" },
+  { value: "managers", label: "Manager" },
+  { value: "supervisor", label: "Supervisor" },
+  { value: "document_controller", label: "Document Controller" },
+  { value: "supplier", label: "Supplier" },
+  { value: "employee", label: "Employee" },
+]
 
 export default function InviteUserDialog() {
   const [open, setOpen] = useState(false)
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState('')
+  const [secondaryRole, setSecondaryRole] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleInvite = async () => {
-    if (!firstName || !lastName || !email) {
-      toast.error("Please fill in all fields.")
+    if (!email || !role) {
+      toast.error("Email and Primary Role are required.")
       return
     }
 
     setLoading(true)
     try {
-      const token = localStorage.getItem("tresta:accessToken")
-      const res = await fetch("http://localhost:8000/api/v1/document-controller/invite-employee/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": token ? `Bearer ${token}` : ""
-        },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          email: email
-        })
+      const response = await sendInvitation({
+        email,
+        role,
+        secondary_role: secondaryRole || undefined
       })
       
-      const data = await res.json()
-      
-      if (res.ok) {
-        toast.success(data.message || "Invitation sent successfully!")
-        setOpen(false)
-        setFirstName('')
-        setLastName('')
-        setEmail('')
-      } else {
-        toast.error(data.error || "Failed to send invitation.")
-      }
-    } catch (e) {
-      toast.error("An error occurred. Please try again.")
+      toast.success(response.message || "Invitation sent successfully!")
+      setOpen(false)
+      setEmail('')
+      setRole('')
+      setSecondaryRole('')
+    } catch (e: any) {
+      toast.error(e.message || "Failed to send invitation.")
     } finally {
       setLoading(false)
     }
+  }
+
+  const isExclusiveRole = ["super_admin", "admin", "project_admin"].includes(role)
+  if (isExclusiveRole && secondaryRole) {
+    setSecondaryRole("") // Clear secondary role if they switch primary to an exclusive one
   }
 
   return (
@@ -60,68 +66,58 @@ export default function InviteUserDialog() {
       <DialogTrigger asChild>
         <Button>Send Invite</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl p-6">
+      <DialogContent className="max-w-md p-6">
         <DialogHeader>
           <DialogTitle>Invite New User</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label>First Name</Label>
-              <div className="relative">
-                <Input 
-                  placeholder="John" 
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Last Name</Label>
-              <div className="relative">
-                <Input 
-                  placeholder="Doe"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
+        <div className="space-y-6 mt-4">
           <div className="space-y-2">
             <Label>Email Address</Label>
-            <div className="relative">
-              <Input 
-                placeholder="john.doe@construction.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* <div className="space-y-2">
-            <Label>Profession</Label>
-            <div>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role..." />
-                </SelectTrigger>
-                <SelectContent className="border-white/10 bg-slate-900">
-                  <SelectItem value="site-manager">Site Manager</SelectItem>
-                  <SelectItem value="electrician">Electrician</SelectItem>
-                  <SelectItem value="groundworker">Groundworker</SelectItem>
-                  <SelectItem value="operator">Operator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Input 
+              placeholder="user@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">
-            <Label>Company Name</Label>
-            <Input placeholder="BuildRight Corp." />
-          </div> */}
+            <Label>Primary Role</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select primary role..." />
+              </SelectTrigger>
+              <SelectContent>
+                {ALL_ROLES.map(r => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Secondary Role (Optional)</Label>
+            <Select 
+              value={secondaryRole} 
+              onValueChange={setSecondaryRole}
+              disabled={!role || isExclusiveRole}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={isExclusiveRole ? "Not allowed for this primary role" : "Select secondary role..."} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value=" ">None</SelectItem>
+                {ALL_ROLES.filter(r => !["super_admin", "admin", "project_admin"].includes(r.value) && r.value !== role).map(r => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isExclusiveRole && (
+              <p className="text-xs text-slate-500">
+                Super Admins, Admins, and Project Admins cannot have a secondary role.
+              </p>
+            )}
+          </div>
 
           <div className="flex justify-end gap-4">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>

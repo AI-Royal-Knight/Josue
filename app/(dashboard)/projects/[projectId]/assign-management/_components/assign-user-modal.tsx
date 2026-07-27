@@ -45,9 +45,16 @@ export function AssignUserModal({
         setLoading(true)
         setError(null)
         try {
-          const res = await getCompanyUsers(roleKey)
+          const res = await getCompanyUsers()
           // Filter out users that are already assigned
           const availableUsers = res.users.filter(u => !currentUsers.some(cu => cu.id === u.id))
+          
+          availableUsers.sort((a, b) => {
+            const aMatch = a.role === roleKey ? 1 : 0;
+            const bMatch = b.role === roleKey ? 1 : 0;
+            return bMatch - aMatch;
+          });
+
           const mapped = availableUsers.map(u => ({
             ...u,
             checked: false
@@ -147,7 +154,14 @@ export function AssignUserModal({
                     onCheckedChange={() => handleToggleUser(user.id)}
                   />
                   <div className="flex flex-col">
-                    <span className="text-sm text-slate-100">{user.name || "Unknown Name"}</span>
+                    <span className="text-sm text-slate-100 flex items-center gap-2">
+                      {user.name || "Unknown Name"}
+                      {user.role && (
+                        <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${user.role === roleKey ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-slate-400"}`}>
+                          {user.role.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </span>
                     {user.email && <span className="text-xs text-slate-400">{user.email}</span>}
                   </div>
                 </label>

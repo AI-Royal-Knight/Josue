@@ -22,6 +22,10 @@ export const agTableDataGridSx = {
     borderColor: colors.border,
   },
 
+  "& .MuiDataGrid-filler, & .MuiDataGrid-columnHeaderFiller, & .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-columnHeader--filler, & .MuiDataGrid-columnHeader--emptyGroup, & .MuiDataGrid-columnGroupHeader, & .MuiDataGrid-columnHeadersInner, & .MuiDataGrid-topContainer, & .MuiDataGrid-topContainer::after": {
+    backgroundColor: `${colors.oddRowBackground} !important`,
+  },
+
   "& .MuiDataGrid-columnHeaderTitle": {
     fontWeight: 600,
     color: colors.headerText,
@@ -54,5 +58,21 @@ export const agTableDataGridSx = {
 
   "& .MuiDataGrid-columnSeparator": {
     color: colors.border,
+  },
+
+  "& .MuiTablePagination-root": {
+    color: colors.foreground,
+  },
+
+  "& .MuiTablePagination-actions .MuiIconButton-root": {
+    color: colors.foreground,
+  },
+
+  "& .MuiTablePagination-actions .MuiIconButton-root.Mui-disabled": {
+    color: "rgba(255, 255, 255, 0.26)",
+  },
+
+  "& .MuiTablePagination-selectIcon": {
+    color: colors.foreground,
   },
 } as const

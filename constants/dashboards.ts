@@ -45,6 +45,7 @@ export const DASHBOARD_NAV = {
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Daily Register", url: "/daily-register" },
     { title: "Project RFI's", url: "/project-rfis" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
     { title: "Profile", url: "/profile" },
   ],
   project_director: [
@@ -55,6 +56,7 @@ export const DASHBOARD_NAV = {
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Daily Register", url: "/daily-register" },
     { title: "Project RFI's", url: "/project-rfis" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
     { title: "Profile", url: "/profile" },
   ],
   procurement_department: [
