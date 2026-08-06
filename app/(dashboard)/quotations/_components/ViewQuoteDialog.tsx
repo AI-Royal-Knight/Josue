@@ -331,7 +331,7 @@ export default function ViewQuoteDialog({ open, onOpenChange, quote }: Props) {
                                         )}
                                         {h.previous_pdf && (
                                             <a 
-                                                href={h.previous_pdf.startsWith('http') ? h.previous_pdf : `http://localhost:8000${h.previous_pdf}`} 
+                                                href={h.previous_pdf.startsWith('http') ? h.previous_pdf : `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')}${h.previous_pdf}`} 
                                                 target="_blank" 
                                                 rel="noreferrer"
                                                 className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2"

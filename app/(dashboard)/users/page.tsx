@@ -65,7 +65,7 @@ export default function Page() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`
       }
-      const res = await fetch("http://localhost:8000/api/v1/account/users/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/account/users/`, {
         headers
       })
       if (res.ok) {
@@ -98,8 +98,8 @@ export default function Page() {
     if (!pending) return
     try {
       const endpoint = isDocumentController
-        ? "http://localhost:8000/api/v1/document-controller/approve-employee/"
-        : "http://localhost:8000/api/v1/account/users/";
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/document-controller/approve-employee/`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/account/users/`;
         
       const token = localStorage.getItem("tresta:accessToken");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
