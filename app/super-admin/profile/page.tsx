@@ -17,6 +17,12 @@ const profileSchema = z.object({
   last_name: z.string().min(1, "Surname is required"),
   email: z.string().email("Enter a valid email"),
   backup_email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  bank_name: z.string().optional().or(z.literal("")),
+  bank_address: z.string().optional().or(z.literal("")),
+  sort_code: z.string().optional().or(z.literal("")),
+  account_number: z.string().optional().or(z.literal("")),
+  iban: z.string().optional().or(z.literal("")),
+  swift_bic: z.string().optional().or(z.literal("")),
 })
 
 type ProfileFormValues = z.infer<typeof profileSchema>
@@ -43,6 +49,12 @@ export default function Page() {
           last_name: data.last_name,
           email: data.email,
           backup_email: data.backup_email || "",
+          bank_name: data.profile?.bank_name || "",
+          bank_address: data.profile?.bank_address || "",
+          sort_code: data.profile?.sort_code || "",
+          account_number: data.profile?.account_number || "",
+          iban: data.profile?.iban || "",
+          swift_bic: data.profile?.swift_bic || "",
         })
       })
       .catch((err) => setError("Failed to load profile."))
@@ -58,12 +70,26 @@ export default function Page() {
         last_name: values.last_name,
         email: values.email,
         backup_email: values.backup_email || undefined,
+        profile: {
+          bank_name: values.bank_name || undefined,
+          bank_address: values.bank_address || undefined,
+          sort_code: values.sort_code || undefined,
+          account_number: values.account_number || undefined,
+          iban: values.iban || undefined,
+          swift_bic: values.swift_bic || undefined,
+        }
       })
       reset({
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
         backup_email: data.backup_email || "",
+        bank_name: data.profile?.bank_name || "",
+        bank_address: data.profile?.bank_address || "",
+        sort_code: data.profile?.sort_code || "",
+        account_number: data.profile?.account_number || "",
+        iban: data.profile?.iban || "",
+        swift_bic: data.profile?.swift_bic || "",
       })
       setSuccess("Profile updated successfully.")
       setTimeout(() => setSuccess(null), 3000)
@@ -86,88 +112,144 @@ export default function Page() {
         <h1 className="text-3xl font-semibold">Super Admin Profile</h1>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
-              <h2 className="font-semibold text-white">Basic Information</h2>
-            </div>
-            
-            {error && (
-              <div className="mb-4 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="mb-4 rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
-                {success}
-              </div>
-            )}
+      {error && (
+        <div className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+          {success}
+        </div>
+      )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+                <h2 className="font-semibold text-white">Basic Information</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel>First Name</FieldLabel>
+                    <FieldContent>
+                      <Input {...register("first_name")} />
+                      {errors.first_name && (
+                        <p className="mt-1 text-xs text-red-400">
+                          {errors.first_name.message}
+                        </p>
+                      )}
+                    </FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Surname</FieldLabel>
+                    <FieldContent>
+                      <Input {...register("last_name")} />
+                      {errors.last_name && (
+                        <p className="mt-1 text-xs text-red-400">
+                          {errors.last_name.message}
+                        </p>
+                      )}
+                    </FieldContent>
+                  </Field>
+                </div>
+
                 <Field>
-                  <FieldLabel>First Name</FieldLabel>
+                  <FieldLabel>Email Address</FieldLabel>
                   <FieldContent>
-                    <Input {...register("first_name")} />
-                    {errors.first_name && (
+                    <Input type="email" {...register("email")} />
+                    {errors.email && (
                       <p className="mt-1 text-xs text-red-400">
-                        {errors.first_name.message}
+                        {errors.email.message}
                       </p>
                     )}
                   </FieldContent>
                 </Field>
+
                 <Field>
-                  <FieldLabel>Surname</FieldLabel>
+                  <FieldLabel>Backup Email Address (Optional)</FieldLabel>
                   <FieldContent>
-                    <Input {...register("last_name")} />
-                    {errors.last_name && (
+                    <Input type="email" {...register("backup_email")} />
+                    {errors.backup_email && (
                       <p className="mt-1 text-xs text-red-400">
-                        {errors.last_name.message}
+                        {errors.backup_email.message}
                       </p>
                     )}
                   </FieldContent>
                 </Field>
               </div>
+            </CardContent>
+          </Card>
 
-              <Field>
-                <FieldLabel>Email Address</FieldLabel>
-                <FieldContent>
-                  <Input type="email" {...register("email")} />
-                  {errors.email && (
-                    <p className="mt-1 text-xs text-red-400">
-                      {errors.email.message}
-                    </p>
-                  )}
-                </FieldContent>
-              </Field>
-
-              <Field>
-                <FieldLabel>Backup Email Address (Optional)</FieldLabel>
-                <FieldContent>
-                  <Input type="email" {...register("backup_email")} />
-                  {errors.backup_email && (
-                    <p className="mt-1 text-xs text-red-400">
-                      {errors.backup_email.message}
-                    </p>
-                  )}
-                </FieldContent>
-              </Field>
-
-              <div className="pt-4">
-                <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Changes
-                </Button>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+                <h2 className="font-semibold text-white">Bank Information</h2>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel>Bank Name</FieldLabel>
+                    <FieldContent>
+                      <Input {...register("bank_name")} />
+                    </FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Account Number</FieldLabel>
+                    <FieldContent>
+                      <Input {...register("account_number")} />
+                    </FieldContent>
+                  </Field>
+                </div>
+
+                <Field>
+                  <FieldLabel>Bank Address</FieldLabel>
+                  <FieldContent>
+                    <Input {...register("bank_address")} />
+                  </FieldContent>
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel>Sort Code</FieldLabel>
+                    <FieldContent>
+                      <Input {...register("sort_code")} />
+                    </FieldContent>
+                  </Field>
+                  <Field>
+                    <FieldLabel>IBAN</FieldLabel>
+                    <FieldContent>
+                      <Input {...register("iban")} />
+                    </FieldContent>
+                  </Field>
+                </div>
+
+                <Field>
+                  <FieldLabel>SWIFT/BIC</FieldLabel>
+                  <FieldContent>
+                    <Input {...register("swift_bic")} />
+                  </FieldContent>
+                </Field>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="pt-6 flex justify-end">
+          <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save All Changes
+          </Button>
+        </div>
+      </form>
     </div>
   )
 }

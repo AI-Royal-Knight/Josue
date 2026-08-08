@@ -43,6 +43,14 @@ export interface ProfileData {
   last_name: string
   email: string
   backup_email?: string
+  profile?: {
+    bank_name?: string
+    bank_address?: string
+    sort_code?: string
+    account_number?: string
+    iban?: string
+    swift_bic?: string
+  }
 }
 
 export async function getProfile(): Promise<ProfileData> {
