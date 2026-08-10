@@ -30,6 +30,7 @@ import {
   getCompanies,
   inviteAdmin,
   updateCompany,
+  resendCompanyInvitation,
   type CompanyRecord,
   type CompanySummary,
 } from "@/lib/api/super-admin"
@@ -55,6 +56,7 @@ type CompanyRow = {
   rfisCount: number
   storageUsage: string
   uploadedFilesCount: number
+  adminIsActive: boolean | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,6 +84,7 @@ function mapApiToRow(c: CompanyRecord): CompanyRow {
     rfisCount: c.rfis_count || 0,
     storageUsage: c.storage_usage || "0 MB",
     uploadedFilesCount: c.uploaded_files_count || 0,
+    adminIsActive: c.admin_is_active,
   }
 }
 
@@ -460,6 +463,15 @@ export default function CompaniesPage() {
     }
   }
 
+  const handleResend = async (id: string) => {
+    try {
+      const res = await resendCompanyInvitation(id)
+      alert(res.message)
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to resend email.")
+    }
+  }
+
   const columnDefs: ColDef<CompanyRow>[] = useMemo(() => [
     { 
       field: "name", 
@@ -568,6 +580,28 @@ export default function CompaniesPage() {
         const s = params.value ?? "Suspended"
         return <Badge variant={getStatusVariant(s)}>{s}</Badge>
       },
+    },
+    {
+      headerName: "Actions",
+      colId: "actions",
+      minWidth: 135,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
+        const row = params.data
+        if (!row) return null
+        return (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-7 text-xs px-2"
+            onClick={() => handleResend(row.id)}
+            disabled={row.adminIsActive === true}
+          >
+            Resend Email
+          </Button>
+        )
+      }
     },
   ], [])
 

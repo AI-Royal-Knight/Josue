@@ -26,7 +26,10 @@ export default function AssignManagementPage() {
     setError(null)
     try {
       const rolesRes = await getProjectRoles(projectId)
-      setAssignments(rolesRes)
+      const filteredRoles = rolesRes.filter(
+        r => r.role_key !== "employee" && r.role_key !== "supplier"
+      )
+      setAssignments(filteredRoles)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : (err as Error).message)
     } finally {

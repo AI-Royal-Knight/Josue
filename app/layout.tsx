@@ -43,7 +43,7 @@ export default function RootLayout({
         inter.variable
       )}
     >
-      <body>
+      <body suppressHydrationWarning>
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="top-right" richColors />
       </body>

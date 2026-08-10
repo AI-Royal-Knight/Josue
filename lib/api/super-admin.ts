@@ -54,6 +54,7 @@ export interface CompanyRecord {
   rfis_count: number
   storage_usage: string
   uploaded_files_count: number
+  admin_is_active: boolean | null
 }
 
 export interface CompaniesResponse {
@@ -98,6 +99,17 @@ export async function inviteAdmin(
     method: "POST",
     body: payload,
   })
+}
+
+export async function resendCompanyInvitation(
+  companyId: string
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(
+    `/super-admin/companies/${companyId}/resend-invitation/`,
+    {
+      method: "POST",
+    }
+  )
 }
 
 // ── Company Invitations ───────────────────────────────────────────────────────
