@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
 import {
   getCompanies,
   updateCompany,
@@ -77,6 +78,75 @@ type PendingInvoice = {
   amount: number
 }
 
+// ── Input Cells ─────────────────────────────────────────────────────────────
+
+function CurrencyInputCell({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: number | string | null
+  disabled?: boolean
+  onCommit: (next: string | null) => void
+}) {
+  const initialValue =
+    value === null || value === undefined ? "" : String(value)
+
+  return (
+    <div className="relative w-full">
+      <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-slate-400">
+        £
+      </span>
+      <Input
+        className="h-8 pl-6"
+        inputMode="decimal"
+        disabled={disabled}
+        key={initialValue}
+        defaultValue={initialValue}
+        onBlur={(e) => {
+          const trimmed = e.currentTarget.value.trim()
+          if (!trimmed) return onCommit(null)
+          const n = Number(trimmed)
+          if (Number.isFinite(n)) onCommit(String(n))
+          else onCommit(value === null ? null : String(value))
+        }}
+      />
+    </div>
+  )
+}
+
+function NumberInputCell({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: number | null
+  disabled?: boolean
+  onCommit: (next: number | null) => void
+}) {
+  const initialValue =
+    value === null || value === undefined ? "" : String(value)
+
+  return (
+    <div className="relative w-full">
+      <Input
+        className="h-8"
+        inputMode="numeric"
+        disabled={disabled}
+        key={initialValue}
+        defaultValue={initialValue}
+        onBlur={(e) => {
+          const trimmed = e.currentTarget.value.trim()
+          if (!trimmed) return onCommit(null)
+          const n = parseInt(trimmed, 10)
+          if (Number.isFinite(n)) onCommit(n)
+          else onCommit(value)
+        }}
+      />
+    </div>
+  )
+}
+
 export default function AccountsOverviewPage() {
   const year = new Date().getFullYear() // Default to current year as requested
   const [expanded, setExpanded] = useState(false)
@@ -108,17 +178,18 @@ export default function AccountsOverviewPage() {
     loadData()
   }, [loadData])
 
-  const handleToggleAutoInvoice = async (companyId: string, checked: boolean) => {
+  const handleUpdate = async (companyId: string, payload: Partial<CompanyRecord>) => {
     try {
-      await updateCompany(companyId, { auto_monthly_inv: checked })
+      await updateCompany(companyId, payload)
       setRows((prev) =>
         prev.map((r) =>
-          r.id === companyId ? { ...r, auto_monthly_inv: checked } : r
+          r.id === companyId ? { ...r, ...payload } : r
         )
       )
       toast.success("Settings updated")
     } catch (err) {
       toast.error("Failed to update settings")
+      loadData()
     }
   }
 
@@ -151,18 +222,11 @@ export default function AccountsOverviewPage() {
         headerName: "Monthly Subscription",
         colId: "monthly_subscription",
         minWidth: 170,
-        valueGetter: (p) => formatGbp(p.data?.monthly_subscription || "0"),
+        valueGetter: (p) => formatGbp(p.data ? monthlyCharge(p.data) : 0),
       },
       {
         headerName: "per User rate",
         colId: "per_user_rate",
-        minWidth: 140,
-        valueGetter: (p) => formatGbp(p.data?.per_user_rate || "0"),
-      },
-      { field: "user", headerName: "Users", minWidth: 90 },
-      {
-        headerName: "Automatic",
-        colId: "auto_monthly_inv",
         minWidth: 140,
         sortable: false,
         filter: false,
@@ -170,12 +234,27 @@ export default function AccountsOverviewPage() {
           const row = params.data
           if (!row) return null
           return (
-            <div className="flex items-center gap-2 py-1">
-              <Switch
-                checked={row.auto_monthly_inv}
-                onCheckedChange={(checked) => handleToggleAutoInvoice(row.id, checked)}
-              />
-            </div>
+            <CurrencyInputCell
+              value={row.per_user_rate}
+              onCommit={(val) => handleUpdate(row.id, { per_user_rate: val === null ? "0.00" : val })}
+            />
+          )
+        },
+      },
+      {
+        field: "user",
+        headerName: "Users",
+        minWidth: 120,
+        sortable: false,
+        filter: false,
+        cellRenderer: (params: { data?: AccountsRow }) => {
+          const row = params.data
+          if (!row) return null
+          return (
+            <NumberInputCell
+              value={row.user}
+              onCommit={(val) => handleUpdate(row.id, { user: val === null ? 0 : val })}
+            />
           )
         },
       },
@@ -267,7 +346,7 @@ export default function AccountsOverviewPage() {
   }, [expanded, year, invoices])
 
   const defaultColDef = useMemo(
-    () => ({ flex: 0, resizable: true, sortable: true, filter: true }),
+    () => ({ flex: 1, resizable: true, sortable: true, filter: true }),
     []
   )
 
@@ -305,32 +384,39 @@ export default function AccountsOverviewPage() {
         />
       </header>
 
-      <div className="flex flex-1 flex-col rounded-lg bg-card">
-        <div className="flex items-center justify-end gap-2 p-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? String(year) : String(year)}
-          </Button>
-          <ExportCsvButton
-            fileName={`accounts-overview-${year}.csv`}
-            columns={columnDefs.map((col) => ({
-              header: String(col.headerName),
-              field: String(col.colId ?? col.field) as keyof AccountsRow,
-            }))}
-            rows={rows}
+      <div className="flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="flex items-center justify-between gap-4 border-b p-5">
+          <h2 className="text-lg font-semibold tracking-tight">Subscriptions</h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExpanded((v) => !v)}
+              className="min-w-[100px]"
+            >
+              {expanded ? "Collapse" : "Expand"} Year {year}
+            </Button>
+            <ExportCsvButton
+              fileName={`accounts-overview-${year}.csv`}
+              columns={columnDefs.map((col) => ({
+                header: String(col.headerName),
+                field: String(col.colId ?? col.field) as keyof AccountsRow,
+              }))}
+              rows={rows}
+            />
+          </div>
+        </div>
+        <div className="w-full">
+          <AgTable
+            rowData={rows}
+            columnDefs={columnDefs}
+            height="auto"
+            pagination
+            pageSize={10}
+            defaultColDef={defaultColDef}
+            suppressCellClickAction
           />
         </div>
-        <AgTable
-          rowData={rows}
-          columnDefs={columnDefs}
-          height="70vh"
-          pagination
-          pageSize={10}
-          defaultColDef={defaultColDef}
-        />
       </div>
 
       <AlertDialog

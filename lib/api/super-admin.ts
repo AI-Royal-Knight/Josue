@@ -49,6 +49,7 @@ export interface CompanyRecord {
   monthly_subscription: string
   per_user_rate: string
   auto_monthly_inv: boolean
+  auto_monthly_inv_date: number | null
   status: "active" | "suspended"
   invoices_count: number
   rfis_count: number

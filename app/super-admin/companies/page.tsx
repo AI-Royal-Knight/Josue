@@ -5,7 +5,11 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Loader2, RefreshCw, FolderGit2, FileText, FileQuestion, HardDrive, FileUp } from "lucide-react"
+import { Loader2, RefreshCw, FolderGit2, FileText, FileQuestion, HardDrive, FileUp, CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts"
 
 import { AgTable } from "@/components/common/AgTable"
@@ -51,6 +55,7 @@ type CompanyRow = {
   monthlySubscriptionGbp: number | null
   perUserRateGbp: number | null
   automaticMonthlyInvoices: boolean
+  autoMonthlyInvoiceDate: number | null
   status: "Active" | "Suspended"
   invoicesCount: number
   rfisCount: number
@@ -79,6 +84,7 @@ function mapApiToRow(c: CompanyRecord): CompanyRow {
       ? parseFloat(c.per_user_rate)
       : null,
     automaticMonthlyInvoices: c.auto_monthly_inv,
+    autoMonthlyInvoiceDate: c.auto_monthly_inv_date ?? null,
     status: c.status === "active" ? "Active" : "Suspended",
     invoicesCount: c.invoices_count || 0,
     rfisCount: c.rfis_count || 0,
@@ -399,6 +405,155 @@ function CompanyStatsDialog({
   )
 }
 
+// ── Activate Cell ─────────────────────────────────────────────────────────────
+
+function ActivateCell({
+  row,
+  onUpdate,
+}: {
+  row: CompanyRow
+  onUpdate: (id: string, payload: Partial<CompanyRecord>) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [nextState, setNextState] = useState(row.activated)
+
+  const handleToggle = (checked: boolean) => {
+    setNextState(checked)
+    setOpen(true)
+  }
+
+  const handleConfirm = () => {
+    onUpdate(row.id, { activate: nextState })
+    setOpen(false)
+  }
+
+  return (
+    <div className="flex items-center gap-2 py-1" data-cell-click-ignore>
+      <Switch checked={row.activated} onCheckedChange={handleToggle} />
+      <span className="text-xs text-slate-400">
+        {row.activated ? "On" : "Off"}
+      </span>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Action</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {nextState ? "activate" : "deactivate"} the company "{row.name}"?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// ── Auto Invoices Cell ────────────────────────────────────────────────────────
+
+function AutoInvoicesCell({
+  row,
+  onUpdate,
+}: {
+  row: CompanyRow
+  onUpdate: (id: string, payload: Partial<CompanyRecord>) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [nextState, setNextState] = useState(row.automaticMonthlyInvoices)
+
+  const handleToggle = (checked: boolean) => {
+    setNextState(checked)
+    setOpen(true)
+  }
+
+  const handleConfirm = () => {
+    onUpdate(row.id, { auto_monthly_inv: nextState })
+    setOpen(false)
+  }
+
+  return (
+    <div className="flex items-center gap-2 py-1" data-cell-click-ignore>
+      <Switch checked={row.automaticMonthlyInvoices} onCheckedChange={handleToggle} />
+      <span className="text-xs text-slate-400">
+        {row.automaticMonthlyInvoices ? "Yes" : "No"}
+      </span>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Action</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {nextState ? "enable" : "disable"} automatic monthly invoices for "{row.name}"?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// ── Auto Invoice Date Cell ───────────────────────────────────────────────────
+
+function AutoInvoiceDateCell({
+  row,
+  onUpdate,
+}: {
+  row: CompanyRow
+  onUpdate: (id: string, payload: Partial<CompanyRecord>) => Promise<void>
+}) {
+  const value = row.autoMonthlyInvoiceDate === null || row.autoMonthlyInvoiceDate === undefined ? "" : String(row.autoMonthlyInvoiceDate)
+
+  if (!row.automaticMonthlyInvoices) {
+    return (
+      <div className="absolute inset-0 flex items-center px-4">
+        <span className="text-xs text-slate-500">—</span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="absolute inset-0 flex items-center px-2"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <select
+        className="h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        value={value}
+        onChange={(e) => {
+          const val = e.target.value
+          if (!val) {
+            onUpdate(row.id, { auto_monthly_inv_date: null })
+          } else {
+            onUpdate(row.id, { auto_monthly_inv_date: parseInt(val, 10) })
+          }
+        }}
+      >
+        <option value="">Select date</option>
+        {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => {
+          const suffix = day === 1 || day === 21 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';
+          return (
+            <option key={day} value={day}>
+              {day}{suffix}
+            </option>
+          )
+        })}
+      </select>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function CompaniesPage() {
@@ -440,6 +595,10 @@ export default function CompaniesPage() {
               payload.auto_monthly_inv !== undefined
                 ? payload.auto_monthly_inv
                 : r.automaticMonthlyInvoices,
+            autoMonthlyInvoiceDate:
+              payload.auto_monthly_inv_date !== undefined
+                ? payload.auto_monthly_inv_date
+                : r.autoMonthlyInvoiceDate,
             monthlySubscriptionGbp:
               payload.monthly_subscription !== undefined
                 ? parseFloat(payload.monthly_subscription)
@@ -503,17 +662,7 @@ export default function CompaniesPage() {
       cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
         const row = params.data
         if (!row) return null
-        return (
-          <div className="flex items-center gap-2 py-1">
-            <Switch
-              checked={row.activated}
-              onCheckedChange={(checked) => handleUpdate(row.id, { activate: checked })}
-            />
-            <span className="text-xs text-slate-400">
-              {row.activated ? "On" : "Off"}
-            </span>
-          </div>
-        )
+        return <ActivateCell row={row} onUpdate={handleUpdate} />
       },
     },
     {
@@ -559,17 +708,19 @@ export default function CompaniesPage() {
       cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
         const row = params.data
         if (!row) return null
-        return (
-          <div className="flex items-center gap-2 py-1">
-            <Switch
-              checked={row.automaticMonthlyInvoices}
-              onCheckedChange={(checked) => handleUpdate(row.id, { auto_monthly_inv: checked })}
-            />
-            <span className="text-xs text-slate-400">
-              {row.automaticMonthlyInvoices ? "Yes" : "No"}
-            </span>
-          </div>
-        )
+        return <AutoInvoicesCell row={row} onUpdate={handleUpdate} />
+      },
+    },
+    {
+      headerName: "Invoice Date",
+      colId: "autoMonthlyInvoiceDate",
+      minWidth: 130,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
+        const row = params.data
+        if (!row) return null
+        return <AutoInvoiceDateCell row={row} onUpdate={handleUpdate} />
       },
     },
     {
@@ -591,15 +742,17 @@ export default function CompaniesPage() {
         const row = params.data
         if (!row) return null
         return (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-7 text-xs px-2"
-            onClick={() => handleResend(row.id)}
-            disabled={row.adminIsActive === true}
-          >
-            Resend Email
-          </Button>
+          <div data-cell-click-ignore className="flex items-center py-1">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-7 text-xs px-2"
+              onClick={() => handleResend(row.id)}
+              disabled={row.adminIsActive === true}
+            >
+              Resend Email
+            </Button>
+          </div>
         )
       }
     },
@@ -673,6 +826,7 @@ export default function CompaniesPage() {
             pagination
             pageSize={10}
             defaultColDef={defaultColDef}
+            suppressCellClickAction
           />
         )}
       </div>
