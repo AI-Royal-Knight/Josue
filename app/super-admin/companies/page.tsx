@@ -10,6 +10,7 @@ import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts"
 
 import { AgTable } from "@/components/common/AgTable"
@@ -554,6 +555,45 @@ function AutoInvoiceDateCell({
   )
 }
 
+// ── Resend Action Cell ────────────────────────────────────────────────────────
+
+function ResendActionCell({
+  row,
+  onResend,
+}: {
+  row: CompanyRow
+  onResend: (id: string) => Promise<void>
+}) {
+  const [loading, setLoading] = useState(false)
+
+  const handleResend = async () => {
+    setLoading(true)
+    await onResend(row.id)
+    setLoading(false)
+  }
+
+  return (
+    <div data-cell-click-ignore className="flex items-center py-1">
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs px-2 min-w-[95px]"
+        onClick={handleResend}
+        disabled={row.adminIsActive === true || loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            Sending
+          </>
+        ) : (
+          "Resend Email"
+        )}
+      </Button>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function CompaniesPage() {
@@ -625,9 +665,9 @@ export default function CompaniesPage() {
   const handleResend = async (id: string) => {
     try {
       const res = await resendCompanyInvitation(id)
-      alert(res.message)
+      toast.success(res.message || "Invitation email resent successfully.")
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to resend email.")
+      toast.error(err instanceof ApiError ? err.message : "Failed to resend email.")
     }
   }
 
@@ -741,19 +781,7 @@ export default function CompaniesPage() {
       cellRenderer: (params: ICellRendererParams<CompanyRow>) => {
         const row = params.data
         if (!row) return null
-        return (
-          <div data-cell-click-ignore className="flex items-center py-1">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-7 text-xs px-2"
-              onClick={() => handleResend(row.id)}
-              disabled={row.adminIsActive === true}
-            >
-              Resend Email
-            </Button>
-          </div>
-        )
+        return <ResendActionCell row={row} onResend={handleResend} />
       }
     },
   ], [])
