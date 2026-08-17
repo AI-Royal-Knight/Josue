@@ -268,18 +268,15 @@ export default function AccountsOverviewPage() {
         cellRenderer: (params: { data?: AccountsRow }) => {
           const row = params.data
           if (!row) return null
-          const auto = row.auto_monthly_inv
           const companyInvoices = invoices.filter(
             (inv) => inv.company_id === row.id && inv.is_sent
           )
 
           const allSent = months.every(({ key }) =>
-            auto ? true : companyInvoices.some((i) => i.month === key)
+            companyInvoices.some((i) => i.month === key)
           )
 
-          const displayAmount = auto
-            ? annualCharge(row)
-            : companyInvoices.reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0)
+          const displayAmount = companyInvoices.reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0)
 
           return (
             <span
@@ -308,13 +305,22 @@ export default function AccountsOverviewPage() {
 
           const amount = monthlyCharge(row)
           const auto = row.auto_monthly_inv
-          const isSent = auto || invoices.some(
+          
+          const existingInvoice = invoices.find(
             (inv) => inv.company_id === row.id && inv.month === m.key && inv.is_sent
           )
 
-          if (isSent) {
+          if (existingInvoice) {
             return (
               <span className="font-medium text-emerald-400">
+                {formatGbp(existingInvoice.amount || "0")}
+              </span>
+            )
+          }
+
+          if (auto) {
+            return (
+              <span className="text-slate-200 opacity-50">
                 {formatGbp(amount)}
               </span>
             )
@@ -356,13 +362,19 @@ export default function AccountsOverviewPage() {
     rows.forEach((r) => {
       const mc = monthlyCharge(r)
       monthlyRev += mc
-      totalRev += mc * 12
     })
+    
+    invoices.forEach((inv) => {
+      if (inv.is_sent && rows.some(r => r.id === inv.company_id)) {
+        totalRev += parseFloat(inv.amount || "0")
+      }
+    })
+    
     return {
       total: formatGbp(totalRev),
       monthly: formatGbp(monthlyRev),
     }
-  }, [rows])
+  }, [rows, invoices])
 
   if (loading) {
     return (
