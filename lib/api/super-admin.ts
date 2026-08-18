@@ -56,6 +56,7 @@ export interface CompanyRecord {
   storage_usage: string
   uploaded_files_count: number
   admin_is_active: boolean | null
+  created_at: string | null
 }
 
 export interface CompaniesResponse {

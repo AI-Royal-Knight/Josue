@@ -66,8 +66,28 @@ function monthlyCharge(row: AccountsRow): number {
   return monthly + perUser * (row.user || 0)
 }
 
-function annualCharge(row: AccountsRow): number {
-  return monthlyCharge(row) * 12
+/** Number of months from the company's creation month to December (inclusive), capped to 12. */
+function billableMonthsInYear(row: AccountsRow, year: number): number {
+  if (!row.created_at) return 12
+  const created = new Date(row.created_at)
+  if (created.getFullYear() > year) return 0
+  if (created.getFullYear() < year) return 12
+  // Same year — bill from creation month to December
+  return 13 - (created.getMonth() + 1) // getMonth() is 0-indexed
+}
+
+/** Projected annual revenue from the company's creation month to year-end. */
+function projectedAnnualCharge(row: AccountsRow, year: number): number {
+  return monthlyCharge(row) * billableMonthsInYear(row, year)
+}
+
+/** The earliest billable month (1-12) for a company in a given year. */
+function firstBillableMonth(row: AccountsRow, year: number): number {
+  if (!row.created_at) return 1
+  const created = new Date(row.created_at)
+  if (created.getFullYear() < year) return 1
+  if (created.getFullYear() > year) return 13 // no billable months
+  return created.getMonth() + 1 // getMonth() is 0-indexed
 }
 
 type PendingInvoice = {
@@ -264,27 +284,47 @@ export default function AccountsOverviewPage() {
       base.push({
         headerName: String(year),
         colId: "annual",
-        minWidth: 120,
+        minWidth: 160,
         cellRenderer: (params: { data?: AccountsRow }) => {
           const row = params.data
           if (!row) return null
+
+          const start = firstBillableMonth(row, year)
+          // Billable months for this company in this year
+          const billableMonthKeys = months.filter((m) => m.key >= start)
+
           const companyInvoices = invoices.filter(
-            (inv) => inv.company_id === row.id && inv.is_sent
+            (inv) => String(inv.company_id) === String(row.id) && inv.is_sent && inv.month >= start
           )
 
-          const allSent = months.every(({ key }) =>
+          const allSent = billableMonthKeys.every(({ key }) =>
             companyInvoices.some((i) => i.month === key)
           )
 
-          const displayAmount = companyInvoices.reduce((sum, i) => sum + parseFloat(i.amount || "0"), 0)
+          // Actual revenue: only from sent invoices
+          const actualRevenue = companyInvoices.reduce(
+            (sum, i) => sum + parseFloat(i.amount || "0"),
+            0
+          )
+
+          // Projected revenue: from company creation month to Dec
+          const projected = projectedAnnualCharge(row, year)
 
           return (
             <span
               className={
-                allSent ? "font-medium text-emerald-400" : "text-slate-200"
+                allSent && billableMonthKeys.length > 0
+                  ? "font-medium text-emerald-400"
+                  : "text-slate-200"
               }
+              title={`Projected: ${formatGbp(projected)} | Billed: ${formatGbp(actualRevenue)}`}
             >
-              {formatGbp(displayAmount)}
+              {formatGbp(actualRevenue)}
+              {!allSent && projected > actualRevenue && (
+                <span className="ml-1 text-xs text-slate-500">
+                  /{formatGbp(projected)}
+                </span>
+              )}
             </span>
           )
         },
@@ -303,11 +343,20 @@ export default function AccountsOverviewPage() {
           const row = params.data
           if (!row) return null
 
+          // Grey out months before the company's creation month
+          const start = firstBillableMonth(row, year)
+          if (m.key < start) {
+            return <span className="text-slate-600">—</span>
+          }
+
           const amount = monthlyCharge(row)
           const auto = row.auto_monthly_inv
-          
+
           const existingInvoice = invoices.find(
-            (inv) => inv.company_id === row.id && inv.month === m.key && inv.is_sent
+            (inv) =>
+              String(inv.company_id) === String(row.id) &&
+              inv.month === m.key &&
+              inv.is_sent
           )
 
           if (existingInvoice) {
@@ -359,22 +408,29 @@ export default function AccountsOverviewPage() {
   const stats = useMemo(() => {
     let totalRev = 0
     let monthlyRev = 0
+    let projectedAnnual = 0
+
     rows.forEach((r) => {
-      const mc = monthlyCharge(r)
-      monthlyRev += mc
+      monthlyRev += monthlyCharge(r)
+      projectedAnnual += projectedAnnualCharge(r, year)
     })
-    
+
+    // Total Revenue = sum of invoices that have actually been SENT to customers
     invoices.forEach((inv) => {
-      if (inv.is_sent && rows.some(r => r.id === inv.company_id)) {
+      if (
+        inv.is_sent &&
+        rows.some((r) => String(r.id) === String(inv.company_id))
+      ) {
         totalRev += parseFloat(inv.amount || "0")
       }
     })
-    
+
     return {
       total: formatGbp(totalRev),
       monthly: formatGbp(monthlyRev),
+      projected: formatGbp(projectedAnnual),
     }
-  }, [rows, invoices])
+  }, [rows, invoices, year])
 
   if (loading) {
     return (
@@ -390,8 +446,9 @@ export default function AccountsOverviewPage() {
         <h1 className="mb-4 text-2xl font-bold">Accounts Overview</h1>
         <TableStat
           summaryRows={[
-            { label: "Total Revenue", value: stats.total },
-            { label: "Monthly Revenue", value: stats.monthly },
+            { label: "Total Revenue (Invoiced)", value: stats.total },
+            { label: "Monthly Charge", value: stats.monthly },
+            { label: "Projected Annual", value: stats.projected },
           ]}
         />
       </header>
