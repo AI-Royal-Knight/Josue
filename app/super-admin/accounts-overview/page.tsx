@@ -168,7 +168,8 @@ function NumberInputCell({
 }
 
 export default function AccountsOverviewPage() {
-  const year = new Date().getFullYear() // Default to current year as requested
+  const year = new Date().getFullYear()
+  const currentMonth = new Date().getMonth() + 1 // 1-12, today's month
   const [expanded, setExpanded] = useState(false)
 
   const [rows, setRows] = useState<AccountsRow[]>([])
@@ -343,14 +344,16 @@ export default function AccountsOverviewPage() {
           const row = params.data
           if (!row) return null
 
-          // Grey out months before the company's creation month
-          const start = firstBillableMonth(row, year)
-          if (m.key < start) {
-            return <span className="text-slate-600">—</span>
+          // Future months: never show anything
+          if (m.key > currentMonth) {
+            return <span className="text-slate-700">—</span>
           }
 
-          const amount = monthlyCharge(row)
-          const auto = row.auto_monthly_inv
+          // Months before the company was created: not billable
+          const start = firstBillableMonth(row, year)
+          if (m.key < start) {
+            return <span className="text-slate-700">—</span>
+          }
 
           const existingInvoice = invoices.find(
             (inv) =>
@@ -359,6 +362,19 @@ export default function AccountsOverviewPage() {
               inv.is_sent
           )
 
+          // Past months: only show if an invoice was sent
+          if (m.key < currentMonth) {
+            if (!existingInvoice) {
+              return <span className="text-slate-700">—</span>
+            }
+            return (
+              <span className="font-medium text-emerald-400">
+                {formatGbp(existingInvoice.amount || "0")}
+              </span>
+            )
+          }
+
+          // Current month: show sent invoice or allow action
           if (existingInvoice) {
             return (
               <span className="font-medium text-emerald-400">
@@ -366,6 +382,9 @@ export default function AccountsOverviewPage() {
               </span>
             )
           }
+
+          const amount = monthlyCharge(row)
+          const auto = row.auto_monthly_inv
 
           if (auto) {
             return (
@@ -375,7 +394,7 @@ export default function AccountsOverviewPage() {
             )
           }
 
-          // Manual mode: allow click to submit invoice
+          // Manual mode: clickable to send invoice for current month
           return (
             <button
               type="button"
