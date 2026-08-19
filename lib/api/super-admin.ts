@@ -159,6 +159,7 @@ export interface MonthlyInvoice {
   is_paid: boolean
   payment_date: string | null
   invoice_number: string | null
+  pdf_file?: string | null
   created_at?: string
 }
 
