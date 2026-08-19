@@ -279,6 +279,67 @@ export default function AccountsOverviewPage() {
           )
         },
       },
+      {
+        headerName: "Action",
+        colId: "action",
+        minWidth: 130,
+        sortable: false,
+        filter: false,
+        cellRenderer: (params: { data?: AccountsRow }) => {
+          const row = params.data
+          if (!row) return null
+
+          const start = firstBillableMonth(row, year)
+          if (currentMonth < start) {
+            return <span className="text-xs text-slate-500">Not billable</span>
+          }
+
+          const existingInvoice = invoices.find(
+            (inv) =>
+              String(inv.company_id) === String(row.id) &&
+              inv.month === currentMonth &&
+              inv.is_sent
+          )
+
+          if (existingInvoice) {
+            return <span className="text-xs font-medium text-emerald-400">Invoice Sent</span>
+          }
+
+          const amount = monthlyCharge(row)
+          const autoDate = row.auto_monthly_inv_date || 1
+          let canSend = true
+          let buttonTitle = "Send Invoice for current month"
+
+          const today = new Date().getDate()
+          if (today < autoDate) {
+            canSend = false
+            buttonTitle = `Available on the ${autoDate}th`
+          }
+
+          return (
+            <Button
+              variant="default"
+              size="sm"
+              disabled={!canSend}
+              title={buttonTitle}
+              className="h-7 text-xs"
+              onClick={() => {
+                if (!canSend) return
+                const monthObj = months.find((m) => m.key === currentMonth)
+                setPending({
+                  companyId: row.id,
+                  companyName: row.company_name || `Company ${row.id}`,
+                  month: currentMonth as BillingMonth,
+                  monthLabel: monthObj?.label || String(currentMonth),
+                  amount,
+                })
+              }}
+            >
+              Send Invoice
+            </Button>
+          )
+        },
+      },
     ]
 
     if (!expanded) {
@@ -385,21 +446,33 @@ export default function AccountsOverviewPage() {
 
           const amount = monthlyCharge(row)
           const auto = row.auto_monthly_inv
+          const autoDate = row.auto_monthly_inv_date || 1
+          
+          let canSend = true
+          let buttonTitle = "Send Invoice"
 
-          if (auto) {
-            return (
-              <span className="text-slate-200 opacity-50">
-                {formatGbp(amount)}
-              </span>
-            )
+          // If current month, check if today is >= auto_monthly_inv_date
+          if (m.key === currentMonth) {
+            const today = new Date().getDate()
+            if (today < autoDate) {
+              canSend = false
+              buttonTitle = `Available on the ${autoDate}th of the month`
+            }
           }
 
-          // Manual mode: clickable to send invoice for current month
+          // Manual mode or fallback for automatic mode: clickable to send invoice
           return (
             <button
               type="button"
-              className="text-left font-medium text-slate-200 hover:underline"
-              onClick={() =>
+              disabled={!canSend}
+              title={buttonTitle}
+              className={`text-left font-medium ${
+                canSend 
+                  ? "text-slate-200 hover:underline" 
+                  : "text-slate-500 cursor-not-allowed opacity-50"
+              }`}
+              onClick={() => {
+                if (!canSend) return
                 setPending({
                   companyId: row.id,
                   companyName: row.company_name || `Company ${row.id}`,
@@ -407,7 +480,7 @@ export default function AccountsOverviewPage() {
                   monthLabel: m.label,
                   amount,
                 })
-              }
+              }}
             >
               {formatGbp(amount)}
             </button>
