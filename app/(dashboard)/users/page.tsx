@@ -97,21 +97,23 @@ export default function Page() {
   const confirmToggle = useCallback(async () => {
     if (!pending) return
     try {
-      const endpoint = isDocumentController
-        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/document-controller/approve-employee/`
-        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/account/users/`;
-        
       const token = localStorage.getItem("tresta:accessToken");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ user_id: pending.userId, approved: pending.nextValue }),
-      })
+      // The backend now enforces role-based approval:
+      // - document_controller can only approve employees
+      // - admin/super_admin can approve all other roles
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/account/users/`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ user_id: pending.userId, approved: pending.nextValue }),
+        }
+      )
       if (res.ok) {
         setUsers((prev) =>
           prev.map((u) =>
@@ -119,18 +121,23 @@ export default function Page() {
               ? {
                   ...u,
                   approvedUser: pending.nextValue,
-                  approvedBy: pending.nextValue ? (isAdmin ? "Admin" : "Document Controller") : "",
+                  approvedBy: pending.nextValue
+                    ? isDocumentController ? "Document Controller" : "Admin"
+                    : "",
                 }
               : u
           )
         )
+      } else {
+        const err = await res.json().catch(() => ({}))
+        console.error("Approval failed:", err.error || res.statusText)
       }
     } catch (e) {
       console.error(e)
     } finally {
       setPending(null)
     }
-  }, [pending, isAdmin])
+  }, [pending, isDocumentController])
 
   const cancelToggle = useCallback(() => setPending(null), [])
 
@@ -152,6 +159,12 @@ export default function Page() {
   const cscsExpiredCount = users.filter(
     (u) => u.cscsExpiryTone === "red"
   ).length
+
+  // Document controllers only manage employee (mobile app) users
+  // Admins see everyone in the company
+  const visibleUsers = isDocumentController
+    ? users.filter((u) => u.profession === "Employee" || u.profession === "employee")
+    : users
 
   const columnDefs: ColDef<UserRow>[] = [
    //  {
@@ -313,7 +326,7 @@ export default function Page() {
 
       <AgTable
         rowSelection="single"
-        rowData={users}
+        rowData={visibleUsers}
         columnDefs={columnDefs}
         suppressCellClickAction
         defaultColDef={{ flex: 1, minWidth: 140, resizable: true }}

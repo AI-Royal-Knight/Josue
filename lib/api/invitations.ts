@@ -3,6 +3,22 @@
  */
 import { apiRequest } from "./client"
 
+// ── Allowed roles for the current user ────────────────────────────────────────
+
+export interface AllowedRole {
+  value: string
+  label: string
+}
+
+export interface AllowedInviteRolesResponse {
+  allowed_roles: AllowedRole[]
+  caller_role: string
+}
+
+export async function getAllowedInviteRoles(): Promise<AllowedInviteRolesResponse> {
+  return apiRequest<AllowedInviteRolesResponse>("/account/invitations/allowed-roles/")
+}
+
 // ── Validate ──────────────────────────────────────────────────────────────────
 
 export interface InvitationDetails {
@@ -24,6 +40,9 @@ export async function validateInvitationToken(
     { public: true }
   )
 }
+
+// Keep backward-compatible alias used by some pages
+export { validateInvitationToken as validateInvitation }
 
 // ── Send ──────────────────────────────────────────────────────────────────────
 
@@ -65,6 +84,8 @@ export interface AcceptInvitationPayload {
 
 export interface AcceptInvitationResponse {
   success: boolean
+  message?: string
+  pending_approval?: boolean
 }
 
 export async function acceptInvitation(

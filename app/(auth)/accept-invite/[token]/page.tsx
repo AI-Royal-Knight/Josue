@@ -3,12 +3,29 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { validateInvitation, acceptInvitation, InvitationDetails } from "@/lib/api/account"
+import { validateInvitationToken, acceptInvitation, InvitationDetails } from "@/lib/api/invitations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { Loader2, Clock, CheckCircle } from "lucide-react"
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  project_admin: "Project Admin",
+  managing_director: "Managing Director",
+  project_director: "Project Director",
+  contracts_manager: "Contracts Manager",
+  managers: "Manager",
+  supervisor: "Supervisor",
+  document_controller: "Document Controller",
+  procurement_department: "Procurement Department",
+  commercial_department: "Commercial Department",
+  finance_department: "Finance Department",
+  technical_department: "Technical Department",
+  employee: "Employee (Mobile App User)",
+  supplier: "Supplier",
+}
 
 export default function AcceptInvitePage() {
   const params = useParams()
@@ -19,6 +36,8 @@ export default function AcceptInvitePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [details, setDetails] = useState<InvitationDetails | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingApproval, setPendingApproval] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
 
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -28,7 +47,7 @@ export default function AcceptInvitePage() {
   useEffect(() => {
     async function loadInvitation() {
       try {
-        const data = await validateInvitation(token)
+        const data = await validateInvitationToken(token)
         setDetails(data)
       } catch (err: any) {
         setError(err.message || "Invalid or expired invitation link.")
@@ -57,15 +76,24 @@ export default function AcceptInvitePage() {
 
     setIsSubmitting(true)
     try {
-      await acceptInvitation({
+      const result = await acceptInvitation({
         token,
         first_name: firstName,
         last_name: lastName,
         password,
-        confirm_password: confirmPassword
       })
-      toast.success("Account activated successfully! You can now log in.")
-      router.push("/sign-in")
+
+      if (result.pending_approval) {
+        // Employee users — show pending state, don't redirect to login
+        setPendingApproval(true)
+        setSuccessMessage(
+          result.message ||
+            "Your application has been submitted. Your account will become active once the Document Controller reviews and approves your documents."
+        )
+      } else {
+        toast.success(result.message || "Account activated successfully! You can now log in.")
+        router.push("/sign-in")
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to activate account.")
       setIsSubmitting(false)
@@ -96,13 +124,54 @@ export default function AcceptInvitePage() {
     )
   }
 
+  // Show pending approval state for employee users
+  if (pendingApproval) {
+    return (
+      <Card className="w-full max-w-md bg-[#182235]/60 border-[#2b3c5a] backdrop-blur-xl">
+        <CardHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-full bg-amber-500/20">
+              <Clock className="h-6 w-6 text-amber-400" />
+            </div>
+            <CardTitle className="text-xl font-medium text-white">Application Submitted</CardTitle>
+          </div>
+          <CardDescription className="text-[#94a3b8]">
+            {successMessage}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+              <p className="text-sm text-amber-300">
+                <strong>Next steps:</strong> The Document Controller will review your submitted documents.
+                Once approved, you will be able to log into the mobile app.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const roleLabel = ROLE_LABELS[details.role] || details.role
+
   return (
     <Card className="w-full max-w-md bg-[#182235]/60 border-[#2b3c5a] backdrop-blur-xl">
       <CardHeader>
-        <CardTitle className="text-xl font-medium text-white">Welcome</CardTitle>
-        <CardDescription className="text-[#94a3b8]">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 rounded-full bg-blue-500/20">
+            <CheckCircle className="h-6 w-6 text-blue-400" />
+          </div>
+          <div>
+            <CardTitle className="text-xl font-medium text-white">Accept Invitation</CardTitle>
+            <CardDescription className="text-[#94a3b8] mt-1">
+              You have been invited as <strong className="text-blue-300">{roleLabel}</strong>
+            </CardDescription>
+          </div>
+        </div>
+        <p className="text-sm text-[#94a3b8]">
           Please enter your details to set up your account.
-        </CardDescription>
+        </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -130,6 +199,17 @@ export default function AcceptInvitePage() {
               />
             </div>
           </div>
+
+          {/* Show email (read-only) */}
+          <div className="space-y-2">
+            <Label className="text-white">Email</Label>
+            <Input
+              value={details.email}
+              disabled
+              className="bg-[#0b1018]/30 border-[#2b3c5a] text-[#94a3b8]"
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="password" className="text-white">Password</Label>
             <Input
@@ -154,13 +234,22 @@ export default function AcceptInvitePage() {
               placeholder="••••••••"
             />
           </div>
+
+          {details.role === "employee" && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+              <p className="text-xs text-amber-300">
+                ⚠️ After submitting, your account will be <strong>pending review</strong> by the Document Controller. You will not be able to log in until approved.
+              </p>
+            </div>
+          )}
+
           <Button
             type="submit"
             className="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white mt-6"
             disabled={isSubmitting}
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Activate Account
+            {details.role === "employee" ? "Submit Application" : "Activate Account"}
           </Button>
         </form>
       </CardContent>
