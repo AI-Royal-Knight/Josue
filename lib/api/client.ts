@@ -4,8 +4,25 @@
  * - Throws ApiError on non-2xx responses, with the parsed JSON body attached.
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
+/**
+ * Resolves the API base URL.
+ * - In the browser on tresta.cloud, safely defaults to https://api.tresta.cloud/api/v1
+ *   (preventing accidental localhost calls if built without production environment variables).
+ * - Otherwise reads NEXT_PUBLIC_API_URL, falling back to http://localhost:8000/api/v1.
+ */
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname.toLowerCase();
+    if (hostname.endsWith("tresta.cloud")) {
+      const envUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+        return "https://api.tresta.cloud/api/v1";
+      }
+      return envUrl;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+}
 
 export class ApiError extends Error {
   status: number
@@ -53,7 +70,8 @@ export async function apiRequest<T>(
   const activeRole = getActiveRole()
   const isFormData = body instanceof FormData
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const apiBase = getApiBaseUrl()
+  const response = await fetch(`${apiBase}${endpoint}`, {
     method: rest.method ?? (body ? "POST" : "GET"),
     headers: {
       ...(!isFormData ? { "Content-Type": "application/json" } : {}),

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { getApiBaseUrl } from "@/lib/api/client"
 
 export default function SubmitApplicationPage() {
   const router = useRouter()
@@ -25,7 +26,7 @@ export default function SubmitApplicationPage() {
     data.terms_accepted = termsCheckbox.checked ? "true" : "false"
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/account/submit-application/`, {
+      const response = await fetch(`${getApiBaseUrl()}/account/submit-application/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

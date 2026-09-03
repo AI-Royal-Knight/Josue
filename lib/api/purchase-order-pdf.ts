@@ -2,9 +2,7 @@
  * API helpers for Purchase Order PDF operations.
  */
 
-import { apiRequest } from "./client"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
+import { apiRequest, getApiBaseUrl } from "./client"
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null
@@ -51,7 +49,8 @@ export async function parsePOPDF(file: File): Promise<ParsedPOData> {
  */
 export async function generateBrandedPOPDF(parsed: ParsedPOData): Promise<Blob> {
   const token = getToken()
-  const response = await fetch(`${API_BASE}/procurement/po/generate-pdf/`, {
+  const apiBase = getApiBaseUrl()
+  const response = await fetch(`${apiBase}/procurement/po/generate-pdf/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

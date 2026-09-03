@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { getSupplierQuotation, submitSupplierQuotation, Quotation, QuotationLineItem } from "@/lib/api/quotations"
+import { getApiBaseUrl } from "@/lib/api/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -296,7 +297,7 @@ export default function SupplierQuotePage() {
                     {h.previous_pdf && (
                       <div className="mt-4 pt-4 border-t border-white/10">
                         <a 
-                          href={h.previous_pdf.startsWith('http') ? h.previous_pdf : `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace('/api/v1', '')}${h.previous_pdf}`} 
+                          href={h.previous_pdf.startsWith('http') ? h.previous_pdf : `${getApiBaseUrl().replace('/api/v1', '')}${h.previous_pdf}`} 
                           target="_blank" 
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 px-3 py-1.5 rounded-md"

@@ -8,6 +8,7 @@ import { UserProfileDialog } from "@/components/user-profile-dialog"
 import { Switch } from "@/components/ui/switch"
 import InviteUserDialog from "@/app/(dashboard)/invite-users/invite-modal"
 import { useRoleStore } from "@/lib/role-store"
+import { getApiBaseUrl } from "@/lib/api/client"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,7 +66,7 @@ export default function Page() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`
       }
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/account/users/`, {
+      const res = await fetch(`${getApiBaseUrl()}/account/users/`, {
         headers
       })
       if (res.ok) {
@@ -107,7 +108,7 @@ export default function Page() {
       // - document_controller can only approve employees
       // - admin/super_admin can approve all other roles
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/account/users/`,
+        `${getApiBaseUrl()}/account/users/`,
         {
           method: "POST",
           headers,
