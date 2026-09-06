@@ -43,10 +43,13 @@ export default function InviteUserDialog({ defaultOpen }: { defaultOpen?: boolea
   useEffect(() => {
     getAllowedInviteRoles()
       .then((res) => {
-        setCanInvite(res.allowed_roles.length > 0)
-        setAllowedRoles(res.allowed_roles)
-        if (res.allowed_roles.length === 1) {
-          setRole(res.allowed_roles[0].value)
+        const roles = res.allowed_roles.filter(
+          (r) => !(currentRole === "project_admin" && r.value === "employee")
+        )
+        setCanInvite(roles.length > 0)
+        setAllowedRoles(roles)
+        if (roles.length === 1) {
+          setRole(roles[0].value)
         }
       })
       .catch(() => {
@@ -64,15 +67,18 @@ export default function InviteUserDialog({ defaultOpen }: { defaultOpen?: boolea
     setLoadingRoles(true)
     getAllowedInviteRoles()
       .then((res) => {
-        setAllowedRoles(res.allowed_roles)
-        setCanInvite(res.allowed_roles.length > 0)
-        if (res.allowed_roles.length === 1) {
-          setRole(res.allowed_roles[0].value)
+        const roles = res.allowed_roles.filter(
+          (r) => !(currentRole === "project_admin" && r.value === "employee")
+        )
+        setAllowedRoles(roles)
+        setCanInvite(roles.length > 0)
+        if (roles.length === 1) {
+          setRole(roles[0].value)
         }
       })
       .catch(() => setAllowedRoles([]))
       .finally(() => setLoadingRoles(false))
-  }, [open])
+  }, [open, currentRole])
 
   const handleInvite = async () => {
     if (!email || !role) {

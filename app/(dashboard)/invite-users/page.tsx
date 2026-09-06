@@ -36,9 +36,12 @@ export default function InviteUsersPage() {
     setLoadingRoles(true)
     getAllowedInviteRoles()
       .then((res) => {
-        setAllowedRoles(res.allowed_roles)
-        if (res.allowed_roles.length === 1) {
-          setRole(res.allowed_roles[0].value)
+        const roles = res.allowed_roles.filter(
+          (r) => !(currentRole === "project_admin" && r.value === "employee")
+        )
+        setAllowedRoles(roles)
+        if (roles.length === 1) {
+          setRole(roles[0].value)
         }
       })
       .catch(() => {
