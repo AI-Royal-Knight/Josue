@@ -27,7 +27,7 @@ export default function AssignManagementPage() {
     try {
       const rolesRes = await getProjectRoles(projectId)
       const filteredRoles = rolesRes.filter(
-        r => r.role_key !== "employee" && r.role_key !== "supplier"
+        r => r.role_key !== "employee" && r.role_key !== "supplier" && r.role_key !== "managing_director"
       )
       setAssignments(filteredRoles)
     } catch (err) {

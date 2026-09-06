@@ -50,6 +50,8 @@ export const DASHBOARD_NAV = {
   ],
   project_director: [
     { title: "Project Overview", url: "/project-overview" },
+    { title: "Users", url: "/users" },
+    { title: "Invite Users", url: "/invite-users" },
     { title: "Variations", url: "/variations" },
     { title: "Management Timesheets", url: "/management-timesheets" },
     { title: "Proforma NR List", url: "/proforma-nr" },
@@ -79,6 +81,7 @@ export const DASHBOARD_NAV = {
   ],
   document_controller: [
     { title: "Users", url: "/users" },
+    { title: "Invite Users", url: "/invite-users" },
     { title: "Profile", url: "/profile" },
   ],
   finance_department: [
@@ -87,9 +90,8 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   contracts_manager: [
-    // { title: "Projects", url: "/projects" },
     { title: "Users", url: "/users" },
-    //  { title: "Assign Management", url: "/assign-management" },
+    { title: "Invite Users", url: "/invite-users" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
@@ -107,6 +109,24 @@ export const DASHBOARD_NAV = {
   ],
   managers: [
     { title: "Users", url: "/users" },
+    { title: "Invite Users", url: "/invite-users" },
+    { title: "Variations", url: "/variations" },
+    { title: "Project Overview", url: "/project-overview" },
+    { title: "Users Invoices", url: "/users-invoices" },
+    { title: "Quotations", url: "/quotations" },
+    { title: "Purchase Order List", url: "/purchase-order-list" },
+    { title: "Call Off List", url: "/call-off-list" },
+    { title: "Labour Target", url: "/labour-target" },
+    { title: "Proforma NR", url: "/proforma-nr" },
+    { title: "Loading and Clearing", url: "/loading-and-clearing" },
+    { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
+    { title: "Operations", url: "/operations" },
+    { title: "Profile", url: "/profile" },
+  ],
+  manager: [
+    { title: "Users", url: "/users" },
+    { title: "Invite Users", url: "/invite-users" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },
@@ -122,8 +142,8 @@ export const DASHBOARD_NAV = {
     { title: "Profile", url: "/profile" },
   ],
   supervisor: [
-    // { title: "Projects", url: "/projects" },
     { title: "Users", url: "/users" },
+    { title: "Invite Users", url: "/invite-users" },
     { title: "Variations", url: "/variations" },
     { title: "Project Overview", url: "/project-overview" },
     { title: "Users Invoices", url: "/users-invoices" },

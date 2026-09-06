@@ -62,9 +62,13 @@ export default function Page() {
     try {
       setLoading(true)
       const token = localStorage.getItem("tresta:accessToken")
+      const activeRole = localStorage.getItem("tresta:activeRole")
       const headers: Record<string, string> = {}
       if (token) {
         headers["Authorization"] = `Bearer ${token}`
+      }
+      if (activeRole) {
+        headers["X-Active-Role"] = activeRole
       }
       const res = await fetch(`${getApiBaseUrl()}/account/users/`, {
         headers

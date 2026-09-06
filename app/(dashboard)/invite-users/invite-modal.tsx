@@ -10,24 +10,53 @@ import React, { useState, useEffect } from 'react'
 import { sendInvitation, getAllowedInviteRoles, AllowedRole } from '@/lib/api/invitations'
 import { Loader2, UserPlus } from 'lucide-react'
 
-export default function InviteUserDialog() {
-  const [open, setOpen] = useState(false)
+import { useRoleStore } from '@/lib/role-store'
+
+const KNOWN_INVITE_ROLES = new Set([
+  "admin",
+  "super_admin",
+  "project_admin",
+  "project_director",
+  "contracts_manager",
+  "managers",
+  "manager",
+  "supervisor",
+  "document_controller",
+  "procurement_department",
+])
+
+export default function InviteUserDialog({ defaultOpen }: { defaultOpen?: boolean }) {
+  const currentRole = useRoleStore((s) => s.role)
+  const [open, setOpen] = useState(defaultOpen ?? false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [loading, setLoading] = useState(false)
   const [allowedRoles, setAllowedRoles] = useState<AllowedRole[]>([])
   const [loadingRoles, setLoadingRoles] = useState(false)
 
-  const [canInvite, setCanInvite] = useState<boolean | null>(null) // null = loading
+  // Start with true if the user's role is known to have invite permission
+  const [canInvite, setCanInvite] = useState<boolean | null>(
+    currentRole ? KNOWN_INVITE_ROLES.has(currentRole) : null
+  )
 
   // Pre-fetch on mount to decide if we should show the button at all
   useEffect(() => {
     getAllowedInviteRoles()
       .then((res) => {
         setCanInvite(res.allowed_roles.length > 0)
+        setAllowedRoles(res.allowed_roles)
+        if (res.allowed_roles.length === 1) {
+          setRole(res.allowed_roles[0].value)
+        }
       })
-      .catch(() => setCanInvite(false))
-  }, [])
+      .catch(() => {
+        if (currentRole && KNOWN_INVITE_ROLES.has(currentRole)) {
+          setCanInvite(true)
+        } else {
+          setCanInvite(false)
+        }
+      })
+  }, [currentRole])
 
   // Also re-fetch when dialog opens (in case role changes mid-session)
   useEffect(() => {
@@ -37,6 +66,9 @@ export default function InviteUserDialog() {
       .then((res) => {
         setAllowedRoles(res.allowed_roles)
         setCanInvite(res.allowed_roles.length > 0)
+        if (res.allowed_roles.length === 1) {
+          setRole(res.allowed_roles[0].value)
+        }
       })
       .catch(() => setAllowedRoles([]))
       .finally(() => setLoadingRoles(false))
@@ -60,7 +92,9 @@ export default function InviteUserDialog() {
       toast.success(response.message || "Invitation sent successfully!")
       setOpen(false)
       setEmail('')
-      setRole('')
+      if (allowedRoles.length !== 1) {
+        setRole('')
+      }
     } catch (e: any) {
       toast.error(e.message || "Failed to send invitation.")
     } finally {
@@ -72,25 +106,33 @@ export default function InviteUserDialog() {
     setOpen(val)
     if (!val) {
       setEmail('')
-      setRole('')
+      if (allowedRoles.length !== 1) {
+        setRole('')
+      }
     }
   }
 
-  // Don't render anything while checking permissions, and hide button if user can't invite
-  if (canInvite === null) return null
-  if (!canInvite) return null
+  // Don't render anything if user definitely cannot invite
+  if (canInvite === false) return null
+
+  const isOnlyEmployeeInvite =
+    allowedRoles.length === 1 && allowedRoles[0].value === "employee"
+
+  const buttonLabel = isOnlyEmployeeInvite ? "Invite App User" : "Invite User"
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="flex items-center gap-2">
           <UserPlus className="h-4 w-4" />
-          Send Invite
+          {buttonLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md p-6">
         <DialogHeader>
-          <DialogTitle>Invite New User</DialogTitle>
+          <DialogTitle>
+            {isOnlyEmployeeInvite ? "Invite App User" : "Invite New User"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">

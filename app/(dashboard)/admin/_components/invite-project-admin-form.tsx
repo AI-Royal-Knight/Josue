@@ -21,7 +21,6 @@ type InviteResult =
 const ROLES = [
   { value: "project_admin", label: "Project Admin" },
   { value: "project_director", label: "Project Director" },
-  { value: "managing_director", label: "Managing Director" },
   { value: "supervisor", label: "Supervisor" },
   { value: "finance_department", label: "Finance Department" },
   { value: "procurement_department", label: "Procurement Department" },
