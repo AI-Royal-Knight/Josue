@@ -2,60 +2,35 @@
 
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
+import type { SupplierCompanyRelationship } from "./api/suppliers"
 
-export type SupplierConnection = {
-  supplierEmail: string
-  supplierName: string
-  companyId: string
-  status: "Invited" | "Active"
-}
-
-type SupplierState = {
-  connections: SupplierConnection[]
+interface SupplierState {
   activeCompanyId: string | null
+  activeCompanyName: string | null
+  companies: SupplierCompanyRelationship[]
 
-  inviteSupplier: (email: string, name: string, companyId: string) => void
-  setActiveCompanyId: (companyId: string | null) => void
-  getCompaniesForSupplier: (email: string) => string[]
-  getSuppliersForCompany: (companyId: string) => SupplierConnection[]
+  setActiveCompany: (id: string, name: string) => void
+  setCompanies: (companies: SupplierCompanyRelationship[]) => void
+  clearActiveCompany: () => void
 }
 
 export const useSupplierStore = create<SupplierState>()(
   persist(
-    (set, get) => ({
-      connections: [],
+    (set) => ({
       activeCompanyId: null,
+      activeCompanyName: null,
+      companies: [],
 
-      inviteSupplier: (email, name, companyId) => {
-        set((state) => {
-          const existing = state.connections.find(
-            (c) => c.supplierEmail === email && c.companyId === companyId
-          )
-          if (existing) return state
+      setActiveCompany: (id: string, name: string) =>
+        set({ activeCompanyId: id, activeCompanyName: name }),
 
-          return {
-            connections: [
-              ...state.connections,
-              { supplierEmail: email, supplierName: name, companyId, status: "Invited" },
-            ],
-          }
-        })
-      },
+      setCompanies: (companies: SupplierCompanyRelationship[]) => set({ companies }),
 
-      setActiveCompanyId: (companyId) => set({ activeCompanyId: companyId }),
-
-      getCompaniesForSupplier: (email) => {
-        return get()
-          .connections.filter((c) => c.supplierEmail === email)
-          .map((c) => c.companyId)
-      },
-
-      getSuppliersForCompany: (companyId) => {
-        return get().connections.filter((c) => c.companyId === companyId)
-      },
+      clearActiveCompany: () =>
+        set({ activeCompanyId: null, activeCompanyName: null }),
     }),
     {
-      name: "tresta:suppliers",
+      name: "tresta:supplier:store",
       storage: createJSONStorage(() =>
         typeof window !== "undefined"
           ? localStorage

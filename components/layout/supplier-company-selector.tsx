@@ -2,7 +2,6 @@
 
 import { useAuthStore } from "@/lib/auth-store"
 import { useSupplierStore } from "@/lib/supplier-store"
-import { getCompanies } from "@/lib/company-store"
 import {
   Select,
   SelectContent,
@@ -10,54 +9,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useEffect, useMemo } from "react"
 
 export function SupplierCompanySelector() {
   const { user, isAuthenticated } = useAuthStore()
-  
-  const activeCompanyId = useSupplierStore((state) => state.activeCompanyId)
-  const setActiveCompanyId = useSupplierStore((state) => state.setActiveCompanyId)
-  const getCompaniesForSupplier = useSupplierStore((state) => state.getCompaniesForSupplier)
+  const { activeCompanyId, setActiveCompany, companies } = useSupplierStore()
 
-  // This selector is only for suppliers
   const isSupplier = user?.role === "supplier"
-
-  const availableCompanyIds = useMemo(() => {
-    if (!isSupplier || !user?.email) return []
-    return getCompaniesForSupplier(user.email)
-  }, [isSupplier, user?.email, getCompaniesForSupplier])
-
-  const availableCompanies = useMemo(() => {
-    const allCompanies = getCompanies()
-    return allCompanies.filter(c => availableCompanyIds.includes(c.id))
-  }, [availableCompanyIds])
-
-  // Automatically select the first company if none is selected
-  useEffect(() => {
-    if (isSupplier && availableCompanyIds.length > 0 && !activeCompanyId) {
-      setActiveCompanyId(availableCompanyIds[0])
-    }
-  }, [isSupplier, availableCompanyIds, activeCompanyId, setActiveCompanyId])
-
   if (!isAuthenticated || !isSupplier) return null
+
+  const activeCompanies = companies.filter((c) => c.relationship_status === "active")
 
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm text-slate-400">Operating as:</span>
-      <Select 
-        value={activeCompanyId || undefined} 
-        onValueChange={setActiveCompanyId}
+      <Select
+        value={activeCompanyId || undefined}
+        onValueChange={(id) => {
+          const comp = activeCompanies.find((c) => c.company_id === id)
+          if (comp) {
+            setActiveCompany(comp.company_id, comp.company_name)
+          }
+        }}
       >
-        <SelectTrigger className="w-[200px] h-8 bg-slate-900 border-white/10 text-slate-200">
+        <SelectTrigger className="h-8 w-[200px] border-white/10 bg-slate-900 text-slate-200">
           <SelectValue placeholder="Select Company" />
         </SelectTrigger>
         <SelectContent>
-          {availableCompanies.length === 0 ? (
-            <SelectItem value="none" disabled>No companies available</SelectItem>
+          {activeCompanies.length === 0 ? (
+            <SelectItem value="none" disabled>
+              No companies available
+            </SelectItem>
           ) : (
-            availableCompanies.map((company) => (
-              <SelectItem key={company.id} value={company.id}>
-                {company.name}
+            activeCompanies.map((company) => (
+              <SelectItem key={company.id} value={company.company_id}>
+                {company.company_name}
               </SelectItem>
             ))
           )}

@@ -59,6 +59,7 @@ export interface Quotation {
   sig_commercial_department?: boolean
   sig_commercial_department_date?: string | null
   fully_approved?: boolean
+  supplier_token?: string | null
 }
 
 export interface ProjectSubfolder {

@@ -185,12 +185,6 @@ export default function InviteUserDialog({ defaultOpen }: { defaultOpen?: boolea
             </p>
           )}
 
-          {allowedRoles.length > 0 && role === 'supplier' && (
-            <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded p-2">
-              ℹ️ The supplier will receive an invitation email. Once they register, they can submit invoices linked to POs for your company.
-            </p>
-          )}
-
           <div className="flex justify-end gap-4 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
               Cancel

@@ -166,12 +166,26 @@ export default function PrivacyPolicyPage() {
           >
             Tresta
           </Link>
-          <Link
-            href="/sign-in"
-            className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-medium text-slate-200 hover:bg-white/10 transition-colors"
-          >
-            Sign in
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/terms-of-service"
+              className="text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors hidden sm:block"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              href="/support"
+              className="text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              Support
+            </Link>
+            <Link
+              href="/sign-in"
+              className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-medium text-slate-200 hover:bg-white/10 transition-colors"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -265,17 +279,35 @@ export default function PrivacyPolicyPage() {
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-5 text-center">
               <p className="text-sm text-slate-400">
                 Have a question about your data?{" "}
-                <a
-                  href="mailto:privacy@tresta.co.uk"
+                <Link
+                  href="/support"
                   className="font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
                 >
-                  Contact our privacy team →
-                </a>
+                  Contact our support & privacy team →
+                </Link>
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 bg-black/20 py-8 px-6 text-xs text-slate-400">
+        <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>&copy; {new Date().getFullYear()} Tresta Platform. All rights reserved.</div>
+          <div className="flex items-center gap-6">
+            <Link href="/" className="hover:text-slate-200 transition-colors">
+              Home
+            </Link>
+            <Link href="/terms-of-service" className="hover:text-slate-200 transition-colors">
+              Terms of Service
+            </Link>
+            <Link href="/support" className="hover:text-slate-200 transition-colors">
+              Support
+            </Link>
+          </div>
+        </div>
+      </footer>
     </main>
   )
 }

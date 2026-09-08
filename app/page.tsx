@@ -264,11 +264,11 @@ export default function Page() {
       <footer className="py-6 px-6 md:px-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 z-10 bg-[#071324]">
         <div>&copy; {new Date().getFullYear()} Tresta. All rights reserved.</div>
         <div className="flex gap-6 mt-4 md:mt-0">
-          <Link href="#" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
-          <Link href="#" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
+          <Link href="/privacy-policy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
+          <Link href="/terms-of-service" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
         </div>
         <div className="mt-4 md:mt-0">
-          <Link href="#" className="hover:text-slate-300 transition-colors">Contact Support</Link>
+          <Link href="/support" className="hover:text-slate-300 transition-colors">Contact Support</Link>
         </div>
       </footer>
     </main>

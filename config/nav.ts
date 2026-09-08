@@ -18,6 +18,8 @@ export const DASHBOARD_NAV: Record<string, NavItem[]> = {
   ],
   project_director: [
     { title: "Project Overview", url: "/project-overview" },
+    { title: "Users", url: "/users" },
+    { title: "Invite Users", url: "/invite-users" },
     { title: "Create Variation", url: "/create-variation" },
     { title: "Variation List", url: "/variation-list" },
     { title: "Proforma NR List", url: "/proforma-nr" },

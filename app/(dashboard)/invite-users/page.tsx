@@ -171,12 +171,6 @@ export default function InviteUsersPage() {
               </div>
             )}
 
-            {role === "supplier" && (
-              <div className="rounded-md border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-300">
-                The supplier will receive an invitation email. Once registered, they will be linked to your company to submit invoices.
-              </div>
-            )}
-
             <div className="flex justify-end pt-2">
               <Button
                 type="submit"

@@ -12,6 +12,25 @@ const nextConfig = {
     "compress-commons",
     "zip-stream",
   ],
+  async redirects() {
+    return [
+      {
+        source: "/terms",
+        destination: "/terms-of-service",
+        permanent: true,
+      },
+      {
+        source: "/contact",
+        destination: "/support",
+        permanent: true,
+      },
+      {
+        source: "/contact-support",
+        destination: "/support",
+        permanent: true,
+      },
+    ]
+  },
 }
 
 export default nextConfig

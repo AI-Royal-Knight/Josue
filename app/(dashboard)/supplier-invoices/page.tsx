@@ -1,126 +1,82 @@
 "use client"
 
-import { useCallback, useMemo, useState, useEffect } from "react"
-import { AgTable } from "@/components/common/AgTable"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import type {
-  CellValueChangedEvent,
-  ColDef,
-  ICellRendererParams,
-} from "ag-grid-community"
+  CheckCircle2,
+  Clock,
+  Download,
+  FileText,
+  Loader2,
+  RefreshCw,
+  Search,
+  XCircle,
+} from "lucide-react"
+
+import { AgTable } from "@/components/common/AgTable"
+import type { ColDef } from "ag-grid-community"
 import TableStat from "@/components/common/table-stat"
-import { useRoleStore } from "@/lib/role-store"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  getProcurementSupplierInvoices,
+  updateProcurementSupplierInvoice,
+  type ProcurementSupplierInvoice,
+} from "@/lib/api/suppliers"
 
-import ViewInvoiceDialog, { InvoicePreviewData } from "@/components/common/view-invoice-dialog"
-import { getQuotations, patchQuotation, Quotation } from "@/lib/api/quotations"
-import { format } from "date-fns"
-
-type ApprovalStatus = "Approved" | "Rejected" | "Pending"
-
-type SupplierInvoiceRow = {
+type InvoiceRow = {
   id: string
   no: string
   invoiceNumber: string
   date: string
-  poDate: string
-  poRef: string
-  callOffDate: string
-  callOffRef: string
-  variationRef: string
-  otherRef: string
-  project: string
   supplierName: string
-  invoiceTotal: string
-  expectedCost: string
-  paymentDueDate: string
-  approvedBy: string
-  approved: ApprovalStatus
-  financeComments: string | null
-  procurementComments: string | null
-  commercialComments: string | null
+  supplierEmail: string
+  amount: string
+  description: string
+  status: string
+  procurementComments: string
+  fileUrl: string | null
+  submittedAt: string
 }
 
-type CommentField =
-  | "financeComments"
-  | "procurementComments"
-  | "commercialComments"
+export default function SupplierInvoicesPage() {
+  const [invoices, setInvoices] = useState<ProcurementSupplierInvoice[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState("")
 
-type PendingToggle = {
-  id: string
-  no: string
-  invoiceNumber: string
-  nextApproved: boolean
-}
-
-const summaryRows = [
-  { label: "Invoices", qty: "0", value: "0" },
-  { label: "Approved invoices", qty: "0", value: "0" },
-  { label: "Invoices awaiting approval", qty: "0", value: "0" },
-  {
-    label: "Invoices due this month",
-    qty: "0",
-    value: "0",
-  },
-  { label: "Invoices paid", qty: "0", value: "0" },
-]
-
-export default function Page() {
-  const [rows, setRows] = useState<SupplierInvoiceRow[]>([])
-  const [pending, setPending] = useState<PendingToggle | null>(null)
-  const [summary, setSummary] = useState(summaryRows)
+  // Edit / Process Dialog State
+  const [selectedInvoice, setSelectedInvoice] = useState<ProcurementSupplierInvoice | null>(null)
+  const [editStatus, setEditStatus] = useState<string>("")
+  const [editComments, setEditComments] = useState<string>("")
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const loadData = useCallback(async () => {
+    setLoading(true)
     try {
-      const data = await getQuotations()
-      const mapped: SupplierInvoiceRow[] = data.map((q, i) => ({
-        id: q.id,
-        no: String(i + 1).padStart(3, "0"),
-        invoiceNumber: q.quote_ref,
-        date: q.date_of_quote ? format(new Date(q.date_of_quote), "dd MMM yyyy") : "-",
-        poDate: q.date_po_created ? format(new Date(q.date_po_created), "dd MMM yyyy") : "-",
-        poRef: q.po_created ? "Yes" : "No",
-        callOffDate: "-",
-        callOffRef: "-",
-        variationRef: q.variation_ref || "-",
-        otherRef: "-",
-        project: q.project_name || "-",
-        supplierName: q.supplier_name || "-",
-        invoiceTotal: `£${Number(q.quote_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        expectedCost: `£${Number(q.quote_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        paymentDueDate: "-",
-        approvedBy: q.status === "Approved" ? "Finance Dept" : "Pending",
-        approved: q.status as ApprovalStatus,
-        financeComments: q.finance_comments || null,
-        procurementComments: q.procurement_comments || null,
-        commercialComments: q.commercial_comments || null,
-      }))
-      
-      setRows(mapped)
-
-      const approvedCount = data.filter(d => d.status === "Approved").length
-      const pendingCount = data.filter(d => d.status === "Pending").length
-      
-      setSummary([
-        { label: "Invoices", qty: String(data.length), value: "0" },
-        { label: "Approved invoices", qty: String(approvedCount), value: "0" },
-        { label: "Invoices awaiting approval", qty: String(pendingCount), value: "0" },
-        { label: "Invoices due this month", qty: "0", value: "0" },
-        { label: "Invoices paid", qty: "0", value: "0" },
-      ])
-      
-    } catch (err) {
-      console.error("Failed to load supplier invoices:", err)
+      const data = await getProcurementSupplierInvoices()
+      setInvoices(data)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load supplier invoices")
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -128,276 +84,353 @@ export default function Page() {
     loadData()
   }, [loadData])
 
-  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoicePreviewData | null>(null)
-
-  const openInvoice = useCallback((row: SupplierInvoiceRow) => {
-    setSelectedInvoice({
-      invoiceNumber: row.invoiceNumber,
-      date: row.date,
-      project: row.project,
-      statusLabel: "Approved Status",
-      statusValue: row.approved,
-      amount: row.invoiceTotal || "£0.00",
-      description: `Supplier: ${row.supplierName}`,
-    })
-    setInvoiceDialogOpen(true)
-  }, [])
-
-  const role = useRoleStore((state) => state.role)
-
-  // Stage the toggle — opens confirmation dialog
-  const requestToggle = useCallback(
-    async (no: string, invoiceNumber: string, nextApproved: boolean) => {
-      // Find the ID. Here invoiceNumber acts as the ID/quote_ref, but to use patchQuotation we need the actual UUID if possible.
-      // Wait, getQuotations returns UUID. If we just patch using quote_ref it might fail if the backend expects UUID.
-      // Let's pass the real ID in `no` or in `otherRef` temporarily. I will add `id` to SupplierInvoiceRow.
-      const row = rows.find(r => r.invoiceNumber === invoiceNumber)
-      if (row) {
-        setPending({ id: row.id, no, invoiceNumber, nextApproved })
-      }
-    },
-    [rows]
-  )
-
-  // Confirmed — commit the change
-  const confirmToggle = useCallback(async () => {
-    if (!pending) return
-    try {
-      const status = pending.nextApproved ? "Approved" : "Pending"
-      // Find the actual Quotation ID. We stored quote_ref in invoiceNumber.
-      // Let's use patchQuotation. To make this work smoothly, we should ensure we have the UUID.
-      const row = rows.find(r => r.no === pending.no)
-      const qId = row?.id || pending.id 
-
-      await patchQuotation(qId, { status })
-      
-      setRows((prev) =>
-        prev.map((r) =>
-          r.no === pending.no
-            ? {
-              ...r,
-              approved: status as ApprovalStatus,
-              approvedBy: pending.nextApproved
-                ? "Finance Department"
-                : "Pending",
-            }
-            : r
-        )
-      )
-    } catch (err) {
-      console.error("Failed to update status", err)
-    } finally {
-      setPending(null)
-    }
-  }, [pending, rows])
-
-  function CommentCellRenderer(
-    params: ICellRendererParams<SupplierInvoiceRow, string> & {
-      fieldName: CommentField
-    }
-  ) {
-    return (
-      <Input
-        value={params.value ?? ""}
-        placeholder="add comment"
-        className="h-7 border-[#253046] bg-[#101012] text-xs text-slate-200 placeholder:text-slate-500"
-        onChange={(e) =>
-          params.node.setDataValue(params.fieldName, e.target.value)
-        }
-      />
-    )
+  const handleOpenProcessDialog = (inv: ProcurementSupplierInvoice) => {
+    setSelectedInvoice(inv)
+    setEditStatus(inv.status)
+    setEditComments(inv.procurement_comments || "")
   }
 
-  const columnDefs = useMemo<ColDef<SupplierInvoiceRow>[]>(() => {
-    const base: ColDef<SupplierInvoiceRow>[] = [
-      { field: "no", headerName: "No", minWidth: 70, filter: false },
+  const handleUpdateInvoice = async () => {
+    if (!selectedInvoice) return
+    setIsUpdating(true)
+    try {
+      await updateProcurementSupplierInvoice(selectedInvoice.id, {
+        status: editStatus,
+        procurement_comments: editComments,
+      })
+      toast.success("Invoice status updated successfully")
+      setSelectedInvoice(null)
+      loadData()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update invoice")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      const matchesStatus =
+        statusFilter === "all" || inv.status.toLowerCase() === statusFilter.toLowerCase()
+      const matchesSearch =
+        inv.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.supplier_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (inv.description && inv.description.toLowerCase().includes(searchQuery.toLowerCase()))
+
+      return matchesStatus && matchesSearch
+    })
+  }, [invoices, statusFilter, searchQuery])
+
+  const rows: InvoiceRow[] = useMemo(() => {
+    return filteredInvoices.map((inv, idx) => ({
+      id: inv.id,
+      no: String(idx + 1).padStart(2, "0"),
+      invoiceNumber: inv.invoice_number,
+      date: inv.invoice_date,
+      supplierName: inv.supplier_name,
+      supplierEmail: inv.supplier_email,
+      amount: `£${parseFloat(inv.amount || "0").toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      description: inv.description || "—",
+      status: inv.status,
+      procurementComments: inv.procurement_comments || "—",
+      fileUrl: inv.file_url,
+      submittedAt: new Date(inv.created_at).toLocaleDateString(),
+    }))
+  }, [filteredInvoices])
+
+  const stats = useMemo(() => {
+    const totalCount = invoices.length
+    const totalValue = invoices.reduce(
+      (sum, i) => sum + (parseFloat(i.amount) || 0),
+      0
+    )
+    const submitted = invoices.filter((i) => i.status === "submitted").length
+    const processing = invoices.filter((i) => i.status === "processing").length
+    const approved = invoices.filter((i) => i.status === "approved" || i.status === "paid").length
+
+    return {
+      totalCount,
+      totalValue,
+      submitted,
+      processing,
+      approved,
+    }
+  }, [invoices])
+
+  const columnDefs = useMemo<ColDef<InvoiceRow>[]>(
+    () => [
+      { headerName: "No", field: "no", maxWidth: 70, filter: false },
       {
-        field: "invoiceNumber",
         headerName: "Invoice Number",
-        minWidth: 160,
-        cellRenderer: (params: {
-          data?: SupplierInvoiceRow
-          value: string
-        }) => (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (params.data) openInvoice(params.data)
-            }}
-            className={`${params.data?.approved === "Approved" ? "text-green-400" : "text-red-500"} text-sm font-medium hover:underline`}
-          >
-            {params.value}
-          </button>
-        ),
-      },
-      { field: "poDate", headerName: "PO Date" },
-      { field: "poRef", headerName: "PO Ref" },
-      { field: "callOffDate", headerName: "Call Off Date" },
-      { field: "callOffRef", headerName: "Call Off Ref" },
-      { field: "variationRef", headerName: "Variation Ref" },
-      { field: "otherRef", headerName: "Other Ref" },
-      { field: "project", headerName: "Project", minWidth: 140 },
-      { field: "supplierName", headerName: "Supplier Name" },
-      { field: "invoiceTotal", headerName: "Invoice Total" },
-      { field: "expectedCost", headerName: "Expected Cost" },
-      {
-        field: "paymentDueDate",
-        headerName: "Payment Due Date",
-        minWidth: 180,
-      },
-    ]
-
-    if (role === "procurement_department") {
-      base.push({
-        field: "approved",
-        headerName: "Approved",
-        minWidth: 160,
-        sortable: true,
-        filter: true,
-        cellRenderer: (params: { data?: SupplierInvoiceRow }) => {
-          const row = params.data
-          if (!row) return null
-          const isApproved = row.approved === "Approved"
-          const isRejected = row.approved === "Rejected"
-
+        field: "invoiceNumber",
+        minWidth: 150,
+        cellRenderer: (params: any) => {
+          const row = params.data as InvoiceRow
+          const rawInv = invoices.find((i) => i.id === row?.id)
           return (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <Switch
-                checked={isApproved}
-                // Rejected rows are locked — can't re-toggle
-                disabled={isRejected}
-                onCheckedChange={(checked) =>
-                  requestToggle(row.no, row.invoiceNumber, checked)
-                }
-              />
-              <span
-                className={
-                  isApproved
-                    ? "text-xs font-medium text-emerald-400"
-                    : isRejected
-                      ? "text-xs font-medium text-red-400"
-                      : "text-xs font-medium text-amber-400"
-                }
-              >
-                {row.approved}
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => rawInv && handleOpenProcessDialog(rawInv)}
+              className="font-mono text-xs font-semibold text-blue-600 hover:underline"
+            >
+              {params.value}
+            </button>
           )
         },
-      })
-    }
-
-    base.push(
-      { field: "approvedBy", headerName: "Approved By" },
+      },
+      { headerName: "Invoice Date", field: "date", minWidth: 110 },
+      { headerName: "Supplier Name", field: "supplierName", minWidth: 160 },
+      { headerName: "Supplier Email", field: "supplierEmail", minWidth: 180 },
+      { headerName: "Amount", field: "amount", minWidth: 120 },
       {
-        field: "financeComments",
-        headerName: "Finance Comments",
-        editable: true,
-        cellRenderer: CommentCellRenderer,
-        cellRendererParams: { fieldName: "financeComments" },
+        headerName: "Status",
+        field: "status",
+        minWidth: 130,
+        cellRenderer: (params: any) => {
+          const val = (params.value || "").toLowerCase()
+          const colorClass =
+            val === "approved" || val === "paid"
+              ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+              : val === "processing"
+              ? "bg-amber-50 text-amber-700 ring-amber-600/20"
+              : val === "rejected"
+              ? "bg-rose-50 text-rose-700 ring-rose-600/20"
+              : "bg-blue-50 text-blue-700 ring-blue-600/20"
+
+          return (
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ring-1 ${colorClass}`}
+            >
+              {val}
+            </span>
+          )
+        },
       },
       {
-        field: "procurementComments",
-        headerName: "Procurement Comments",
-        editable: true,
-        minWidth: 160,
-        cellRenderer: CommentCellRenderer,
-        cellRendererParams: { fieldName: "procurementComments" },
+        headerName: "Attachment",
+        field: "fileUrl",
+        minWidth: 110,
+        cellRenderer: (params: any) => {
+          if (!params.value) return <span className="text-slate-400">—</span>
+          return (
+            <a
+              href={params.value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>View File</span>
+            </a>
+          )
+        },
       },
+      { headerName: "Procurement Notes", field: "procurementComments", minWidth: 180 },
       {
-        field: "commercialComments",
-        headerName: "Commercial Comments",
-        editable: true,
-        minWidth: 160,
-        cellRenderer: CommentCellRenderer,
-        cellRendererParams: { fieldName: "commercialComments" },
-      }
-    )
-
-    return base
-  }, [role, requestToggle])
-
-  const handleCellValueChanged = useCallback(
-    async (params: CellValueChangedEvent<SupplierInvoiceRow>) => {
-      const field = params.colDef.field
-      const newValue = params.newValue
-
-      const row = params.data
-      const qId = row.id
-
-      try {
-        if (field === "financeComments") {
-          await patchQuotation(qId, { finance_comments: newValue })
-        } else if (field === "procurementComments") {
-          await patchQuotation(qId, { procurement_comments: newValue })
-        } else if (field === "commercialComments") {
-          await patchQuotation(qId, { commercial_comments: newValue })
-        }
-      } catch (err) {
-        console.error("Failed to save comment", err)
-      }
-
-      setRows((prev) =>
-        prev.map((r) => (r.no === params.data.no ? params.data : r))
-      )
-    },
-    []
+        headerName: "Action",
+        field: "id",
+        maxWidth: 120,
+        cellRenderer: (params: any) => {
+          const rawInv = invoices.find((i) => i.id === params.value)
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => rawInv && handleOpenProcessDialog(rawInv)}
+              className="h-7 text-xs"
+            >
+              Review
+            </Button>
+          )
+        },
+      },
+    ],
+    [invoices]
   )
 
   return (
-    <div className="w-full min-w-0 space-y-8 p-4">
-      <h2 className="text-xl font-semibold">Supplier Invoices</h2>
+    <div className="w-full min-w-0 space-y-6 bg-white p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Supplier Invoices</h1>
+          <p className="mt-1 text-xs text-slate-500">
+            Review and process invoices submitted directly by suppliers.
+          </p>
+        </div>
 
-      <div className="flex-1">
-        <TableStat summaryRows={summary} />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={loadData}
+          disabled={loading}
+          className="flex items-center gap-1 text-xs"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      <TableStat
+        summaryRows={[
+          { label: "Total Invoices", value: String(stats.totalCount) },
+          { label: "Submitted (New)", value: String(stats.submitted) },
+          { label: "In Processing", value: String(stats.processing) },
+          { label: "Approved / Paid", value: String(stats.approved) },
+          {
+            label: "Total Value",
+            value: `£${stats.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+          },
+        ]}
+      />
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {["all", "submitted", "processing", "approved", "rejected", "paid"].map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`rounded-lg px-3 py-1 text-xs font-semibold capitalize transition-colors ${
+                statusFilter === st
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+          <Input
+            placeholder="Search invoice or supplier..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 pl-8 text-xs"
+          />
+        </div>
       </div>
 
       <AgTable
-        rowData={rows}
         columnDefs={columnDefs}
-        suppressCellClickAction
-        onCellValueChanged={handleCellValueChanged}
-        height={500}
-        pageSize={50}
-        gridOptions={{ rowHeight: 48 }}
+        rowData={rows}
+        defaultColDef={{
+          flex: 1,
+          minWidth: 120,
+          resizable: true,
+        }}
       />
 
-      {/* Confirmation dialog */}
-      <AlertDialog
-        open={!!pending}
-        onOpenChange={(open) => !open && setPending(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pending?.nextApproved
-                ? "Approve this invoice?"
-                : "Revoke approval?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pending?.nextApproved
-                ? `This will approve invoice ${pending.invoiceNumber}. Are you sure?`
-                : `This will revoke approval for invoice ${pending?.invoiceNumber} and set it back to Pending.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPending(null)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmToggle}>
-              {pending?.nextApproved ? "Approve" : "Revoke"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Review / Process Invoice Dialog */}
+      <Dialog open={Boolean(selectedInvoice)} onOpenChange={(open) => !open && setSelectedInvoice(null)}>
+        <DialogContent className="max-w-md bg-white text-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Process Supplier Invoice</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Update submission status and procurement comments for this invoice.
+            </DialogDescription>
+          </DialogHeader>
 
-      <ViewInvoiceDialog
-        open={invoiceDialogOpen}
-        onOpenChange={setInvoiceDialogOpen}
-        invoice={selectedInvoice}
-      />
+          {selectedInvoice && (
+            <div className="space-y-4 pt-2">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Invoice Number:</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {selectedInvoice.invoice_number}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Supplier:</span>
+                  <span className="font-semibold text-slate-900">
+                    {selectedInvoice.supplier_name}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Email:</span>
+                  <span className="text-slate-700">{selectedInvoice.supplier_email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Amount:</span>
+                  <span className="font-bold text-emerald-600">
+                    £{parseFloat(selectedInvoice.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Date:</span>
+                  <span className="text-slate-700">{selectedInvoice.invoice_date}</span>
+                </div>
+                {selectedInvoice.description && (
+                  <div className="pt-1 border-t border-slate-200">
+                    <span className="text-slate-500">Description: </span>
+                    <span className="text-slate-700">{selectedInvoice.description}</span>
+                  </div>
+                )}
+                {selectedInvoice.file_url && (
+                  <div className="pt-1 border-t border-slate-200">
+                    <a
+                      href={selectedInvoice.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      View Uploaded Document
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Invoice Status</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Procurement Comments / Internal Notes</Label>
+                <Textarea
+                  placeholder="Add notes for this invoice..."
+                  value={editComments}
+                  onChange={(e) => setEditComments(e.target.value)}
+                  rows={3}
+                  className="text-xs"
+                />
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedInvoice(null)}
+                  disabled={isUpdating}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUpdateInvoice}
+                  disabled={isUpdating}
+                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs"
+                >
+                  {isUpdating ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

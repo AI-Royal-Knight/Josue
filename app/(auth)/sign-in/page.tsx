@@ -67,6 +67,9 @@ export default function SignInPage() {
       if (res.user.role === "super_admin") {
         setRole("super_admin")
         window.location.href = "/super-admin"
+      } else if (res.user.role === "supplier") {
+        setRole("supplier")
+        router.push("/supplier/companies")
       } else if (uniqueRoles.size > 1) {
         // User has multiple roles — show the selector page
         router.push("/select-role")
