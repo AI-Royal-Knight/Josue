@@ -190,13 +190,64 @@ export default function SupplierPortalPage() {
     if (!selectedQuote || !selectedQuote.line_items) return 0
     return selectedQuote.line_items.reduce((acc, item) => {
       const enteredPrice = quotePrices[String(item.id)]
-      const price = enteredPrice !== undefined && enteredPrice !== ""
-        ? parseFloat(enteredPrice) || 0
-        : (item.each || 0)
+      const price =
+        enteredPrice !== undefined && enteredPrice !== ""
+          ? parseFloat(enteredPrice) || 0
+          : (item.each || 0)
       const qty = Number(item.qty) || 1
       const discount = Number(item.discount) || 0
       return acc + (qty * price * (1 - discount / 100))
     }, 0)
+  }
+
+  // Calculate target total
+  const calculateTargetTotal = () => {
+    if (!selectedQuote || !selectedQuote.line_items) return 0
+    return selectedQuote.line_items.reduce((acc, item) => {
+      const price = Number(item.each) || 0
+      const qty = Number(item.qty) || 1
+      const discount = Number(item.discount) || 0
+      return acc + (qty * price * (1 - discount / 100))
+    }, 0)
+  }
+
+  // Set all line items to target rates
+  const handleAcceptTargetRates = () => {
+    if (!selectedQuote || !selectedQuote.line_items) return
+    const updatedPrices: Record<string, string> = {}
+    selectedQuote.line_items.forEach((item) => {
+      if (item.id) {
+        updatedPrices[String(item.id)] = String(item.each || "0")
+      }
+    })
+    setQuotePrices(updatedPrices)
+    toast.success("All line items set to Target Rates!")
+  }
+
+  // 1-Click Agree to Target Price and submit
+  const handleAcceptAndSubmit = async () => {
+    if (!activeCompanyId || !selectedQuote || !selectedQuote.line_items) return
+    const itemsData = selectedQuote.line_items.map((item) => ({
+      id: item.id,
+      supplier_price: parseFloat(String(item.each || "0")),
+    }))
+
+    setIsSubmittingQuote(true)
+    try {
+      const formData = new FormData()
+      formData.append("line_items", JSON.stringify(itemsData))
+      if (quotePdfFile) {
+        formData.append("supplier_quote_pdf", quotePdfFile)
+      }
+      await submitSupplierQuotationById(activeCompanyId, selectedQuote.id, formData)
+      toast.success(`Target prices accepted and submitted for ${selectedQuote.quote_ref}!`)
+      setIsQuoteModalOpen(false)
+      loadQuotations()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit quote.")
+    } finally {
+      setIsSubmittingQuote(false)
+    }
   }
 
   // Submit quote pricing
@@ -1031,9 +1082,21 @@ export default function SupplierPortalPage() {
           <form onSubmit={handleSubmitQuote} className="space-y-4 pt-1">
             {/* Line Items Pricing Table */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-slate-300">
-                Quotation Line Items & Unit Pricing
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-slate-300">
+                  Quotation Line Items & Unit Pricing
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAcceptTargetRates}
+                  className="h-7 border-emerald-500/30 bg-emerald-500/10 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors"
+                >
+                  <Check className="mr-1 h-3 w-3" />
+                  Accept All Target Rates
+                </Button>
+              </div>
               <div className="max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.02]">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-[#121c33] border-b border-white/10 text-slate-400">
@@ -1148,33 +1211,56 @@ export default function SupplierPortalPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-3 border-t border-white/10">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsQuoteModalOpen(false)}
-                disabled={isSubmittingQuote}
-                className="border-white/10 text-xs text-slate-300"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmittingQuote}
-                className="bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 shadow-md shadow-blue-600/20"
-              >
-                {isSubmittingQuote ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    Submitting Quote...
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud className="mr-1.5 h-3.5 w-3.5" />
-                    Submit Quotation Pricing
-                  </>
-                )}
-              </Button>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-3 border-t border-white/10">
+              <div className="text-[11px] text-slate-400">
+                Agreeing to target rates confirms you can supply at procurement&apos;s requested pricing.
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsQuoteModalOpen(false)}
+                  disabled={isSubmittingQuote}
+                  className="border-white/10 text-xs text-slate-300"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAcceptAndSubmit}
+                  disabled={isSubmittingQuote}
+                  className="bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-500 shadow-md shadow-emerald-600/20"
+                >
+                  {isSubmittingQuote ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                      Agree to Target Price (£{calculateTargetTotal().toFixed(2)})
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmittingQuote}
+                  className="bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 shadow-md shadow-blue-600/20"
+                >
+                  {isSubmittingQuote ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Submitting Quote...
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="mr-1.5 h-3.5 w-3.5" />
+                      Submit Custom Pricing
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </form>
         </DialogContent>
