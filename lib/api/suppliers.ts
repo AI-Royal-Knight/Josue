@@ -95,11 +95,36 @@ export interface SupplierInvoice {
   file_url: string | null
   status: "submitted" | "processing" | "approved" | "rejected" | "paid"
   procurement_comments: string
+  // PO / Call-Off linkage
+  po_reference: string | null
+  call_off_reference: string | null
+  call_off_amount: string | null
+  call_off_qty: string | null
   created_at: string
 }
 
 export interface ProcurementSupplierInvoice extends SupplierInvoice {
   processed_at?: string | null
+}
+
+/** A single call-off entry within a PO group */
+export interface SupplierCallOff {
+  id: string
+  call_off_ref: string
+  price: string
+  qty: string
+  total: string
+  date: string
+  expected_delivery_date: string | null
+  line_item_description: string
+}
+
+/** A PO (Quotation) with its associated call-offs, returned from GET /supplier/call-offs/ */
+export interface SupplierCallOffGroup {
+  po_ref: string
+  quotation_id: string
+  project_name: string
+  call_offs: SupplierCallOff[]
 }
 
 /* ==========================================================================
@@ -286,3 +311,14 @@ export async function submitSupplierQuotationById(
   })
 }
 
+/**
+ * Fetch all call-offs for this supplier grouped by PO (quote_ref).
+ * Used to populate the two-level PO → Call-Off selector on the invoice submission form.
+ */
+export async function getSupplierCallOffs(companyId: string): Promise<SupplierCallOffGroup[]> {
+  return apiRequest<SupplierCallOffGroup[]>("/supplier/call-offs/", {
+    headers: {
+      "X-Company-ID": companyId,
+    },
+  })
+}

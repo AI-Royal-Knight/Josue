@@ -49,6 +49,8 @@ type InvoiceRow = {
   supplierName: string
   supplierEmail: string
   amount: string
+  poReference: string
+  callOffReference: string
   description: string
   status: string
   procurementComments: string
@@ -131,6 +133,8 @@ export default function SupplierInvoicesPage() {
       supplierName: inv.supplier_name,
       supplierEmail: inv.supplier_email,
       amount: `£${parseFloat(inv.amount || "0").toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      poReference: inv.po_reference || "—",
+      callOffReference: inv.call_off_reference || "—",
       description: inv.description || "—",
       status: inv.status,
       procurementComments: inv.procurement_comments || "—",
@@ -183,6 +187,8 @@ export default function SupplierInvoicesPage() {
       { headerName: "Supplier Name", field: "supplierName", minWidth: 160 },
       { headerName: "Supplier Email", field: "supplierEmail", minWidth: 180 },
       { headerName: "Amount", field: "amount", minWidth: 120 },
+      { headerName: "PO Reference", field: "poReference", minWidth: 140 },
+      { headerName: "Call-Off Ref", field: "callOffReference", minWidth: 130 },
       {
         headerName: "Status",
         field: "status",
@@ -353,7 +359,7 @@ export default function SupplierInvoicesPage() {
                   <span className="text-slate-700">{selectedInvoice.supplier_email}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Amount:</span>
+                  <span className="text-slate-500">Invoice Amount:</span>
                   <span className="font-bold text-emerald-600">
                     £{parseFloat(selectedInvoice.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
@@ -362,6 +368,53 @@ export default function SupplierInvoicesPage() {
                   <span className="text-slate-500">Date:</span>
                   <span className="text-slate-700">{selectedInvoice.invoice_date}</span>
                 </div>
+
+                {/* PO / Call-Off linkage */}
+                {(selectedInvoice.po_reference || selectedInvoice.call_off_reference) && (
+                  <div className="pt-1.5 border-t border-slate-200 space-y-1">
+                    {selectedInvoice.po_reference && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">PO Reference:</span>
+                        <span className="font-mono font-semibold text-blue-700">{selectedInvoice.po_reference}</span>
+                      </div>
+                    )}
+                    {selectedInvoice.call_off_reference && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Call-Off Ref:</span>
+                        <span className="font-mono font-semibold text-purple-700">{selectedInvoice.call_off_reference}</span>
+                      </div>
+                    )}
+                    {selectedInvoice.call_off_amount && (
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-slate-500">Call-Off Value:</span>
+                        <span className="font-bold text-slate-800">
+                          £{parseFloat(selectedInvoice.call_off_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                    {/* Variance indicator */}
+                    {selectedInvoice.call_off_amount && (() => {
+                      const invoiceAmt = parseFloat(selectedInvoice.amount)
+                      const callOffAmt = parseFloat(selectedInvoice.call_off_amount)
+                      const diff = invoiceAmt - callOffAmt
+                      const isMatch = Math.abs(diff) < 0.01
+                      return (
+                        <div className={`flex justify-between items-center rounded px-2 py-1 text-[11px] font-semibold ${
+                          isMatch ? "bg-emerald-50 text-emerald-700" : diff > 0 ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"
+                        }`}>
+                          <span>Match check:</span>
+                          <span>
+                            {isMatch ? "✓ Invoice matches call-off" : diff > 0
+                              ? `⚠ Over by £${Math.abs(diff).toFixed(2)}`
+                              : `⚠ Under by £${Math.abs(diff).toFixed(2)}`
+                            }
+                          </span>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+
                 {selectedInvoice.description && (
                   <div className="pt-1 border-t border-slate-200">
                     <span className="text-slate-500">Description: </span>

@@ -41,11 +41,14 @@ import {
 import {
   getSupplierCompanies,
   getSupplierInvoices,
+  getSupplierCallOffs,
   submitSupplierInvoice,
   getSupplierQuotations,
   submitSupplierQuotationById,
   type SupplierCompanyRelationship,
   type SupplierInvoice,
+  type SupplierCallOffGroup,
+  type SupplierCallOff,
   type Quotation,
   type QuotationLineItem,
 } from "@/lib/api/suppliers"
@@ -93,6 +96,15 @@ export default function SupplierPortalPage() {
   const [amount, setAmount] = useState("")
   const [description, setDescription] = useState("")
   const [selectedInvoiceFile, setSelectedInvoiceFile] = useState<File | null>(null)
+
+  // PO / Call-Off selector state for invoice submission
+  const [callOffGroups, setCallOffGroups] = useState<SupplierCallOffGroup[]>([])
+  const [callOffsLoading, setCallOffsLoading] = useState(false)
+  const [selectedPoRef, setSelectedPoRef] = useState("")
+  const [selectedCallOffId, setSelectedCallOffId] = useState("")
+  const [manualPoRef, setManualPoRef] = useState("")
+  const [manualCallOffRef, setManualCallOffRef] = useState("")
+  const [useManualRefs, setUseManualRefs] = useState(false)
 
   // 1. Validate auth & resolve active company
   useEffect(() => {
@@ -162,12 +174,28 @@ export default function SupplierPortalPage() {
     }
   }, [activeCompanyId])
 
+  // 4. Fetch call-offs (PO groups) for invoice submission selector
+  const loadCallOffs = useCallback(async () => {
+    if (!activeCompanyId) return
+    setCallOffsLoading(true)
+    try {
+      const data = await getSupplierCallOffs(activeCompanyId)
+      setCallOffGroups(data)
+    } catch (err: any) {
+      // Non-fatal — fall back to manual entry
+      console.warn("Could not load call-offs:", err.message)
+    } finally {
+      setCallOffsLoading(false)
+    }
+  }, [activeCompanyId])
+
   useEffect(() => {
     if (activeCompanyId) {
       loadQuotations()
       loadInvoices()
+      loadCallOffs()
     }
-  }, [activeCompanyId, loadQuotations, loadInvoices])
+  }, [activeCompanyId, loadQuotations, loadInvoices, loadCallOffs])
 
   // Handle open quote modal
   const handleOpenQuoteModal = (quote: Quotation) => {
@@ -308,12 +336,29 @@ export default function SupplierPortalPage() {
       return
     }
 
+    // Resolve PO and call-off references
+    const resolvedPoRef = useManualRefs ? manualPoRef.trim() : selectedPoRef
+    const resolvedCallOffId = useManualRefs ? null : selectedCallOffId || null
+    const resolvedCallOffRef = useManualRefs
+      ? manualCallOffRef.trim()
+      : callOffGroups
+          .find((g) => g.po_ref === selectedPoRef)
+          ?.call_offs.find((c) => c.id === selectedCallOffId)?.call_off_ref || ""
+
     const formData = new FormData()
     formData.append("invoice_number", invoiceNumber.trim())
     formData.append("invoice_date", invoiceDate)
     formData.append("amount", amount.trim())
     if (description.trim()) {
       formData.append("description", description.trim())
+    }
+    if (resolvedPoRef) {
+      formData.append("po_reference", resolvedPoRef)
+    }
+    if (resolvedCallOffId) {
+      formData.append("call_off", resolvedCallOffId)
+    } else if (resolvedCallOffRef) {
+      formData.append("call_off_reference", resolvedCallOffRef)
     }
     if (selectedInvoiceFile) {
       formData.append("file", selectedInvoiceFile)
@@ -330,6 +375,11 @@ export default function SupplierPortalPage() {
       setAmount("")
       setDescription("")
       setSelectedInvoiceFile(null)
+      setSelectedPoRef("")
+      setSelectedCallOffId("")
+      setManualPoRef("")
+      setManualCallOffRef("")
+      setUseManualRefs(false)
 
       // Reload list
       loadInvoices()
@@ -1267,16 +1317,131 @@ export default function SupplierPortalPage() {
       </Dialog>
 
       {/* Invoice Upload Modal */}
-      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-        <DialogContent className="max-w-md border-white/10 bg-[#0d1527] text-white">
+      <Dialog open={isUploadOpen} onOpenChange={(open) => {
+        setIsUploadOpen(open)
+        if (!open) {
+          // Reset PO/call-off selectors when closing
+          setSelectedPoRef("")
+          setSelectedCallOffId("")
+          setManualPoRef("")
+          setManualCallOffRef("")
+          setUseManualRefs(false)
+        }
+      }}>
+        <DialogContent className="max-w-lg border-white/10 bg-[#0d1527] text-white">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Upload Invoice</DialogTitle>
+            <DialogTitle className="text-lg font-bold">Submit Invoice</DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
-              Submit invoice details and attachments for {activeCompanyName}.
+              Submit your invoice for {activeCompanyName}. Link it to the correct PO and call-off reference.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleUploadSubmit} className="space-y-4 pt-2">
+
+            {/* ── PO / Call-Off selector ── */}
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-blue-300">PO &amp; Call-Off Reference</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseManualRefs(!useManualRefs)
+                    setSelectedPoRef("")
+                    setSelectedCallOffId("")
+                  }}
+                  className="text-[10px] text-slate-400 underline hover:text-white transition-colors"
+                >
+                  {useManualRefs ? "Select from list" : "Enter manually"}
+                </button>
+              </div>
+
+              {!useManualRefs ? (
+                <>
+                  {/* Step 1: PO selector */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400">PO Reference *</label>
+                    <select
+                      value={selectedPoRef}
+                      onChange={(e) => {
+                        setSelectedPoRef(e.target.value)
+                        setSelectedCallOffId("")
+                      }}
+                      className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">
+                        {callOffsLoading ? "Loading POs..." : callOffGroups.length === 0 ? "No POs with call-offs yet" : "-- Select PO Reference --"}
+                      </option>
+                      {callOffGroups.map((g) => (
+                        <option key={g.po_ref} value={g.po_ref}>
+                          {g.po_ref}{g.project_name ? ` — ${g.project_name}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Step 2: Call-Off selector (appears once PO is selected) */}
+                  {selectedPoRef && (() => {
+                    const group = callOffGroups.find((g) => g.po_ref === selectedPoRef)
+                    return group ? (
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-400">Call-Off Reference *</label>
+                        <select
+                          value={selectedCallOffId}
+                          onChange={(e) => setSelectedCallOffId(e.target.value)}
+                          className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">-- Select Call-Off --</option>
+                          {group.call_offs.map((co) => (
+                            <option key={co.id} value={co.id}>
+                              {co.call_off_ref} — £{parseFloat(co.total).toLocaleString(undefined, { minimumFractionDigits: 2 })} ({co.line_item_description})
+                            </option>
+                          ))}
+                        </select>
+                        {/* Call-off amount hint */}
+                        {selectedCallOffId && (() => {
+                          const co = group.call_offs.find((c) => c.id === selectedCallOffId)
+                          return co ? (
+                            <div className="mt-1.5 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+                              <span className="text-[11px] text-slate-400">Call-off value:</span>
+                              <span className="text-xs font-bold text-emerald-400">
+                                £{parseFloat(co.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </span>
+                              <span className="text-[10px] text-slate-500">(qty {co.qty} × £{parseFloat(co.price).toFixed(2)})</span>
+                            </div>
+                          ) : null
+                        })()}
+                      </div>
+                    ) : null
+                  })()}
+                </>
+              ) : (
+                /* Manual entry fallback */
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400">PO Reference</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. QR-2026-ABC123"
+                      value={manualPoRef}
+                      onChange={(e) => setManualPoRef(e.target.value)}
+                      className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-400">Call-Off Reference</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CO-XXXXXX"
+                      value={manualCallOffRef}
+                      onChange={(e) => setManualCallOffRef(e.target.value)}
+                      className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Invoice details ── */}
             <div className="space-y-1.5">
               <Label className="text-xs text-slate-300">Invoice Number *</Label>
               <Input
