@@ -1008,6 +1008,7 @@ export default function SupplierPortalPage() {
                         <thead>
                           <tr className="border-b border-white/10 text-xs text-slate-400">
                             <th className="pb-3 font-semibold">Invoice #</th>
+                            <th className="pb-3 font-semibold">PO Reference</th>
                             <th className="pb-3 font-semibold">Invoice Date</th>
                             <th className="pb-3 font-semibold">Description</th>
                             <th className="pb-3 font-semibold">Amount</th>
@@ -1021,6 +1022,9 @@ export default function SupplierPortalPage() {
                             <tr key={inv.id} className="transition-colors hover:bg-white/[0.02]">
                               <td className="py-3.5 font-mono text-xs font-semibold text-white">
                                 {inv.invoice_number}
+                              </td>
+                              <td className="py-3.5 text-xs text-slate-300">
+                                {inv.po_reference || "—"}
                               </td>
                               <td className="py-3.5 text-xs text-slate-300">
                                 {new Date(inv.invoice_date).toLocaleDateString()}
@@ -1319,7 +1323,11 @@ export default function SupplierPortalPage() {
       {/* Invoice Upload Modal */}
       <Dialog open={isUploadOpen} onOpenChange={(open) => {
         setIsUploadOpen(open)
-        if (!open) {
+        if (open) {
+          if (callOffGroups.length === 0) {
+            setUseManualRefs(true)
+          }
+        } else {
           // Reset PO/call-off selectors when closing
           setSelectedPoRef("")
           setSelectedCallOffId("")

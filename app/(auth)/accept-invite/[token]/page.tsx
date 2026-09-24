@@ -88,7 +88,7 @@ export default function AcceptInvitePage() {
         setPendingApproval(true)
         setSuccessMessage(
           result.message ||
-            "Your application has been submitted. Your account will become active once the Document Controller reviews and approves your documents."
+          "Your application has been submitted. Your account will become active once the Document Controller reviews and approves your documents."
         )
       } else {
         toast.success(result.message || "Account activated successfully! You can now log in.")

@@ -124,12 +124,12 @@ export default function Page() {
           prev.map((u) =>
             u.id === pending.userId
               ? {
-                  ...u,
-                  approvedUser: pending.nextValue,
-                  approvedBy: pending.nextValue
-                    ? isDocumentController ? "Document Controller" : "Admin"
-                    : "",
-                }
+                ...u,
+                approvedUser: pending.nextValue,
+                approvedBy: pending.nextValue
+                  ? isDocumentController ? "Document Controller" : "Admin"
+                  : "",
+              }
               : u
           )
         )
@@ -172,15 +172,15 @@ export default function Page() {
     : users
 
   const columnDefs: ColDef<UserRow>[] = [
-   //  {
-   //    headerName: "ID",
-   //    field: "id",
-   //    checkboxSelection: isDocumentController,
-   //    headerCheckboxSelection: isDocumentController,
-   //    maxWidth: 60,
-   //    pinned: "left",
-   //    filter: false,
-   //  },
+    //  {
+    //    headerName: "ID",
+    //    field: "id",
+    //    checkboxSelection: isDocumentController,
+    //    headerCheckboxSelection: isDocumentController,
+    //    maxWidth: 60,
+    //    pinned: "left",
+    //    filter: false,
+    //  },
     { headerName: "Name", field: "name" },
     { headerName: "Surname", field: "surname" },
     { headerName: "Phone", field: "phone" },
@@ -280,8 +280,8 @@ export default function Page() {
                   approved
                     ? "text-xs text-emerald-400"
                     : isExpired
-                    ? "text-xs text-red-400"
-                    : "text-xs text-slate-400"
+                      ? "text-xs text-red-400"
+                      : "text-xs text-slate-400"
                 }
               >
                 {approved ? "Yes" : isExpired ? "Expired" : "No"}

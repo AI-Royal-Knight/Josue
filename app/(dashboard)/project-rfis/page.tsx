@@ -326,7 +326,10 @@ export default function ProjectRFIsPage() {
   }
 
   const userRole = useAuthStore.getState().user?.role
-  const showAssignColumn = ["contracts_manager", "manager", "managers", "supervisor"].includes(userRole || "")
+  const showAssignColumn = [
+    "contracts_manager", "manager", "managers", "supervisor",
+    "admin", "project_admin", "super_admin"
+  ].includes(userRole || "")
 
   const baseColumnDefs: ColDef<RFI>[] = [
     { field: "rfi_number", headerName: "RFI ref", width: 110, minWidth: 90 },
