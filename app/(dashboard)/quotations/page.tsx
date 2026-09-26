@@ -28,6 +28,7 @@ import { addOrder } from "@/lib/po-store"
 import TableStat from "@/components/common/table-stat"
 import SelectProject from "@/components/shared/select-project"
 import { getQuotations, requestRequote } from "@/lib/api/quotations"
+import { getMediaUrl } from "@/lib/api/client"
 import { toast } from "sonner"
 import { useRoleStore } from "@/lib/role-store"
 
@@ -320,7 +321,7 @@ export default function Page() {
         if (!row || !row.supplierQuotePdf) return <span className="text-slate-500 text-xs italic">-</span>
         return (
           <a
-            href={row.supplierQuotePdf}
+            href={getMediaUrl(row.supplierQuotePdf) as string}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 text-[#3467df] hover:underline text-xs font-medium"

@@ -40,6 +40,7 @@ import {
   updateProcurementSupplierInvoice,
   type ProcurementSupplierInvoice,
 } from "@/lib/api/suppliers"
+import { getMediaUrl } from "@/lib/api/client"
 
 type InvoiceRow = {
   id: string
@@ -221,7 +222,7 @@ export default function SupplierInvoicesPage() {
           if (!params.value) return <span className="text-slate-400">—</span>
           return (
             <a
-              href={params.value}
+              href={getMediaUrl(params.value) as string}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"

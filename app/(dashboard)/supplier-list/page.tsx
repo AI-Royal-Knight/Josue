@@ -19,7 +19,8 @@ import ConfirmPaymentDialog from "@/components/common/confirm-payment"
 import TableStat from "@/components/common/table-stat"
 import { getFinanceSupplierInvoices, patchFinanceSupplierInvoice } from "@/lib/api/finance"
 import type { FinanceSupplierInvoice } from "@/lib/api/finance"
-import { MessageSquarePlus, Pencil } from "lucide-react"
+import { getMediaUrl } from "@/lib/api/client"
+import { MessageSquarePlus, Pencil, FileText } from "lucide-react"
 
 type SupplierRow = {
   id: string
@@ -46,6 +47,7 @@ type SupplierRow = {
   availableCredit: string
   previousMonth: string
   invoiceDueThisMonth: string
+  supplierQuotePdfUrl: string | null
 }
 
 function fmt(n: number | null | undefined) {
@@ -87,6 +89,7 @@ function mapToRow(inv: FinanceSupplierInvoice, index: number): SupplierRow {
     availableCredit: fmt(inv.available_credit),
     previousMonth: fmt(inv.previous_month),
     invoiceDueThisMonth: fmt(inv.invoice_due_this_month),
+    supplierQuotePdfUrl: inv.supplier_quote_pdf_url || null,
   }
 }
 
@@ -269,6 +272,25 @@ export default function Page() {
           {params.value}
         </button>
       ),
+    },
+    {
+      headerName: "Invoice File",
+      field: "supplierQuotePdfUrl",
+      minWidth: 120,
+      cellRenderer: (params: { data?: SupplierRow; value: string | null }) => {
+        if (!params.value) return <span className="text-slate-500 text-xs italic">-</span>
+        return (
+          <a
+            href={getMediaUrl(params.value) as string}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-[#3467df] hover:underline text-xs font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <FileText className="size-3.5" /> View
+          </a>
+        )
+      },
     },
     { headerName: "Date (Supplier sent)", field: "date", minWidth: 150 },
     { headerName: "Project", field: "project" },

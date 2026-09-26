@@ -23,6 +23,7 @@ export interface FinanceSupplierInvoice {
   available_credit: number
   previous_month: number
   invoice_due_this_month: number
+  supplier_quote_pdf_url: string | null
 }
 
 export const getFinanceSupplierInvoices = (): Promise<FinanceSupplierInvoice[]> =>

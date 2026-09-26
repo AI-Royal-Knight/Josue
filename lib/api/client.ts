@@ -24,6 +24,15 @@ export function getApiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 }
 
+export function getMediaUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  
+  const apiBase = getApiBaseUrl();
+  const hostUrl = apiBase.replace(/\/api\/v1\/?$/, ""); // strip /api/v1
+  return `${hostUrl}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 export class ApiError extends Error {
   status: number
   data: unknown
