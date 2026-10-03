@@ -62,19 +62,35 @@ export default function Page() {
     {
       field: "invoiceNumber",
       headerName: "Invoice Number",
-      cellRenderer: (params: { data?: InvoiceRow; value: string }) => {
-        const url = params.data ? `${getApiBaseUrl()}/super-admin/invoices/${params.data.id}/pdf/` : "#"
-        return (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${params.data?.paid ? "text-emerald-500" : "text-red-500"} hover:underline font-medium inline-flex h-full items-center`}
-          >
-            {params.value}
-          </a>
-        )
-      },
+    cellRenderer: (params: { data?: InvoiceRow; value: string }) => {
+      if (!params.data) return params.value
+
+      const handleViewPdf = async () => {
+        const token = typeof window !== "undefined" ? localStorage.getItem("tresta:accessToken") : null
+        const url = `${getApiBaseUrl()}/super-admin/invoices/${params.data!.id}/pdf/`
+        try {
+          const res = await fetch(url, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+          if (!res.ok) throw new Error(`Failed to load PDF (${res.status})`)
+          const blob = await res.blob()
+          const blobUrl = URL.createObjectURL(blob)
+          window.open(blobUrl, "_blank")
+        } catch (err) {
+          console.error(err)
+          toast.error("Failed to open invoice PDF")
+        }
+      }
+
+      return (
+        <button
+          onClick={handleViewPdf}
+          className={`${params.data?.paid ? "text-emerald-500" : "text-red-500"} hover:underline font-medium inline-flex h-full items-center cursor-pointer bg-transparent border-none p-0`}
+        >
+          {params.value}
+        </button>
+      )
+    },
     },
     { field: "companyName", headerName: "Company" },
     { field: "date", headerName: "Date" },

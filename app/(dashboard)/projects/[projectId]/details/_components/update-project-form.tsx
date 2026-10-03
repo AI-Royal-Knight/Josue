@@ -32,7 +32,7 @@ export default function UpdateProjectForm({ projectId }: { projectId: string }) 
   const [materialEstimate, setMaterialEstimate] = useState("")
   const [labourEstimate, setLabourEstimate] = useState("")
   const [prelimsEstimate, setPrelimsEstimate] = useState("")
-  const [estimateProfit, setEstimateProfit] = useState("")
+  // Note: estimate_profit is a computed @property on the backend model, not editable
   
   const [vatRate, setVatRate] = useState<string>("")
   const [currency, setCurrency] = useState<string>("GBP")
@@ -56,7 +56,7 @@ export default function UpdateProjectForm({ projectId }: { projectId: string }) 
         setMaterialEstimate(project.material_estimate || "")
         setLabourEstimate(project.labour_estimate || "")
         setPrelimsEstimate(project.prelims_estimate || "")
-        setEstimateProfit(project.estimate_profit || "")
+        // estimate_profit is computed server-side, not editable
         setMonthlyApplicationDate(project.monthly_application_date?.toString() || "")
         if (project.start_date) setStartDate(new Date(project.start_date))
         if (project.completion_date) setCompletionDate(new Date(project.completion_date))
@@ -82,7 +82,6 @@ export default function UpdateProjectForm({ projectId }: { projectId: string }) 
       material_estimate: materialEstimate || 0,
       labour_estimate: labourEstimate || 0,
       prelims_estimate: prelimsEstimate || 0,
-      estimate_profit: estimateProfit || 0,
       ...(monthlyApplicationDate ? { monthly_application_date: parseInt(monthlyApplicationDate) } : {}),
       start_date: startDate ? startDate.toISOString().split("T")[0] : null,
       completion_date: completionDate ? completionDate.toISOString().split("T")[0] : null,
@@ -200,9 +199,20 @@ export default function UpdateProjectForm({ projectId }: { projectId: string }) 
           </FieldContent>
         </Field>
         <Field>
-          <FieldLabel htmlFor="estimateProfit">Estimate Profit</FieldLabel>
+          <FieldLabel>Estimate Profit (auto-calculated)</FieldLabel>
           <FieldContent>
-            <Input id="estimateProfit" name="estimateProfit" type="number" value={estimateProfit} onChange={e => setEstimateProfit(e.target.value)} />
+            <Input
+              type="number"
+              readOnly
+              disabled
+              value={
+                (parseFloat(projectValue || "0") -
+                  parseFloat(materialEstimate || "0") -
+                  parseFloat(labourEstimate || "0") -
+                  parseFloat(prelimsEstimate || "0")).toFixed(2)
+              }
+              className="opacity-60 cursor-not-allowed"
+            />
           </FieldContent>
         </Field>
         <Field>
