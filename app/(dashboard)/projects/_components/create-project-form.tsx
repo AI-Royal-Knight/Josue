@@ -48,7 +48,7 @@ export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => voi
       prelims_estimate: formData.get("prelimsEstimate") || 0,
       start_date: startDate ? startDate.toISOString().split("T")[0] : null,
       completion_date: completionDate ? completionDate.toISOString().split("T")[0] : null,
-      monthly_application_date: parseInt(monthlyApplicationDate) || 1,
+      ...(monthlyApplicationDate ? { monthly_application_date: parseInt(monthlyApplicationDate) } : {}),
     }
 
     setIsPending(true)

@@ -83,7 +83,7 @@ export default function UpdateProjectForm({ projectId }: { projectId: string }) 
       labour_estimate: labourEstimate || 0,
       prelims_estimate: prelimsEstimate || 0,
       estimate_profit: estimateProfit || 0,
-      monthly_application_date: parseInt(monthlyApplicationDate) || 1,
+      ...(monthlyApplicationDate ? { monthly_application_date: parseInt(monthlyApplicationDate) } : {}),
       start_date: startDate ? startDate.toISOString().split("T")[0] : null,
       completion_date: completionDate ? completionDate.toISOString().split("T")[0] : null,
     }
