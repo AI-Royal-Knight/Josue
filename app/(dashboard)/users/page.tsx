@@ -6,7 +6,6 @@ import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { UserProfileDialog } from "@/components/user-profile-dialog"
 import { Switch } from "@/components/ui/switch"
-import InviteUserDialog from "@/app/(dashboard)/invite-users/invite-modal"
 import { useRoleStore } from "@/lib/role-store"
 import { getApiBaseUrl } from "@/lib/api/client"
 import {
@@ -304,7 +303,6 @@ export default function Page() {
     <div className="w-full space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Users</h2>
-        <InviteUserDialog />
       </div>
 
       <div className="flex items-start gap-6">

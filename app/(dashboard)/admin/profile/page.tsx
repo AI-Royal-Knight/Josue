@@ -5,9 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Building2, Landmark, FileText, Upload, ImageIcon, Loader2 } from "lucide-react"
+import { Building2, Landmark, FileText, Upload, ImageIcon, Loader2, ExternalLink, Lock } from "lucide-react"
 import FileUpload from "@/components/ui/file-uploader"
 import { getProfile, updateProfile } from "@/lib/api/profile"
+import { apiRequest } from "@/lib/api/client"
+import { toast } from "sonner"
 import { useEffect } from "react"
 
 type CompanyDetails = {
@@ -85,6 +87,13 @@ export default function AdminProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [tcFile, setTcFile] = useState<File | null>(null)
+  const [tcPreviewUrl, setTcPreviewUrl] = useState<string | null>(null)
+
+  const [oldPassword, setOldPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+
   useEffect(() => {
     let isMounted = true
     getProfile()
@@ -109,6 +118,9 @@ export default function AdminProfilePage() {
           })
           if (c.company_logo) {
             setLogoPreview(c.company_logo)
+          }
+          if (c.attachment) {
+            setTcPreviewUrl(c.attachment)
           }
         }
       })
@@ -160,22 +172,44 @@ export default function AdminProfilePage() {
       }
 
       const file = fileInputRef.current?.files?.[0]
+      const formData = new FormData()
+      formData.append("company", JSON.stringify(companyPayload))
+      
       if (file) {
-        const formData = new FormData()
-        formData.append("company", JSON.stringify(companyPayload))
         formData.append("company_logo", file)
-        await updateProfile(formData)
-      } else {
-        await updateProfile({
-          company: companyPayload
-        })
       }
+      if (tcFile) {
+        formData.append("attachment", tcFile)
+      }
+      
+      await updateProfile(formData)
 
       setSaved(true)
     } catch (err: any) {
       setError(err.message || "Failed to save profile.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsChangingPassword(true)
+    try {
+      await apiRequest("/account/change-password/", {
+        method: "POST",
+        body: {
+          old_password: oldPassword,
+          new_password: newPassword,
+        },
+      })
+      toast.success("Password changed successfully")
+      setOldPassword("")
+      setNewPassword("")
+    } catch (err: any) {
+      toast.error(err.message || "Failed to change password")
+    } finally {
+      setIsChangingPassword(false)
     }
   }
 
@@ -319,7 +353,26 @@ export default function AdminProfilePage() {
               Every user invited to the app must read and agree to these terms
               before they can access the platform.
             </p>
-            <FileUpload />
+            <FileUpload 
+              onFilesChange={(files: any) => {
+                if (files && files.length > 0) {
+                  setTcFile(files[0].file)
+                } else {
+                  setTcFile(null)
+                }
+                setSaved(false)
+              }}
+            />
+            {tcPreviewUrl && !tcFile && (
+              <div className="flex items-center gap-2 mt-4 text-sm text-slate-300">
+                <FileText className="size-4" />
+                <span>Current file: </span>
+                <a href={tcPreviewUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1">
+                  View Terms & Conditions
+                  <ExternalLink className="size-3" />
+                </a>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -404,6 +457,45 @@ export default function AdminProfilePage() {
             Save Changes
           </Button>
         </div>
+      </form>
+
+      <form onSubmit={handleChangePassword} className="space-y-6 mt-8">
+        <Card>
+          <CardContent className="space-y-4 pt-4">
+            <SectionHeader
+              icon={<Lock className="size-4" />}
+              title="Security"
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Current Password" id="oldPassword">
+                <Input
+                  id="oldPassword"
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  required
+                />
+              </Field>
+              <Field label="New Password" id="newPassword">
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  required
+                />
+              </Field>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={isChangingPassword || !oldPassword || !newPassword}>
+                {isChangingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Change Password
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </form>
     </div>
   )

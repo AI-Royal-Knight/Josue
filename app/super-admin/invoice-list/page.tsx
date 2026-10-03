@@ -5,6 +5,7 @@ import TableStat from "@/components/common/table-stat"
 import { Switch } from "@/components/ui/switch"
 import { ColDef } from "ag-grid-community"
 import { format } from "date-fns"
+import ConfirmPaymentDialog from "@/components/common/confirm-payment"
 
 import { getAllInvoices, updateInvoicePayment, type MonthlyInvoice } from "@/lib/api/super-admin"
 import { toast } from "sonner"
@@ -37,6 +38,7 @@ function mapToInvoiceRow(inv: MonthlyInvoice): InvoiceRow {
 export default function Page() {
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [paymentConfirm, setPaymentConfirm] = useState<{ id: string; nextPaid: boolean; supplierName: string } | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -86,22 +88,15 @@ export default function Page() {
         <div className="flex h-full items-center">
           <Switch
             checked={Boolean(params.value)}
-            onCheckedChange={async (checked) => {
+            onCheckedChange={(checked) => {
               const invoice = params.data
               if (!invoice) return
 
-              try {
-                const updated = await updateInvoicePayment(invoice.id, checked)
-                setRows((currentRows) =>
-                  currentRows.map((row) =>
-                    row.id === invoice.id ? mapToInvoiceRow(updated) : row
-                  )
-                )
-                toast.success("Payment status updated")
-              } catch (err) {
-                console.error(err)
-                toast.error("Failed to update payment status")
-              }
+              setPaymentConfirm({
+                id: invoice.id,
+                nextPaid: checked,
+                supplierName: invoice.companyName || "the company",
+              })
             }}
           />
         </div>
@@ -140,6 +135,33 @@ export default function Page() {
         height="70vh"
         pagination
         pageSize={10}
+      />
+
+      <ConfirmPaymentDialog
+        open={!!paymentConfirm}
+        onOpenChange={(open) => {
+          if (!open) setPaymentConfirm(null)
+        }}
+        supplierName={paymentConfirm?.supplierName || ""}
+        nextPaid={paymentConfirm?.nextPaid || false}
+        onConfirm={async () => {
+          if (!paymentConfirm) return
+          const { id, nextPaid } = paymentConfirm
+          setPaymentConfirm(null)
+          
+          try {
+            const updated = await updateInvoicePayment(id, nextPaid)
+            setRows((currentRows) =>
+              currentRows.map((row) =>
+                row.id === id ? mapToInvoiceRow(updated) : row
+              )
+            )
+            toast.success("Payment status updated")
+          } catch (err) {
+            console.error(err)
+            toast.error("Failed to update payment status")
+          }
+        }}
       />
     </div>
   )
