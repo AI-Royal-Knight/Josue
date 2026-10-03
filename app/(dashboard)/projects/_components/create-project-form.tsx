@@ -28,9 +28,7 @@ export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => voi
   const [completionDate, setCompletionDate] = useState<Date | undefined>(
     undefined
   )
-  const [monthlyApplicationDate, setMonthlyApplicationDate] = useState<
-    Date | undefined
-  >(undefined)
+  const [monthlyApplicationDate, setMonthlyApplicationDate] = useState<string>("1")
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -42,6 +40,7 @@ export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => voi
       project_name: formData.get("projectName"),
       job_code: formData.get("jobCode"),
       vat_rate: vatRate,
+      currency: currency,
       address: formData.get("address"),
       project_value: formData.get("projectValue") || 0,
       material_estimate: formData.get("materialEstimate") || 0,
@@ -49,6 +48,7 @@ export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => voi
       prelims_estimate: formData.get("prelimsEstimate") || 0,
       start_date: startDate ? startDate.toISOString().split("T")[0] : null,
       completion_date: completionDate ? completionDate.toISOString().split("T")[0] : null,
+      monthly_application_date: parseInt(monthlyApplicationDate) || 1,
     }
 
     setIsPending(true)
@@ -261,31 +261,18 @@ export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => voi
         </Field>
         <Field>
           <FieldLabel htmlFor="monthlyApplicationDate">
-            Monthly Application Date :
+            Monthly Application Date (1-31)
           </FieldLabel>
           <FieldContent>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !monthlyApplicationDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {monthlyApplicationDate ? format(monthlyApplicationDate, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={monthlyApplicationDate}
-                  onSelect={setMonthlyApplicationDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              id="monthlyApplicationDate"
+              name="monthlyApplicationDate"
+              type="number"
+              min={1}
+              max={31}
+              value={monthlyApplicationDate}
+              onChange={e => setMonthlyApplicationDate(e.target.value)}
+            />
           </FieldContent>
         </Field>
       </div>

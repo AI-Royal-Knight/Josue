@@ -76,11 +76,6 @@ function billableMonthsInYear(row: AccountsRow, year: number): number {
   return 13 - (created.getMonth() + 1) // getMonth() is 0-indexed
 }
 
-/** Projected annual revenue from the company's creation month to year-end. */
-function projectedAnnualCharge(row: AccountsRow, year: number): number {
-  return monthlyCharge(row) * billableMonthsInYear(row, year)
-}
-
 /** The earliest billable month (1-12) for a company in a given year. */
 function firstBillableMonth(row: AccountsRow, year: number): number {
   if (!row.created_at) return 1
@@ -98,74 +93,7 @@ type PendingInvoice = {
   amount: number
 }
 
-// ── Input Cells ─────────────────────────────────────────────────────────────
-
-function CurrencyInputCell({
-  value,
-  disabled,
-  onCommit,
-}: {
-  value: number | string | null
-  disabled?: boolean
-  onCommit: (next: string | null) => void
-}) {
-  const initialValue =
-    value === null || value === undefined ? "" : String(value)
-
-  return (
-    <div className="relative w-full">
-      <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-xs text-slate-400">
-        £
-      </span>
-      <Input
-        className="h-8 pl-6"
-        inputMode="decimal"
-        disabled={disabled}
-        key={initialValue}
-        defaultValue={initialValue}
-        onBlur={(e) => {
-          const trimmed = e.currentTarget.value.trim()
-          if (!trimmed) return onCommit(null)
-          const n = Number(trimmed)
-          if (Number.isFinite(n)) onCommit(String(n))
-          else onCommit(value === null ? null : String(value))
-        }}
-      />
-    </div>
-  )
-}
-
-function NumberInputCell({
-  value,
-  disabled,
-  onCommit,
-}: {
-  value: number | null
-  disabled?: boolean
-  onCommit: (next: number | null) => void
-}) {
-  const initialValue =
-    value === null || value === undefined ? "" : String(value)
-
-  return (
-    <div className="relative w-full">
-      <Input
-        className="h-8"
-        inputMode="numeric"
-        disabled={disabled}
-        key={initialValue}
-        defaultValue={initialValue}
-        onBlur={(e) => {
-          const trimmed = e.currentTarget.value.trim()
-          if (!trimmed) return onCommit(null)
-          const n = parseInt(trimmed, 10)
-          if (Number.isFinite(n)) onCommit(n)
-          else onCommit(value)
-        }}
-      />
-    </div>
-  )
-}
+// ── Components ─────────────────────────────────────────────────────────────
 
 export default function AccountsOverviewPage() {
   const year = new Date().getFullYear()
@@ -249,35 +177,12 @@ export default function AccountsOverviewPage() {
         headerName: "per User rate",
         colId: "per_user_rate",
         minWidth: 140,
-        sortable: false,
-        filter: false,
-        cellRenderer: (params: { data?: AccountsRow }) => {
-          const row = params.data
-          if (!row) return null
-          return (
-            <CurrencyInputCell
-              value={row.per_user_rate}
-              onCommit={(val) => handleUpdate(row.id, { per_user_rate: val === null ? "0.00" : val })}
-            />
-          )
-        },
+        valueGetter: (p) => formatGbp(p.data?.per_user_rate || "0"),
       },
       {
         field: "user",
         headerName: "Users",
         minWidth: 120,
-        sortable: false,
-        filter: false,
-        cellRenderer: (params: { data?: AccountsRow }) => {
-          const row = params.data
-          if (!row) return null
-          return (
-            <NumberInputCell
-              value={row.user}
-              onCommit={(val) => handleUpdate(row.id, { user: val === null ? 0 : val })}
-            />
-          )
-        },
       },
       {
         headerName: "Action",
@@ -369,9 +274,6 @@ export default function AccountsOverviewPage() {
             0
           )
 
-          // Projected revenue: from company creation month to Dec
-          const projected = projectedAnnualCharge(row, year)
-
           return (
             <span
               className={
@@ -379,14 +281,9 @@ export default function AccountsOverviewPage() {
                   ? "font-medium text-emerald-400"
                   : "text-slate-200"
               }
-              title={`Projected: ${formatGbp(projected)} | Billed: ${formatGbp(actualRevenue)}`}
+              title={`Billed: ${formatGbp(actualRevenue)}`}
             >
               {formatGbp(actualRevenue)}
-              {!allSent && projected > actualRevenue && (
-                <span className="ml-1 text-xs text-slate-500">
-                  /{formatGbp(projected)}
-                </span>
-              )}
             </span>
           )
         },
@@ -500,11 +397,9 @@ export default function AccountsOverviewPage() {
   const stats = useMemo(() => {
     let totalRev = 0
     let monthlyRev = 0
-    let projectedAnnual = 0
 
     rows.forEach((r) => {
       monthlyRev += monthlyCharge(r)
-      projectedAnnual += projectedAnnualCharge(r, year)
     })
 
     // Total Revenue = sum of invoices that have actually been SENT to customers
@@ -520,7 +415,6 @@ export default function AccountsOverviewPage() {
     return {
       total: formatGbp(totalRev),
       monthly: formatGbp(monthlyRev),
-      projected: formatGbp(projectedAnnual),
     }
   }, [rows, invoices, year])
 
@@ -540,7 +434,6 @@ export default function AccountsOverviewPage() {
           summaryRows={[
             { label: "Total Revenue (Invoiced)", value: stats.total },
             { label: "Monthly Charge", value: stats.monthly },
-            { label: "Projected Annual", value: stats.projected },
           ]}
         />
       </header>

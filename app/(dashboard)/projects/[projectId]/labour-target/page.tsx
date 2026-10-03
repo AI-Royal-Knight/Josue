@@ -13,6 +13,7 @@ import { Plus, Save, Lock, Unlock, FolderPlus, Briefcase, UserPlus } from "lucid
 import { toast } from "sonner"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 import { colors } from "@/constants/colors"
+import { useAuthStore } from "@/lib/auth-store"
 
 import { Input } from "@/components/ui/input"
 import {
@@ -66,7 +67,9 @@ const DEFAULT_FOLDERS: FolderType[] = [
 // Custom column group header for subfolders — uses Radix ContextMenu (same as folder)
 // so right-click behaviour is identical and reliable inside MUI DataGrid.
 function SubfolderGroupHeader(props: any) {
-  const { headerName, groupId, onSubfolderAssign, isManagement } = props
+  const { headerName, groupId, onSubfolderAssign, isManagement, isLocked } = props
+  const { user } = useAuthStore()
+  const isProjectAdmin = user?.role === "project_admin"
 
   return (
     <ContextMenu>
@@ -92,14 +95,16 @@ function SubfolderGroupHeader(props: any) {
         </div>
 
         {/* Assign Employee */}
-        <ContextMenuItem
-          className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
-          disabled={isManagement}
-          onSelect={() => onSubfolderAssign?.(groupId)}
-        >
-          <UserPlus size={14} className="shrink-0 text-indigo-400" />
-          Assign Employee
-        </ContextMenuItem>
+        {!isProjectAdmin && (
+          <ContextMenuItem
+            className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+            disabled={isManagement || isLocked}
+            onSelect={() => onSubfolderAssign?.(groupId)}
+          >
+            <UserPlus size={14} className="shrink-0 text-indigo-400" />
+            Assign Employee
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -194,6 +199,7 @@ function FolderGrid({
               groupId={sub.id}
               onSubfolderAssign={onSubfolderAssign}
               isManagement={folder.is_management}
+              isLocked={isLocked}
             />
           ),
         }
@@ -309,6 +315,9 @@ export default function DynamicFolderTable() {
   const { projectId } = useParams<{ projectId: string }>()
   const storageKey = "tresta:labour-target"
   const lockKey = `${storageKey}:locked`
+  
+  const { user } = useAuthStore()
+  const isProjectAdmin = user?.role === "project_admin"
 
   const [folders, setFolders] = useState<FolderType[]>([])
   const [loading, setLoading] = useState(true)
@@ -672,6 +681,7 @@ export default function DynamicFolderTable() {
                     </div>
                     <ContextMenuItem
                       className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                      disabled={isLocked}
                       onSelect={() => {
                         setSubfolderTarget({
                           folderId: folder.id,
@@ -686,24 +696,30 @@ export default function DynamicFolderTable() {
                       />
                       Add subfolder
                     </ContextMenuItem>
-                    <ContextMenuItem
-                      className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
-                      disabled={folder.is_management}
-                      onSelect={() => handleAssignSubfolder(folder.id)}
-                    >
-                      <UserPlus size={14} className="shrink-0 text-indigo-400" />
-                      Assign Folder
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
-                      onSelect={() => toggleManagementFolder(folder.id)}
-                    >
-                      <Briefcase
-                        size={14}
-                        className={`shrink-0 ${folder.is_management ? "text-red-400" : "text-blue-400"}`}
-                      />
-                      {folder.is_management ? "Remove from Management" : "Assign to Management"}
-                    </ContextMenuItem>
+                    
+                    {!isProjectAdmin && (
+                      <>
+                        <ContextMenuItem
+                          className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                          disabled={folder.is_management || isLocked}
+                          onSelect={() => handleAssignSubfolder(folder.id)}
+                        >
+                          <UserPlus size={14} className="shrink-0 text-indigo-400" />
+                          Assign Folder
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                          disabled={isLocked}
+                          onSelect={() => toggleManagementFolder(folder.id)}
+                        >
+                          <Briefcase
+                            size={14}
+                            className={`shrink-0 ${folder.is_management ? "text-red-400" : "text-blue-400"}`}
+                          />
+                          {folder.is_management ? "Remove from Management" : "Assign to Management"}
+                        </ContextMenuItem>
+                      </>
+                    )}
                   </ContextMenuContent>
                 </ContextMenu>
 

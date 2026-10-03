@@ -55,7 +55,7 @@ export default function Page() {
   const [reminderUser, setReminderUser] = useState<UserRow | null>(null)
 
   const isDocumentController = role === "document_controller"
-  const isAdmin = role === "admin" || role === "super_admin"
+  const isAdmin = role === "admin" || role === "super_admin" || role === "project_admin"
 
   const fetchUsers = useCallback(async () => {
     try {

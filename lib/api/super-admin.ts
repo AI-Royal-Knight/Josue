@@ -194,3 +194,9 @@ export async function submitInvoice(
     body: payload,
   })
 }
+
+export async function resendInvoice(id: string): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(`/super-admin/invoices/${id}/resend/`, {
+    method: "POST",
+  })
+}

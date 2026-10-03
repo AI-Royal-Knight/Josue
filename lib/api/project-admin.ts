@@ -24,6 +24,13 @@ export interface AssignRolePayload {
 // ── API Functions ──────────────────────────────────────────────────────────
 
 import type { ProjectItem } from "@/constants/projects"
+import { CURRENCY_OPTIONS } from "@/constants/projects"
+
+function getSymbol(code: string | undefined): string {
+  if (!code) return "£"
+  const option = CURRENCY_OPTIONS.find(o => o.code === code)
+  return option ? option.symbol : "£"
+}
 
 export async function getProjects(): Promise<{ projects: ProjectItem[]; total_count: number }> {
   const data = await apiRequest<{ projects: any[]; total_count: number }>("/project-admin/projects/")
@@ -36,11 +43,11 @@ export async function getProjects(): Promise<{ projects: ProjectItem[]; total_co
       vatRate: p.vat_rate,
       address: p.address,
       dateCreated: p.created_at ? new Date(p.created_at).toISOString().split('T')[0] : '',
-      projectValue: p.project_value ? `£${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
-      materialEstimate: p.material_estimate ? `£${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
-      labourEstimate: p.labour_estimate ? `£${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
-      prelimsEstimate: p.prelims_estimate ? `£${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
-      estimateProfit: p.estimate_profit ? `£${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
+      projectValue: p.project_value ? `${getSymbol(p.currency)}${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
+      materialEstimate: p.material_estimate ? `${getSymbol(p.currency)}${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
+      labourEstimate: p.labour_estimate ? `${getSymbol(p.currency)}${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
+      prelimsEstimate: p.prelims_estimate ? `${getSymbol(p.currency)}${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
+      estimateProfit: p.estimate_profit ? `${getSymbol(p.currency)}${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
       startDate: p.start_date,
       completionDate: p.completion_date,
       overdue: p.is_overdue,
@@ -58,11 +65,11 @@ export async function getProject(projectId: string): Promise<ProjectItem> {
     vatRate: p.vat_rate,
     address: p.address,
     dateCreated: p.created_at ? new Date(p.created_at).toISOString().split('T')[0] : '',
-    projectValue: p.project_value ? `£${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
-    materialEstimate: p.material_estimate ? `£${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
-    labourEstimate: p.labour_estimate ? `£${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
-    prelimsEstimate: p.prelims_estimate ? `£${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
-    estimateProfit: p.estimate_profit ? `£${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
+    projectValue: p.project_value ? `${getSymbol(p.currency)}${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
+    materialEstimate: p.material_estimate ? `${getSymbol(p.currency)}${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
+    labourEstimate: p.labour_estimate ? `${getSymbol(p.currency)}${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
+    prelimsEstimate: p.prelims_estimate ? `${getSymbol(p.currency)}${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
+    estimateProfit: p.estimate_profit ? `${getSymbol(p.currency)}${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
     startDate: p.start_date,
     completionDate: p.completion_date,
     overdue: p.is_overdue,
@@ -73,6 +80,13 @@ export async function getProject(projectId: string): Promise<ProjectItem> {
 export async function createProject(payload: any): Promise<ProjectItem> {
   return apiRequest<ProjectItem>("/project-admin/projects/", {
     method: "POST",
+    body: payload,
+  })
+}
+
+export async function updateProject(projectId: string, payload: any): Promise<ProjectItem> {
+  return apiRequest<ProjectItem>(`/project-admin/projects/${projectId}/`, {
+    method: "PUT",
     body: payload,
   })
 }
@@ -88,11 +102,11 @@ export async function getMyProjects(): Promise<{ projects: ProjectItem[]; total_
       vatRate: p.vat_rate,
       address: p.address,
       dateCreated: p.created_at ? new Date(p.created_at).toISOString().split('T')[0] : '',
-      projectValue: p.project_value ? `£${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
-      materialEstimate: p.material_estimate ? `£${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
-      labourEstimate: p.labour_estimate ? `£${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
-      prelimsEstimate: p.prelims_estimate ? `£${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
-      estimateProfit: p.estimate_profit ? `£${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
+      projectValue: p.project_value ? `${getSymbol(p.currency)}${parseFloat(p.project_value).toLocaleString('en-GB')}` : '',
+      materialEstimate: p.material_estimate ? `${getSymbol(p.currency)}${parseFloat(p.material_estimate).toLocaleString('en-GB')}` : '',
+      labourEstimate: p.labour_estimate ? `${getSymbol(p.currency)}${parseFloat(p.labour_estimate).toLocaleString('en-GB')}` : '',
+      prelimsEstimate: p.prelims_estimate ? `${getSymbol(p.currency)}${parseFloat(p.prelims_estimate).toLocaleString('en-GB')}` : '',
+      estimateProfit: p.estimate_profit ? `${getSymbol(p.currency)}${parseFloat(p.estimate_profit).toLocaleString('en-GB')}` : '',
       startDate: p.start_date,
       completionDate: p.completion_date,
       overdue: p.is_overdue,

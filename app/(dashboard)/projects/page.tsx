@@ -1,16 +1,19 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { VAT_OPTIONS } from "@/constants/projects"
 import type { ProjectItem } from "@/constants/projects"
 import CreateProjectDialog from "./_components/create-project-dialog"
 import { AgTable } from "@/components/common/AgTable"
-import type { ColDef, ICellRendererParams } from "ag-grid-community"
+import type { ColDef, ICellRendererParams, GridApi } from "ag-grid-community"
 import Link from "next/link"
 import { getMyProjects } from "@/lib/api/project-admin"
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
 
 export default function Page() {
   const [projectsData, setProjectsData] = useState<ProjectItem[]>([])
   const [loading, setLoading] = useState(true)
+  const gridApiRef = useRef<GridApi | null>(null)
 
   const fetchProjects = async () => {
     setLoading(true)
@@ -37,6 +40,7 @@ export default function Page() {
         <Link
           href={`/projects/${params.data?.id}`}
           className="text-sm font-medium text-green-500"
+          onClick={(e) => e.stopPropagation()}
         >
           {params.value}
         </Link>
@@ -97,11 +101,22 @@ export default function Page() {
     },
   ]
 
+  const handleExport = () => {
+    if (gridApiRef.current) {
+      gridApiRef.current.exportDataAsCsv({ fileName: "projects_export.csv" })
+    }
+  }
+
   return (
     <div className="w-full px-6 py-4">
       <div className="mb-4 flex items-center justify-between">
         <h2>Projects</h2>
-        <CreateProjectDialog onSuccess={fetchProjects} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" /> Export
+          </Button>
+          <CreateProjectDialog onSuccess={fetchProjects} />
+        </div>
       </div>
 
       {loading ? (
@@ -109,7 +124,14 @@ export default function Page() {
           Loading projects...
         </div>
       ) : (
-        <AgTable rowData={projectsData} columnDefs={columns} height="auto" />
+        <AgTable 
+          rowData={projectsData} 
+          columnDefs={columns} 
+          height="auto" 
+          onGridReady={(api) => { gridApiRef.current = api }}
+          suppressCellClickAction
+          gridOptions={{ suppressRowClickSelection: true, suppressContextMenu: true }}
+        />
       )}
     </div>
   )

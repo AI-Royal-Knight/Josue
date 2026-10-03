@@ -7,9 +7,12 @@ import { ColDef } from "ag-grid-community"
 import { format } from "date-fns"
 import ConfirmPaymentDialog from "@/components/common/confirm-payment"
 
-import { getAllInvoices, updateInvoicePayment, type MonthlyInvoice } from "@/lib/api/super-admin"
+import { getAllInvoices, updateInvoicePayment, resendInvoice, type MonthlyInvoice } from "@/lib/api/super-admin"
+import { getApiBaseUrl } from "@/lib/api/client"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { ExportCsvButton } from "@/components/common/export-csv-button"
+import { Button } from "@/components/ui/button"
 
 type InvoiceRow = {
   id: string
@@ -19,7 +22,6 @@ type InvoiceRow = {
   value: string
   paid: boolean
   paymentDate: string
-  pdfUrl: string | null
 }
 
 function mapToInvoiceRow(inv: MonthlyInvoice): InvoiceRow {
@@ -31,7 +33,6 @@ function mapToInvoiceRow(inv: MonthlyInvoice): InvoiceRow {
     value: inv.amount ? `£${parseFloat(inv.amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : "£0.00",
     paid: inv.is_paid,
     paymentDate: inv.payment_date ? format(new Date(inv.payment_date), "yyyy-MM-dd") : "",
-    pdfUrl: inv.pdf_file || null,
   }
 }
 
@@ -61,22 +62,19 @@ export default function Page() {
     {
       field: "invoiceNumber",
       headerName: "Invoice Number",
-      cellRenderer: (params: { data?: InvoiceRow; value: string }) => (
-        <a
-          href={params.data?.pdfUrl || "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${params.data?.paid ? "text-emerald-500" : "text-red-500"} hover:underline font-medium inline-flex h-full items-center`}
-          onClick={(event) => {
-            if (!params.data?.pdfUrl) {
-              event.preventDefault()
-              toast.error("PDF not available for this invoice")
-            }
-          }}
-        >
-          {params.value}
-        </a>
-      ),
+      cellRenderer: (params: { data?: InvoiceRow; value: string }) => {
+        const url = params.data ? `${getApiBaseUrl()}/super-admin/invoices/${params.data.id}/pdf/` : "#"
+        return (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${params.data?.paid ? "text-emerald-500" : "text-red-500"} hover:underline font-medium inline-flex h-full items-center`}
+          >
+            {params.value}
+          </a>
+        )
+      },
     },
     { field: "companyName", headerName: "Company" },
     { field: "date", headerName: "Date" },
@@ -109,6 +107,31 @@ export default function Page() {
       field: "paymentDate",
       headerName: "Date of confirmed payment",
     },
+    {
+      headerName: "Actions",
+      colId: "actions",
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: { data?: InvoiceRow }) => {
+        if (!params.data) return null
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                await resendInvoice(params.data!.id)
+                toast.success("Invoice resent successfully")
+              } catch (err) {
+                toast.error("Failed to resend invoice")
+              }
+            }}
+          >
+            Resend
+          </Button>
+        )
+      },
+    },
   ]
 
   const totalInvoices = rows.length
@@ -118,8 +141,18 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1>Invoice List</h1>
-        {loading && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+        <div className="flex items-center gap-4">
+          <h1>Invoice List</h1>
+          {loading && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+        </div>
+        <ExportCsvButton 
+          fileName="invoices.csv"
+          rows={rows}
+          columns={columnDefs.map((col) => ({
+            header: String(col.headerName),
+            field: String(col.field || col.colId) as keyof InvoiceRow,
+          }))}
+        />
       </div>
       <TableStat
         summaryRows={[
