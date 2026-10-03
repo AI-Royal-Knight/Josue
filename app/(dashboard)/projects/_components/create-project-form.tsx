@@ -28,7 +28,7 @@ export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => voi
   const [completionDate, setCompletionDate] = useState<Date | undefined>(
     undefined
   )
-  const [monthlyApplicationDate, setMonthlyApplicationDate] = useState<string>("1")
+  const [monthlyApplicationDate, setMonthlyApplicationDate] = useState<string>("")
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -270,6 +270,7 @@ export default function CreateProjectForm({ onSuccess }: { onSuccess?: () => voi
               type="number"
               min={1}
               max={31}
+              placeholder="1"
               value={monthlyApplicationDate}
               onChange={e => setMonthlyApplicationDate(e.target.value)}
             />

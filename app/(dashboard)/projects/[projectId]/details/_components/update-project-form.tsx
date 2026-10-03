@@ -290,6 +290,7 @@ export default function UpdateProjectForm({ projectId }: { projectId: string }) 
               type="number"
               min={1}
               max={31}
+              placeholder="1"
               value={monthlyApplicationDate}
               onChange={e => setMonthlyApplicationDate(e.target.value)}
             />
