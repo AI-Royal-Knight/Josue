@@ -34,7 +34,8 @@ export default function InviteProjectAdminForm({ onSuccess }: { onSuccess?: () =
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     const email = formData.get("email") as string
     const first_name = formData.get("first_name") as string
     const last_name = formData.get("last_name") as string
@@ -52,7 +53,7 @@ export default function InviteProjectAdminForm({ onSuccess }: { onSuccess?: () =
       
       const result = await adminApi.inviteProjectAdmin(payload)
       setMessage(result.message)
-      e.currentTarget.reset()
+      form.reset()
       setSelectedProjectIds([])
       toast.success("Invitation sent successfully")
       if (onSuccess) {
