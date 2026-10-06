@@ -169,12 +169,16 @@ export default function Page() {
           {loading && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
         </div>
         <ExportCsvButton 
-          fileName="invoices.csv"
+          fileName="invoices.xlsx"
           rows={rows}
-          columns={columnDefs.map((col) => ({
-            header: String(col.headerName),
-            field: String(col.field || col.colId) as keyof InvoiceRow,
-          }))}
+          columns={[
+            { header: "Invoice Number", field: "invoiceNumber" },
+            { header: "Company", field: "companyName" },
+            { header: "Date", field: "date" },
+            { header: "Amount", field: "value" },
+            { header: "Paid", value: (r) => r.paid ? "Yes" : "No" },
+            { header: "Date of confirmed payment", field: "paymentDate" }
+          ]}
         />
       </div>
       <TableStat
