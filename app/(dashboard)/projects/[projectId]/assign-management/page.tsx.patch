@@ -1,0 +1,31 @@
+--- frontend/app/(dashboard)/projects/[projectId]/assign-management/page.tsx
++++ frontend/app/(dashboard)/projects/[projectId]/assign-management/page.tsx
+@@ -9,6 +9,7 @@
+ import { getProjectRoles, type ProjectRoleData, type ProjectUser } from "@/lib/api/project-admin"
+ import { ApiError } from "@/lib/api/client"
+ import { Loader2 } from "lucide-react"
++import UpdateProjectForm from "../details/_components/update-project-form"
+ 
+ export default function AssignManagementPage() {
+   const params = useParams()
+@@ -131,7 +132,15 @@
+   const allAssignedUserIds = assignments.flatMap(a => a.users.map(u => u.id))
+ 
+   return (
+-    <div className="w-full p-6">
+-      <h2 className="mb-6 text-xl font-semibold text-slate-100">
+-        Management Structure
+-      </h2>
++    <div className="flex flex-col w-full h-full p-6 overflow-y-auto">
++      <div className="mb-8">
++        <h2 className="mb-6 text-xl font-semibold text-slate-100">
++          Project Details
++        </h2>
++        <UpdateProjectForm projectId={projectId} />
++      </div>
++
++      <h2 className="mb-6 text-xl font-semibold text-slate-100 mt-4">
++        Assign Management
++      </h2>
+ 
+       {error && (

@@ -40,6 +40,7 @@ export interface ProfileResponse {
     account_number?: string | null
     iban?: string | null
     swift_bic?: string | null
+    attachment?: string | null
   } | null
 }
 

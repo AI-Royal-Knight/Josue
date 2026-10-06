@@ -550,6 +550,7 @@ export default function DynamicFolderTable() {
   )
 
   const toggleManagementFolder = useCallback((folderId: string) => {
+    if (isLocked) return
     const newFolders = folders.map((f) => {
       if (f.id === folderId) {
         const isNowManagement = !f.is_management
@@ -698,28 +699,26 @@ export default function DynamicFolderTable() {
                     </ContextMenuItem>
                     
                     {!isProjectAdmin && (
-                      <>
-                        <ContextMenuItem
-                          className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
-                          disabled={folder.is_management || isLocked}
-                          onSelect={() => handleAssignSubfolder(folder.id)}
-                        >
-                          <UserPlus size={14} className="shrink-0 text-indigo-400" />
-                          Assign Folder
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
-                          disabled={isLocked}
-                          onSelect={() => toggleManagementFolder(folder.id)}
-                        >
-                          <Briefcase
-                            size={14}
-                            className={`shrink-0 ${folder.is_management ? "text-red-400" : "text-blue-400"}`}
-                          />
-                          {folder.is_management ? "Remove from Management" : "Assign to Management"}
-                        </ContextMenuItem>
-                      </>
+                      <ContextMenuItem
+                        className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                        disabled={folder.is_management || isLocked}
+                        onSelect={() => handleAssignSubfolder(folder.id)}
+                      >
+                        <UserPlus size={14} className="shrink-0 text-indigo-400" />
+                        Assign Folder
+                      </ContextMenuItem>
                     )}
+                    <ContextMenuItem
+                      className="gap-2.5 text-slate-200 focus:bg-white/[0.08] focus:text-white"
+                      disabled={isLocked}
+                      onSelect={() => toggleManagementFolder(folder.id)}
+                    >
+                      <Briefcase
+                        size={14}
+                        className={`shrink-0 ${folder.is_management ? "text-red-400" : "text-blue-400"}`}
+                      />
+                      {folder.is_management ? "Remove from Management" : "Assign to Management"}
+                    </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
 

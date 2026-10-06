@@ -9,6 +9,7 @@ import { AgTable } from "@/components/common/AgTable"
 import { getProjectRoles, type ProjectRoleData, type ProjectUser } from "@/lib/api/project-admin"
 import { ApiError } from "@/lib/api/client"
 import { Loader2 } from "lucide-react"
+import UpdateProjectForm from "../details/_components/update-project-form"
 
 export default function AssignManagementPage() {
   const params = useParams()
@@ -27,7 +28,7 @@ export default function AssignManagementPage() {
     try {
       const rolesRes = await getProjectRoles(projectId)
       const filteredRoles = rolesRes.filter(
-        r => r.role_key !== "employee" && r.role_key !== "supplier" && r.role_key !== "managing_director"
+        r => r.role_key !== "employee" && r.role_key !== "supplier" && r.role_key !== "managing_director" && r.role_key !== "project_admin"
       )
       setAssignments(filteredRoles)
     } catch (err) {
@@ -128,10 +129,18 @@ export default function AssignManagementPage() {
   ]
 
   const currentAssignment = assignments.find((a) => a.role_key === selectedRole)
+  const allAssignedUserIds = assignments.flatMap(a => a.users.map(u => u.id))
 
   return (
-    <div className="w-full p-6">
-      <h2 className="mb-6 text-xl font-semibold text-slate-100">
+    <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
+      <div className="mb-8">
+        <h2 className="mb-6 text-xl font-semibold text-slate-100">
+          Project Details
+        </h2>
+        <UpdateProjectForm projectId={projectId} />
+      </div>
+
+      <h2 className="mb-6 text-xl font-semibold text-slate-100 mt-4">
         Management Structure
       </h2>
 
@@ -166,6 +175,7 @@ export default function AssignManagementPage() {
           projectId={projectId}
           roleKey={selectedRole}
           users={currentAssignment.users}
+          allAssignedUserIds={allAssignedUserIds}
           onUsersChange={handleUsersChange}
           onSuccess={fetchData}
         />

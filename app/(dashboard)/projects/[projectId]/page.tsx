@@ -7,5 +7,5 @@ export default function ProjectPage({
   params: Promise<{ projectId: string }>
 }) {
   const { projectId } = use(params)
-  redirect(`/projects/${projectId}/details`)
+  redirect(`/projects/${projectId}/assign-management`)
 }

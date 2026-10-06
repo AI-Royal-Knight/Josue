@@ -1,0 +1,14 @@
+--- frontend/app/(dashboard)/projects/[projectId]/layout-client.tsx
++++ frontend/app/(dashboard)/projects/[projectId]/layout-client.tsx
+@@ -6,11 +6,6 @@
+ import { FolderOpen, Users, CheckSquare, MessageSquareWarning } from "lucide-react"
+ 
+ const navItems = [
+-  {
+-    label: "Project Details",
+-    href: "details",
+-    icon: FolderOpen,
+-  },
+   {
+     label: "Assign Management",
+     href: "assign-management",

@@ -7,11 +7,6 @@ import { FolderOpen, Users, CheckSquare, MessageSquareWarning } from "lucide-rea
 
 const navItems = [
   {
-    label: "Project Details",
-    href: "details",
-    icon: FolderOpen,
-  },
-  {
     label: "Assign Management",
     href: "assign-management",
     icon: FolderOpen,

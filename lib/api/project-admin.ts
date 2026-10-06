@@ -52,6 +52,7 @@ export async function getProjects(): Promise<{ projects: ProjectItem[]; total_co
       completionDate: p.completion_date,
       overdue: p.is_overdue,
       completed: p.is_completed,
+      currency: p.currency,
     })),
   }
 }
@@ -74,6 +75,7 @@ export async function getProject(projectId: string): Promise<ProjectItem> {
     completionDate: p.completion_date,
     overdue: p.is_overdue,
     completed: p.is_completed,
+    currency: p.currency,
   }
 }
 
@@ -114,6 +116,7 @@ export async function getMyProjects(): Promise<{ projects: ProjectItem[]; total_
       totalUnclaimed: p.total_unclaimed,
       totalOverspend: p.total_overspend,
       proformaNr: p.proforma_nr,
+      currency: p.currency,
     })),
   }
 }

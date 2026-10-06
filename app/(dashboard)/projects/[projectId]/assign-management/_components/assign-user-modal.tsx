@@ -23,6 +23,7 @@ type AssignUserModalProps = {
   users: ProjectUser[]
   onUsersChange: (users: ProjectUser[]) => void
   onSuccess: () => void
+  allAssignedUserIds?: string[]
 }
 
 export function AssignUserModal({
@@ -31,6 +32,7 @@ export function AssignUserModal({
   projectId,
   roleKey,
   users: currentUsers,
+  allAssignedUserIds = [],
   onUsersChange,
   onSuccess,
 }: AssignUserModalProps) {
@@ -48,8 +50,10 @@ export function AssignUserModal({
     setError(null)
     try {
       const res = await getCompanyUsers()
-      // Filter out users that are already assigned
-      const availableUsers = res.users.filter(u => !currentUsers.some(cu => cu.id === u.id))
+      const availableUsers = res.users.filter(u => {
+        if (allAssignedUserIds.includes(u.id)) return false;
+        return !currentUsers.some(cu => cu.id === u.id);
+      })
       
       availableUsers.sort((a, b) => {
         const aMatch = a.role === roleKey ? 1 : 0;

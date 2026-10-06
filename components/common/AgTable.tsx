@@ -4,6 +4,7 @@ import { useMemo, useRef, useCallback, useState } from "react"
 import { AgGridProvider, AgGridReact } from "ag-grid-react"
 import {
   AllCommunityModule,
+  ValidationModule,
   type CellClickedEvent,
   themeQuartz,
   type ColDef,
@@ -33,7 +34,7 @@ const baseTheme = themeQuartz.withParams({
   selectedRowBackgroundColor: colors.secondary,
 })
 
-const modules = [AllCommunityModule]
+const modules = [AllCommunityModule, ValidationModule]
 
 export function AgTable<TData extends object>({
   rowData,
