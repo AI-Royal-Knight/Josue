@@ -100,19 +100,26 @@ export default function Page() {
       headerName: "Paid",
       cellRenderer: (params: { data?: InvoiceRow; value: boolean }) => (
         <div className="flex h-full items-center">
-          <Switch
-            checked={Boolean(params.value)}
-            onCheckedChange={(checked) => {
+          <div
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
               const invoice = params.data
               if (!invoice) return
 
               setPaymentConfirm({
                 id: invoice.id,
-                nextPaid: checked,
+                nextPaid: !params.value,
                 supplierName: invoice.companyName || "the company",
               })
             }}
-          />
+          >
+            <Switch
+              checked={Boolean(params.value)}
+              className="pointer-events-none"
+            />
+          </div>
         </div>
       ),
       type: "",
@@ -184,6 +191,10 @@ export default function Page() {
         height="70vh"
         pagination
         pageSize={10}
+        gridOptions={{
+          suppressRowClickSelection: true,
+          suppressCellFocus: true
+        }}
       />
 
       <ConfirmPaymentDialog
