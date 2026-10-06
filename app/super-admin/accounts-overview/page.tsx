@@ -168,13 +168,13 @@ export default function AccountsOverviewPage() {
     const base: ColDef<AccountsRow>[] = [
       { field: "company_name", headerName: "Company", minWidth: 220 },
       {
-        headerName: "Monthly Subscription",
+        headerName: "Base Subscription",
         colId: "monthly_subscription",
-        minWidth: 170,
-        valueGetter: (p) => formatGbp(p.data ? monthlyCharge(p.data) : 0),
+        minWidth: 160,
+        valueGetter: (p) => formatGbp(p.data?.monthly_subscription || "0"),
       },
       {
-        headerName: "per User rate",
+        headerName: "Per User Rate",
         colId: "per_user_rate",
         minWidth: 140,
         valueGetter: (p) => formatGbp(p.data?.per_user_rate || "0"),
@@ -182,7 +182,14 @@ export default function AccountsOverviewPage() {
       {
         field: "user",
         headerName: "Users",
-        minWidth: 120,
+        minWidth: 100,
+      },
+      {
+        headerName: "Total Monthly",
+        colId: "total_monthly",
+        minWidth: 140,
+        valueGetter: (p) => formatGbp(p.data ? monthlyCharge(p.data) : 0),
+        cellClass: "font-medium text-emerald-400",
       },
       {
         headerName: "Action",
@@ -248,46 +255,6 @@ export default function AccountsOverviewPage() {
     ]
 
     if (!expanded) {
-      base.push({
-        headerName: String(year),
-        colId: "annual",
-        minWidth: 160,
-        cellRenderer: (params: { data?: AccountsRow }) => {
-          const row = params.data
-          if (!row) return null
-
-          const start = firstBillableMonth(row, year)
-          // Billable months for this company in this year
-          const billableMonthKeys = months.filter((m) => m.key >= start)
-
-          const companyInvoices = invoices.filter(
-            (inv) => String(inv.company_id) === String(row.id) && inv.is_sent && inv.month >= start
-          )
-
-          const allSent = billableMonthKeys.every(({ key }) =>
-            companyInvoices.some((i) => i.month === key)
-          )
-
-          // Actual revenue: only from sent invoices
-          const actualRevenue = companyInvoices.reduce(
-            (sum, i) => sum + parseFloat(i.amount || "0"),
-            0
-          )
-
-          return (
-            <span
-              className={
-                allSent && billableMonthKeys.length > 0
-                  ? "font-medium text-emerald-400"
-                  : "text-slate-200"
-              }
-              title={`Billed: ${formatGbp(actualRevenue)}`}
-            >
-              {formatGbp(actualRevenue)}
-            </span>
-          )
-        },
-      })
       return base
     }
 
