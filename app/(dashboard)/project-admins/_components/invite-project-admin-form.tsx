@@ -60,14 +60,7 @@ export default function InviteProjectAdminForm({ onSuccess }: { onSuccess?: () =
         onSuccess()
       }
     } catch (error: any) {
-      // If it's a duplicate request (e.g. double click), it might say the user already exists.
-      // We don't want to make it look like the initial invite failed.
-      if (error.message && error.message.includes("already exists")) {
-        toast.success("Invitation already sent!")
-        if (onSuccess) onSuccess()
-      } else {
-        toast.error(error.message || "Failed to send invitation")
-      }
+      toast.error(error.message || "Failed to send invitation")
     } finally {
       setIsPending(false)
     }
