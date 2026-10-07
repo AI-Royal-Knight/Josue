@@ -208,6 +208,13 @@ export default function SignInPage() {
                 setOtp(val)
                 if (serverError) setServerError(null)
               }}
+              onPaste={(e) => {
+                e.preventDefault()
+                const pasted = e.clipboardData.getData("text")
+                const val = pasted.replace(/\D/g, "").slice(0, 6)
+                setOtp(val)
+                if (serverError) setServerError(null)
+              }}
               placeholder="••••••"
               className="h-14 rounded-xl border-white/20 bg-white/5 text-center font-mono text-2xl font-bold tracking-[0.4em] text-white placeholder:text-slate-600 backdrop-blur-md transition-all focus:border-blue-500/50 focus:bg-white/10 focus:ring-4 focus:ring-blue-500/10"
             />
