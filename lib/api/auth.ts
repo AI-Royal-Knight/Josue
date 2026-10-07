@@ -6,6 +6,7 @@ import { apiRequest } from "./client"
 export interface LoginPayload {
   email: string
   password: string
+  otp?: string
 }
 
 export interface RoleAssignment {
@@ -15,8 +16,9 @@ export interface RoleAssignment {
   project_id: number | null
 }
 
-export interface LoginResponse {
+export interface LoginSuccessResponse {
   success: boolean
+  requires_2fa?: false
   access_token: string
   refresh_token: string
   user: {
@@ -30,8 +32,33 @@ export interface LoginResponse {
   }
 }
 
+export interface Login2FAResponse {
+  success: boolean
+  requires_2fa: true
+  email: string
+  message: string
+}
+
+export type LoginResponse = LoginSuccessResponse | Login2FAResponse
+
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   return apiRequest<LoginResponse>("/account/login/", {
+    method: "POST",
+    body: payload,
+    public: true,
+  })
+}
+
+export async function verify2FA(payload: { email: string; otp: string }): Promise<LoginSuccessResponse> {
+  return apiRequest<LoginSuccessResponse>("/account/login/verify-2fa/", {
+    method: "POST",
+    body: payload,
+    public: true,
+  })
+}
+
+export async function resend2FA(payload: { email: string }): Promise<{ success: boolean; message: string }> {
+  return apiRequest<{ success: boolean; message: string }>("/account/login/resend-2fa/", {
     method: "POST",
     body: payload,
     public: true,
@@ -43,13 +70,19 @@ export interface ProfileData {
   last_name: string
   email: string
   backup_email?: string
+  two_factor_enabled?: boolean
   profile?: {
+    company_name?: string
+    vat_number?: string
+    address?: string
+    account_name?: string
     bank_name?: string
     bank_address?: string
     sort_code?: string
     account_number?: string
     iban?: string
     swift_bic?: string
+    two_factor_enabled?: boolean
   }
 }
 
@@ -60,6 +93,18 @@ export async function getProfile(): Promise<ProfileData> {
 export async function updateProfile(payload: Partial<ProfileData>): Promise<ProfileData> {
   return apiRequest<ProfileData>("/account/profile/", {
     method: "PUT",
+    body: payload,
+  })
+}
+
+export interface ChangePasswordPayload {
+  old_password: string
+  new_password: string
+}
+
+export async function changePassword(payload: ChangePasswordPayload): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>("/account/change-password/", {
+    method: "POST",
     body: payload,
   })
 }
