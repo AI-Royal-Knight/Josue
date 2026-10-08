@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Clock, CheckCircle } from "lucide-react"
+import FileUpload from "@/components/ui/file-uploader"
+import { Checkbox } from "@/components/ui/checkbox"
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -44,6 +46,12 @@ export default function AcceptInvitePage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
 
+  const [cscsCardNo, setCscsCardNo] = useState("")
+  const [cscsCardFile, setCscsCardFile] = useState<File | null>(null)
+  const [passportFile, setPassportFile] = useState<File | null>(null)
+  const [digitalSignature, setDigitalSignature] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
+
   useEffect(() => {
     async function loadInvitation() {
       try {
@@ -76,12 +84,52 @@ export default function AcceptInvitePage() {
 
     setIsSubmitting(true)
     try {
-      const result = await acceptInvitation({
-        token,
-        first_name: firstName,
-        last_name: lastName,
-        password,
-      })
+      let payload: AcceptInvitationPayload | FormData
+
+      if (details?.role === "employee") {
+        if (!termsAccepted) {
+          toast.error("You must accept the terms and conditions.")
+          setIsSubmitting(false)
+          return
+        }
+        if (!digitalSignature) {
+          toast.error("You must provide a digital signature.")
+          setIsSubmitting(false)
+          return
+        }
+        if (!passportFile) {
+          toast.error("You must provide your passport or driver's license.")
+          setIsSubmitting(false)
+          return
+        }
+
+        const formData = new FormData()
+        formData.append("token", token)
+        formData.append("first_name", firstName)
+        formData.append("last_name", lastName)
+        formData.append("password", password)
+        formData.append("cscs_card_no", cscsCardNo)
+        formData.append("digital_signature", digitalSignature)
+        formData.append("terms_accepted", "true")
+        
+        if (cscsCardFile) {
+          formData.append("cscs_card_document", cscsCardFile)
+        }
+        if (passportFile) {
+          formData.append("passport_document", passportFile)
+        }
+        
+        payload = formData
+      } else {
+        payload = {
+          token,
+          first_name: firstName,
+          last_name: lastName,
+          password,
+        }
+      }
+
+      const result = await acceptInvitation(payload)
 
       if (result.pending_approval) {
         // Employee users — show pending state, don't redirect to login
@@ -236,11 +284,82 @@ export default function AcceptInvitePage() {
           </div>
 
           {details.role === "employee" && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-              <p className="text-xs text-amber-300">
-                ⚠️ After submitting, your account will be <strong>pending review</strong> by the Document Controller. You will not be able to log in until approved.
-              </p>
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="cscsCardNo" className="text-white">CSCS Card Number (Optional)</Label>
+                <Input
+                  id="cscsCardNo"
+                  value={cscsCardNo}
+                  onChange={(e) => setCscsCardNo(e.target.value)}
+                  className="bg-[#0b1018]/50 border-[#2b3c5a] text-white placeholder:text-muted-foreground"
+                  placeholder="e.g. 1234567"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-white">CSCS Card Document (Optional)</Label>
+                <FileUpload
+                  onFilesChange={(files: any) => {
+                    if (files && files.length > 0) {
+                      setCscsCardFile(files[0].file)
+                    } else {
+                      setCscsCardFile(null)
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-white">Passport or Driver's License Document</Label>
+                <FileUpload
+                  onFilesChange={(files: any) => {
+                    if (files && files.length > 0) {
+                      setPassportFile(files[0].file)
+                    } else {
+                      setPassportFile(null)
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="digitalSignature" className="text-white">Digital Signature</Label>
+                <Input
+                  id="digitalSignature"
+                  required
+                  value={digitalSignature}
+                  onChange={(e) => setDigitalSignature(e.target.value)}
+                  className="bg-[#0b1018]/50 border-[#2b3c5a] text-white placeholder:text-muted-foreground font-script text-lg"
+                  placeholder="Type your full name as signature"
+                />
+              </div>
+
+              <div className="flex items-start space-x-2 mt-4">
+                <Checkbox
+                  id="termsAccepted"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                  className="mt-1"
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="termsAccepted"
+                    className="text-sm font-medium leading-none text-white cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Accept terms and conditions
+                  </label>
+                  <p className="text-xs text-[#94a3b8]">
+                    You agree to our Terms of Service and Privacy Policy.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mt-4">
+                <p className="text-xs text-amber-300">
+                  ⚠️ After submitting, your account will be <strong>pending review</strong> by the Document Controller. You will not be able to log in until approved.
+                </p>
+              </div>
+            </>
           )}
 
           <Button

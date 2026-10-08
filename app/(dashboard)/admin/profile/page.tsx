@@ -119,8 +119,8 @@ export default function AdminProfilePage() {
           if (c.company_logo) {
             setLogoPreview(c.company_logo)
           }
-          if (c.attachment) {
-            setTcPreviewUrl(c.attachment)
+          if (c.terms_and_conditions_document) {
+            setTcPreviewUrl(c.terms_and_conditions_document)
           }
         }
       })
@@ -179,7 +179,7 @@ export default function AdminProfilePage() {
         formData.append("company_logo", file)
       }
       if (tcFile) {
-        formData.append("attachment", tcFile)
+        formData.append("terms_and_conditions_document", tcFile)
       }
       
       await updateProfile(formData)

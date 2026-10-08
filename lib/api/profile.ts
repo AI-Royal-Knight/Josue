@@ -34,13 +34,21 @@ export interface ProfileResponse {
     postcode?: string | null
     vat_number?: string | null
     phone?: string | null
+    utr?: string | null
     bank_name?: string | null
     bank_address?: string | null
     sort_code?: string | null
     account_number?: string | null
     iban?: string | null
     swift_bic?: string | null
+    public_liability_policy?: string | null
+    public_liability_expiry?: string | null
+    public_liability_document?: string | null
+    employers_liability_policy?: string | null
+    employers_liability_expiry?: string | null
+    employers_liability_document?: string | null
     attachment?: string | null
+    terms_and_conditions_document?: string | null
   } | null
 }
 

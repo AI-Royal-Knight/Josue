@@ -89,7 +89,7 @@ export interface AcceptInvitationResponse {
 }
 
 export async function acceptInvitation(
-  payload: AcceptInvitationPayload
+  payload: AcceptInvitationPayload | FormData
 ): Promise<AcceptInvitationResponse> {
   return apiRequest<AcceptInvitationResponse>(
     "/account/invitations/accept/",
