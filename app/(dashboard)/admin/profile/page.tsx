@@ -89,6 +89,7 @@ export default function AdminProfilePage() {
 
   const [tcFile, setTcFile] = useState<File | null>(null)
   const [tcPreviewUrl, setTcPreviewUrl] = useState<string | null>(null)
+  const [fileUploadKey, setFileUploadKey] = useState(0)
 
   const [oldPassword, setOldPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -182,8 +183,19 @@ export default function AdminProfilePage() {
         formData.append("terms_and_conditions_document", tcFile)
       }
       
-      await updateProfile(formData)
+      const updatedProfile = await updateProfile(formData)
 
+      if (updatedProfile.company) {
+        if (updatedProfile.company.company_logo) {
+          setLogoPreview(updatedProfile.company.company_logo)
+        }
+        if (updatedProfile.company.terms_and_conditions_document) {
+          setTcPreviewUrl(updatedProfile.company.terms_and_conditions_document)
+        }
+      }
+      
+      setTcFile(null)
+      setFileUploadKey(prev => prev + 1)
       setSaved(true)
     } catch (err: any) {
       setError(err.message || "Failed to save profile.")
@@ -354,6 +366,7 @@ export default function AdminProfilePage() {
               before they can access the platform.
             </p>
             <FileUpload 
+              key={fileUploadKey}
               onFilesChange={(files: any) => {
                 if (files && files.length > 0) {
                   setTcFile(files[0].file)
