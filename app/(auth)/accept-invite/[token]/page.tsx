@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { validateInvitationToken, acceptInvitation, InvitationDetails } from "@/lib/api/invitations"
+import { validateInvitationToken, acceptInvitation, InvitationDetails, AcceptInvitationPayload } from "@/lib/api/invitations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -348,9 +348,23 @@ export default function AcceptInvitePage() {
                   >
                     Accept terms and conditions
                   </label>
-                  <p className="text-xs text-[#94a3b8]">
-                    You agree to our Terms of Service and Privacy Policy.
-                  </p>
+                  {details.terms_and_conditions_url ? (
+                    <p className="text-xs text-[#94a3b8]">
+                      You agree to the{" "}
+                      <a 
+                        href={details.terms_and_conditions_url} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-blue-400 hover:underline"
+                      >
+                        Company Terms and Conditions
+                      </a>.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[#94a3b8]">
+                      You agree to our Terms of Service and Privacy Policy.
+                    </p>
+                  )}
                 </div>
               </div>
 

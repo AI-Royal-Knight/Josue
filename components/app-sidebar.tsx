@@ -60,7 +60,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader className="h-16 justify-center border-b p-0">
         <div className="flex w-full items-center justify-center gap-2">
           <Button variant={"ghost"} onClick={() => router.push("/")}>
-            <Image src={logo} alt="Logo" width={32} height={32} />
+            <Image src={logo} alt="Logo" width={48} height={48} />
             <h1 className="text-xl font-bold">TRESTA</h1>
           </Button>
         </div>

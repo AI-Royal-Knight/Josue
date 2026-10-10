@@ -14,6 +14,9 @@ import {
   ShieldX,
   User,
   Phone,
+  CheckCircle2,
+  FileBadge2,
+  ExternalLink,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -44,6 +47,10 @@ export type UserProfileDialogProps = {
     ssstsSmsts: string
     expiryDate: string
     expiryTone: "emerald" | "red"
+    digitalSignature?: string
+    termsAccepted?: boolean
+    passportDocumentUrl?: string
+    cscsCardDocumentUrl?: string
   }
   /** Only document_controller can approve/reject */
   canApprove?: boolean
@@ -82,7 +89,7 @@ function DetailRow({
 }: {
   icon: React.ReactNode
   label: string
-  value: string
+  value: string | React.ReactNode
   status?: {
     label: string
     tone: "emerald" | "yellow" | "red"
@@ -241,6 +248,56 @@ export function UserProfileDialog({ user, canApprove = false, onAction }: UserPr
               />
             </div>
           </div>
+          
+          {(user.digitalSignature || user.termsAccepted || user.passportDocumentUrl || user.cscsCardDocumentUrl) && (
+            <div className="space-y-4 lg:col-span-2 mt-4 pt-6 border-t border-white/10">
+              <div className="flex items-center gap-2 text-lg font-semibold text-white">
+                Documentation & Agreements
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                {user.termsAccepted && (
+                  <DetailRow
+                    icon={<CheckCircle2 className="size-4" />}
+                    label="Terms & Conditions"
+                    value="Accepted"
+                    status={{
+                      label: "Verified",
+                      tone: "emerald",
+                    }}
+                  />
+                )}
+                {user.digitalSignature && (
+                  <DetailRow
+                    icon={<FileBadge2 className="size-4" />}
+                    label="Digital Signature"
+                    value={<span className="font-script text-xl text-emerald-400">{user.digitalSignature}</span>}
+                  />
+                )}
+                {user.passportDocumentUrl && (
+                  <DetailRow
+                    icon={<FileText className="size-4" />}
+                    label="Passport / Driver's License"
+                    value={
+                      <a href={user.passportDocumentUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-400 hover:underline">
+                        View Document <ExternalLink className="size-3" />
+                      </a>
+                    }
+                  />
+                )}
+                {user.cscsCardDocumentUrl && (
+                  <DetailRow
+                    icon={<FileText className="size-4" />}
+                    label="CSCS Card Document"
+                    value={
+                      <a href={user.cscsCardDocumentUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-400 hover:underline">
+                        View Document <ExternalLink className="size-3" />
+                      </a>
+                    }
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between border-t border-white/10 text-sm text-slate-400 pt-4">

@@ -39,6 +39,10 @@ type UserRow = {
   approvedUser: boolean
   approvedBy: string
   secondaryRole?: string
+  digitalSignature?: string
+  termsAccepted?: boolean
+  passportDocumentUrl?: string
+  cscsCardDocumentUrl?: string
 }
 
 type PendingToggle = {

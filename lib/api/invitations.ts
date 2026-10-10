@@ -30,6 +30,7 @@ export interface InvitationDetails {
   company_name?: string
   /** Human-readable project name returned from the serializer */
   project_name?: string
+  terms_and_conditions_url?: string | null
 }
 
 export async function validateInvitationToken(
