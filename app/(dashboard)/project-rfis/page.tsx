@@ -47,9 +47,17 @@ function RFIDetailDialog({
 
   const { user } = useAuthStore()
   const isClosed = rfi.status === "CLOSED"
+  const currentUserName = user?.first_name || user?.last_name 
+    ? `${user?.first_name || ''} ${user?.last_name || ''}`.trim() 
+    : (user?.email?.split('@')[0] || "Unknown");
   const canClose =
     !isClosed &&
-    (user?.role === "project_director" || user?.role === "project_admin" || user?.role === "admin" || user?.role === "contracts_manager")
+    (user?.role === "managing_director" ||
+     user?.role === "project_director" || 
+     user?.role === "project_admin" || 
+     user?.role === "admin" || 
+     user?.role === "contracts_manager" ||
+     rfi.created_by_name === currentUserName)
 
   const handleSend = () => {
     const trimmed = message.trim()
@@ -91,7 +99,20 @@ function RFIDetailDialog({
                   {rfi.status}
                 </Badge>
               </div>
-              <p className="mt-1 text-[13px] text-slate-400">{rfi.description}</p>
+              <p className="mt-1 text-[13px] text-slate-400 whitespace-pre-wrap">{rfi.description}</p>
+              {rfi.document_url && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <a
+                    href={rfi.document_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 rounded border border-[#2d4060] bg-[#0a1428] px-2 py-1 text-[12px] text-blue-400 hover:text-blue-300 w-fit"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    Original Attachment
+                  </a>
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-slate-500">
                 <span><span className="text-slate-400">Date:</span> {format(new Date(rfi.created_at), "yyyy-MM-dd")}</span>
                 <span><span className="text-slate-400">Project:</span> {rfi.project_name}</span>
@@ -146,6 +167,8 @@ function RFIDetailDialog({
                     <a
                       key={att.name}
                       href={att.url}
+                      target="_blank"
+                      rel="noreferrer"
                       className="flex items-center gap-1 rounded border border-[#2d4060] bg-[#0a1428] px-2 py-1 text-[12px] text-blue-400 hover:text-blue-300"
                     >
                       <Paperclip className="h-3 w-3" />
@@ -336,28 +359,6 @@ export default function ProjectRFIsPage() {
     { field: "created_at", headerName: "Date", width: 120, minWidth: 100, valueFormatter: (params) => params.value ? format(new Date(params.value), "yyyy-MM-dd") : "" },
     { field: "project_name", headerName: "Project", flex: 1, minWidth: 140 },
     { field: "description", headerName: "Description", flex: 2, minWidth: 200 },
-    {
-      field: "document_url",
-      headerName: "Attachment",
-      width: 110,
-      minWidth: 90,
-      cellRenderer: (params: ICellRendererParams<RFI>) =>
-        params.value ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-            onClick={(e) => {
-              e.stopPropagation()
-              setViewDocumentUrl(params.value)
-            }}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-        ) : (
-          <span className="text-slate-600">—</span>
-        ),
-    },
     { field: "created_by_name", headerName: "Created by", minWidth: 130 },
     { field: "trade", headerName: "Trade", minWidth: 110 },
     {
