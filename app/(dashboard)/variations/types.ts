@@ -20,6 +20,7 @@ export type VariationRow = {
   project: string
   projectId: string
   siteInstructionNo: string
+  attentionOf?: string
   descriptionOfWorks: string
   createdBy: string
   lines: VariationLine[]
@@ -32,6 +33,8 @@ export type VariationRow = {
   approvedBy: string
   submittedToClient: boolean
   signedByClient: boolean
+  clientName?: string
+  clientEmail?: string
 
   // Role Signatures
   sigCommercialDepartment?: boolean

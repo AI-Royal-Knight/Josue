@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -12,11 +12,10 @@ import {
 import {
   Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Loader2 } from "lucide-react"
+import { Plus, Trash2, Loader2, UploadCloud, FileText, Image as ImageIcon, X } from "lucide-react"
 
 import { VariationFormData, VariationLine } from "../types"
-import { PROJECTS, emptyLine, defaultForm, lineTotal, formatGBP } from "../utils"
-import FileUpload from "@/components/ui/file-uploader"
+import { emptyLine, defaultForm, lineTotal, formatGBP } from "../utils"
 import { Textarea } from "@/components/ui/textarea"
 
 type Props = {
@@ -27,25 +26,38 @@ type Props = {
 }
 
 const COLUMNS = [
-  { key: "no",            label: "No.",               width: "w-10" },
-  { key: "description",   label: "Description",        width: "min-w-[140px]" },
-  { key: "workArea",      label: "Work Area",          width: "min-w-[110px]" },
-  { key: "workSection",   label: "Work Section",       width: "min-w-[110px]" },
-  { key: "labour",        label: "Labour (£)",         width: "w-24" },
-  { key: "labourTarget",  label: "Labour Target (£)",  width: "w-28" },
-  { key: "material",      label: "Material (£)",       width: "w-24" },
-  { key: "qty",           label: "QTY",                width: "w-20" },
-  { key: "total",         label: "Total",              width: "w-24" },
-  { key: "actions",       label: "",                   width: "w-8"  },
+  { key: "no",           label: "No.",               width: "w-10" },
+  { key: "description",  label: "Description",       width: "min-w-[180px]" },
+  { key: "labour",       label: "Labour (£)",        width: "w-24" },
+  { key: "labourTarget", label: "Labour Target (£)", width: "w-28" },
+  { key: "material",     label: "Material (£)",      width: "w-24" },
+  { key: "qty",          label: "QTY",               width: "w-20" },
+  { key: "total",        label: "Total",             width: "w-24" },
+  { key: "actions",      label: "",                  width: "w-8"  },
 ]
 
 export default function CreateVariationDialog({ open, onOpenChange, onSubmit, projects }: Props) {
   const [form, setForm] = useState<VariationFormData>(defaultForm())
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (open) setForm(defaultForm())
+    if (open) {
+      setForm(defaultForm())
+      setPreviewUrl(null)
+      setIsDragging(false)
+    }
   }, [open])
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   const formTotal = useMemo(
     () => form.lines.reduce((s, l) => s + lineTotal(l), 0),
@@ -65,6 +77,34 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
 
   const removeLine = (i: number) =>
     setForm((f) => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))
+
+  const handleFileChange = (file: File | null) => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
+    if (file) {
+      if (file.type.startsWith("image/")) {
+        setPreviewUrl(URL.createObjectURL(file))
+      }
+      setForm((f) => ({ ...f, evidence: file }))
+    } else {
+      setForm((f) => ({ ...f, evidence: null }))
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0]
+      if (file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        handleFileChange(file)
+      }
+    }
+  }
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
@@ -124,16 +164,89 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
               />
             </div>
 
+            {/* Evidence Attachment (Pictures and PDFs) */}
             <div className="space-y-1">
-              <label className="text-xs text-slate-400">Evidence</label>
-              <FileUpload onFilesChange={(files) => setForm(f => ({ ...f, evidence: files[0]?.file || null }))} />
+              <label className="text-xs text-slate-400">Evidence (Picture or PDF)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null
+                  handleFileChange(file)
+                }}
+              />
+              
+              {!form.evidence ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={`flex h-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-2 text-center transition-colors ${
+                    isDragging
+                      ? "border-emerald-500 bg-emerald-500/10"
+                      : "border-white/10 bg-white/5 hover:border-emerald-500/50 hover:bg-white/[0.07]"
+                  }`}
+                >
+                  <UploadCloud className="size-5 text-slate-400 mb-1" />
+                  <span className="text-xs font-medium text-slate-200">
+                    Click to attach PDF or Picture
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    PDF, PNG, JPG, WEBP (max 10MB)
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-900/80 p-2.5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {previewUrl ? (
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="h-10 w-10 shrink-0 rounded object-cover border border-white/10"
+                      />
+                    ) : form.evidence.type === "application/pdf" || form.evidence.name.toLowerCase().endsWith(".pdf") ? (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                        <FileText className="size-5" />
+                      </div>
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <ImageIcon className="size-5" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-slate-100">
+                        {form.evidence.name}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {(form.evidence.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleFileChange(null)}
+                    className="h-7 w-7 text-slate-400 hover:text-red-400"
+                    title="Remove attachment"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Description */}
           <div className="space-y-1">
             <label className="text-xs text-slate-400">Reason for Variation / Description of Works</label>
-            <textarea
+            <Textarea
               rows={3}
               value={form.descriptionOfWorks}
               onChange={(e) => setForm((f) => ({ ...f, descriptionOfWorks: e.target.value }))}
@@ -156,7 +269,7 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
             <div className="rounded-md border border-white/10 overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow >
+                  <TableRow>
                     {COLUMNS.map((col) => (
                       <TableHead
                         key={col.key}
@@ -172,39 +285,23 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
                   {form.lines.map((line, i) => (
                     <TableRow key={i} className="border-white/10 hover:bg-white/[0.03]">
                       {/* Row number */}
-                      <TableCell className="border-r border-white/10 py-1 px-2 text-slate-400 text-xs">
+                      <TableCell className="border-r border-white/10 py-1 px-2 text-slate-400 text-xs align-top">
                         {i + 1}
                       </TableCell>
 
-                      {/* Description */}
-                      <TableCell className="border-r border-white/10 px-1 py-1">
-                        <Input
+                      {/* Description - takes up lines below when long */}
+                      <TableCell className="border-r border-white/10 px-1 py-1 align-top">
+                        <Textarea
                           value={line.siteInstruction}
                           onChange={(e) => updateLine(i, { siteInstruction: e.target.value })}
-                          className="h-7 border-white/10 bg-transparent text-xs"
-                        />
-                      </TableCell>
-
-                      {/* Work Area */}
-                      <TableCell className="border-r border-white/10 px-1 py-1">
-                        <Input
-                          value={line.workArea}
-                          onChange={(e) => updateLine(i, { workArea: e.target.value })}
-                          className="h-7 border-white/10 bg-transparent text-xs"
-                        />
-                      </TableCell>
-
-                      {/* Work Section */}
-                      <TableCell className="border-r border-white/10 px-1 py-1">
-                        <Input
-                          value={line.workSection}
-                          onChange={(e) => updateLine(i, { workSection: e.target.value })}
-                          className="h-7 border-white/10 bg-transparent text-xs"
+                          placeholder="Description of row works…"
+                          rows={1}
+                          className="min-h-[30px] border-white/10 bg-transparent text-xs py-1 px-2 resize-y leading-snug"
                         />
                       </TableCell>
 
                       {/* Labour */}
-                      <TableCell className="border-r border-white/10 px-1 py-1">
+                      <TableCell className="border-r border-white/10 px-1 py-1 align-top">
                         <Input
                           type="number"
                           min={0}
@@ -215,7 +312,7 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
                       </TableCell>
 
                       {/* Labour Target */}
-                      <TableCell className="border-r border-white/10 px-1 py-1">
+                      <TableCell className="border-r border-white/10 px-1 py-1 align-top">
                         <Input
                           type="number"
                           min={0}
@@ -228,7 +325,7 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
                       </TableCell>
 
                       {/* Material */}
-                      <TableCell className="border-r border-white/10 px-1 py-1">
+                      <TableCell className="border-r border-white/10 px-1 py-1 align-top">
                         <Input
                           type="number"
                           min={0}
@@ -239,7 +336,7 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
                       </TableCell>
 
                       {/* QTY */}
-                      <TableCell className="border-r border-white/10 px-1 py-1">
+                      <TableCell className="border-r border-white/10 px-1 py-1 align-top">
                         <Input
                           type="number"
                           min={0}
@@ -250,12 +347,12 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
                       </TableCell>
 
                       {/* Row Total */}
-                      <TableCell className="border-r border-white/10 px-2 py-1 text-right font-medium text-slate-100 text-xs tabular-nums">
+                      <TableCell className="border-r border-white/10 px-2 py-1 text-right font-medium text-slate-100 text-xs tabular-nums align-top pt-2">
                         {formatGBP(lineTotal(line))}
                       </TableCell>
 
                       {/* Remove */}
-                      <TableCell className="px-2 py-1 text-center">
+                      <TableCell className="px-2 py-1 text-center align-top pt-2">
                         <button
                           onClick={() => removeLine(i)}
                           className="text-slate-500 hover:text-red-400 transition-colors"
@@ -331,7 +428,6 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
               value={form.comments}
               onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))}
               placeholder="Any additional notes…"
-            //   className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
           </div>
 

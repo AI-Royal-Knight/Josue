@@ -21,10 +21,15 @@ export default function SelectRolePage() {
   useEffect(() => {
     if (mounted && !isAuthenticated) {
       router.push("/sign-in")
+      return
     }
-  }, [mounted, isAuthenticated, router])
+    if (mounted && user?.role === "managing_director") {
+      setRole("managing_director")
+      router.push(getDashboardUrl("managing_director"))
+    }
+  }, [mounted, isAuthenticated, user, router, setRole])
 
-  if (!mounted || !user) {
+  if (!mounted || !user || user.role === "managing_director") {
     return null
   }
 
@@ -57,7 +62,7 @@ export default function SelectRolePage() {
               user.role,
               ...(user.secondary_role ? [user.secondary_role] : []),
               ...(user.role_assignments ? user.role_assignments.map((a: any) => a.role) : [])
-            ].filter(Boolean))
+            ].filter((r) => Boolean(r) && r !== "managing_director"))
           ).map((roleKey) => (
             <Button
               key={roleKey}

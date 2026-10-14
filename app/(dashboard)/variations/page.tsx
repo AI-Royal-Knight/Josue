@@ -8,7 +8,7 @@ import {
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, Plus, XCircle, Loader2, UserPlus } from "lucide-react"
+import { CheckCircle2, Plus, XCircle, Loader2, UserPlus, Paperclip } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
@@ -36,6 +36,7 @@ import {
   createVariation,
   approveVariation,
   submitVariationToClient,
+  remindClientVariation,
   assignVariationUsers,
   toggleVariationSignature,
   type VariationApi,
@@ -79,6 +80,9 @@ function apiToRow(v: VariationApi): VariationRow {
     approvedBy: v.approved_by_name,
     submittedToClient: v.submitted_to_client,
     signedByClient: v.signed_by_client,
+    clientName: v.client_name || "",
+    clientEmail: v.client_email || "",
+    attentionOf: v.attention_of || "",
     
     // Signatures
     sigCommercialDepartment: v.commercial_department_approved || false,
@@ -385,16 +389,19 @@ export default function Page() {
   }, [])
 
   const submitVariationToClientHandler = useCallback(
-    async (_name: string, _email: string) => {
+    async (name: string, email: string) => {
       if (!selectedVariation) return
       setIsSubmitting(true)
       try {
-        const updated = await submitVariationToClient(selectedVariation.id)
+        const updated = await submitVariationToClient(selectedVariation.id, {
+          client_name: name,
+          client_email: email,
+        })
         setRows((prev) => prev.map((r) => (r.id === updated.id ? apiToRow(updated) : r)))
-        toast.success("Variation submitted to client.")
+        toast.success("Variation issued to client.")
         setVariationDialogOpen(false)
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to submit to client"
+        const msg = err instanceof Error ? err.message : "Failed to issue to client"
         toast.error(msg)
       } finally {
         setIsSubmitting(false)
@@ -413,14 +420,22 @@ export default function Page() {
     setReminderDialogOpen(true)
   }, [])
 
-  const handleSendReminder = useCallback(() => {
+  const handleSendReminder = useCallback(async (email: string) => {
     if (!selectedReminder) return
     setIsSendingReminder(true)
-    setTimeout(() => {
-      setIsSendingReminder(false)
+    try {
+      const updated = await remindClientVariation(selectedReminder.id, {
+        client_email: email,
+      })
+      setRows((prev) => prev.map((r) => (r.id === updated.id ? apiToRow(updated) : r)))
+      toast.success("Reminder sent to client.")
       setReminderDialogOpen(false)
-      toast.success("Reminder sent.")
-    }, 1000)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send reminder"
+      toast.error(msg)
+    } finally {
+      setIsSendingReminder(false)
+    }
   }, [selectedReminder])
 
   // ── Summary metrics ─────────────────────────────────────────────────────
@@ -463,7 +478,33 @@ export default function Page() {
       { headerName: "Date", field: "date", minWidth: 120 },
       { headerName: "Project", field: "project" },
       { headerName: "Site Instruction No.", field: "siteInstructionNo", minWidth: 180 },
-      { headerName: "Description of Works", field: "descriptionOfWorks", minWidth: 220 },
+      {
+        headerName: "Description of Works",
+        field: "descriptionOfWorks",
+        minWidth: 260,
+        wrapText: true,
+        autoHeight: true,
+        cellStyle: { wordBreak: "break-word", lineHeight: "1.4" },
+      },
+      {
+        headerName: "Evidence",
+        field: "evidence_url",
+        minWidth: 110,
+        cellRenderer: (params: { value?: string | null }) => {
+          if (!params.value) return <span className="text-slate-500">—</span>
+          return (
+            <a
+              href={params.value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-400 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Paperclip className="size-3" /> View
+            </a>
+          )
+        },
+      },
       {
         headerName: "Total Amount",
         field: "totalAmount",
@@ -632,6 +673,10 @@ export default function Page() {
         field: "signedByClient",
         cellRenderer: (params: { data?: VariationRow; value: boolean }) => {
           if (params.value) return <span className="text-emerald-400">Yes</span>
+          // Only the commercial department is allowed to send reminders to clients
+          if (!isCommercial) {
+            return <span className="text-slate-500">No</span>
+          }
           return (
             <button
               type="button"

@@ -54,7 +54,20 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // 3. Prevent normal roles from accessing super-admin or supplier routes
+      // 3. Managing Director: strictly restricted to managing director dashboard routes
+      if (role === "managing_director") {
+        const allowedNav = DASHBOARD_NAV.managing_director || []
+        const allowedBaseUrls = allowedNav.map((nav) => nav.url)
+        const isAllowed = allowedBaseUrls.some(
+          (baseUrl) => pathname === baseUrl || pathname.startsWith(`${baseUrl}/`)
+        )
+        if (!isAllowed) {
+          router.push("/project-overview")
+          return
+        }
+      }
+
+      // 4. Prevent normal roles from accessing super-admin or supplier routes
       if (
         pathname.startsWith("/super-admin") ||
         pathname === "/supplier" ||
@@ -64,7 +77,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // 4. Role-based nav check
+      // 5. Role-based nav check
       const allowedNav = DASHBOARD_NAV[role as keyof typeof DASHBOARD_NAV] || []
       const allowedBaseUrls = allowedNav.map((nav) => nav.url)
 
@@ -72,7 +85,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         (baseUrl) => pathname === baseUrl || pathname.startsWith(`${baseUrl}/`)
       )
 
-      if (!isAllowed && pathname !== "/home") {
+      if (!isAllowed) {
         const fallback = allowedBaseUrls.length > 0 ? allowedBaseUrls[0] : "/home"
         router.push(fallback)
       }

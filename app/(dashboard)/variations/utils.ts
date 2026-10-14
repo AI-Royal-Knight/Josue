@@ -89,48 +89,67 @@ export function buildVariationDocHtml(variation: VariationRow) {
   <head>
     <meta charset="utf-8" />
     <title>Variation ${variation.voNo}</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #111; margin: 0; padding: 20px; }
+      .container { max-width: 760px; margin: 0 auto; padding: 24px; box-sizing: border-box; }
+      h1 { margin: 0 0 12px; font-size: 20px; font-weight: bold; }
+      .meta { margin: 0 0 16px; font-size: 12px; line-height: 1.6; }
+      .desc-box { font-size: 13px; line-height: 1.5; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; margin: 16px 0; }
+      table { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
+      th, td { box-sizing: border-box; }
+      th { border-bottom: 2px solid #222; padding: 8px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+      td { border-bottom: 1px solid #e5e7eb; padding: 8px 6px; }
+      .col-desc { width: 44%; text-align: left; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; vertical-align: top; line-height: 1.4; }
+      .col-num { width: 14%; text-align: right; white-space: nowrap; vertical-align: top; }
+      .col-qty { width: 12%; text-align: right; white-space: nowrap; vertical-align: top; }
+      .col-total { width: 16%; text-align: right; white-space: nowrap; vertical-align: top; font-weight: 600; }
+      tfoot td { border-top: 2px solid #222; padding: 12px 6px; font-weight: bold; }
+    </style>
   </head>
-  <body style="font-family: Arial, Helvetica, sans-serif; color: #111;">
-    <div style="max-width: 720px; margin: 0 auto; padding: 24px;">
-      <h1 style="margin: 0 0 8px;">VARIATION ORDER</h1>
-      <div style="margin: 0 0 16px; font-size: 12px;">
+  <body>
+    <div class="container">
+      <h1>VARIATION ORDER</h1>
+      <div class="meta">
         <div><strong>VO No:</strong> ${variation.voNo}</div>
         <div><strong>Project:</strong> ${variation.project}</div>
         <div><strong>Date:</strong> ${variation.date}</div>
-        <div><strong>Site Instruction No:</strong> ${variation.siteInstructionNo}</div>
+        <div><strong>Site Instruction No:</strong> ${variation.siteInstructionNo || "—"}</div>
         <div><strong>Status:</strong> ${variation.approvalStatus}</div>
       </div>
       <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
-      <p style="font-size: 14px;"><strong>Description of Works:</strong><br/>${variation.descriptionOfWorks}</p>
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 16px;">
+      <div class="desc-box">
+        <strong>Description of Works:</strong><br/>
+        ${variation.descriptionOfWorks || "—"}
+      </div>
+      <table>
         <thead>
           <tr>
-            <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px 4px;">Site Instruction</th>
-            <th style="text-align: right; border-bottom: 1px solid #ddd; padding: 8px 4px;">Labour</th>
-            <th style="text-align: right; border-bottom: 1px solid #ddd; padding: 8px 4px;">Material</th>
-            <th style="text-align: right; border-bottom: 1px solid #ddd; padding: 8px 4px;">QTY</th>
-            <th style="text-align: right; border-bottom: 1px solid #ddd; padding: 8px 4px;">Total</th>
+            <th class="col-desc">Description / Site Instruction</th>
+            <th class="col-num">Labour</th>
+            <th class="col-num">Material</th>
+            <th class="col-qty">QTY</th>
+            <th class="col-total">Total</th>
           </tr>
         </thead>
         <tbody>
-          ${variation.lines.map(l => `
+          ${variation.lines.map((l, i) => `
             <tr>
-              <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">${l.siteInstruction || "-"}</td>
-              <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${formatGBP(l.labour)}</td>
-              <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${formatGBP(l.material)}</td>
-              <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${l.qty}</td>
-              <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${formatGBP((l.labour + l.material) * l.qty)}</td>
+              <td class="col-desc">${l.siteInstruction || `Item ${i + 1}`}</td>
+              <td class="col-num">${formatGBP(l.labour)}</td>
+              <td class="col-num">${formatGBP(l.material)}</td>
+              <td class="col-qty">${l.qty}</td>
+              <td class="col-total">${formatGBP((l.labour + l.material) * l.qty)}</td>
             </tr>
           `).join('')}
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="4" style="padding: 12px 4px; text-align: right;"><strong>Total Amount</strong></td>
-            <td style="padding: 12px 4px; text-align: right;"><strong>${formatGBP(variation.totalAmount)}</strong></td>
+            <td colspan="4" style="text-align: right;">Total Amount</td>
+            <td class="col-total">${formatGBP(variation.totalAmount)}</td>
           </tr>
         </tfoot>
       </table>
-      <p style="margin-top: 16px; font-size: 11px; color: #444;">
+      <p style="margin-top: 24px; font-size: 11px; color: #666;">
         This is a generated variation order document.
       </p>
     </div>

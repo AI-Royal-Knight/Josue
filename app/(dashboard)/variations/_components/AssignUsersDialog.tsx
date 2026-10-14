@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Loader2 } from "lucide-react"
+import { Search, Loader2, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog"
 import { apiRequest } from "@/lib/api/client"
 
@@ -53,15 +53,19 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
 
   useEffect(() => {
     if (open) {
-      setAssignSelected(initialSelected)
       setUserSearch("")
       setLoading(true)
-      apiRequest<UserItem[]>("/account/users/")
+      apiRequest<UserItem[]>("/account/users/?role=employee")
         .then((data) => {
-          setUsers(data.filter(u => u.role === "employee"))
+          // Strictly allow only mobile app users (employees)
+          const appUsers = data.filter((u) => u.role === "employee")
+          setUsers(appUsers)
+          const appUserIds = new Set(appUsers.map((u) => u.id))
+          // Filter initial selection to only valid app users
+          setAssignSelected(initialSelected.filter((id) => appUserIds.has(id)))
         })
         .catch((err) => {
-          console.error("Failed to load users:", err)
+          console.error("Failed to load app users:", err)
         })
         .finally(() => setLoading(false))
     }
@@ -80,12 +84,19 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm border-white/10 bg-slate-950 text-slate-100">
         <DialogHeader>
-          <DialogTitle className="text-slate-100">Assign Users</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-slate-100">
+            <Smartphone className="size-4 text-emerald-400" />
+            Assign App Users
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-400">
+            Only mobile app users (employees) can be assigned to variations.
+          </DialogDescription>
         </DialogHeader>
+
         <div className="relative mb-3">
           <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
           <Input
-            placeholder="Search users…"
+            placeholder="Search app users…"
             value={userSearch}
             onChange={(e) => setUserSearch(e.target.value)}
             className="border-white/10 bg-slate-900 pl-9 text-slate-100 placeholder:text-slate-500"
@@ -95,12 +106,12 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
         {loading ? (
           <div className="flex h-32 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-            <span className="ml-2 text-sm text-slate-400">Loading users…</span>
+            <span className="ml-2 text-sm text-slate-400">Loading app users…</span>
           </div>
         ) : (
           <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
             {filteredUsers.length === 0 ? (
-              <div className="py-8 text-center text-sm text-slate-500">No users found.</div>
+              <div className="py-8 text-center text-sm text-slate-500">No app users found.</div>
             ) : (
               filteredUsers.map((u) => {
                 const fullName = `${u.name} ${u.surname || ""}`.trim()

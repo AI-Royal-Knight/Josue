@@ -84,6 +84,10 @@ export default function SignInPage() {
     } else if (res.user.role === "supplier") {
       setRole("supplier")
       router.push("/supplier/companies")
+    } else if (res.user.role === "managing_director") {
+      // Managing Director dashboard is strictly and only for Managing Director
+      setRole("managing_director")
+      router.push(getDashboardUrl("managing_director"))
     } else if (uniqueRoles.size > 1) {
       // User has multiple roles — show the selector page
       router.push("/select-role")

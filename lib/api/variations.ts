@@ -31,10 +31,13 @@ export type VariationApi = {
   approved_by_name: string
   submitted_to_client: boolean
   signed_by_client: boolean
+  client_name?: string
+  client_email?: string
   created_by: string | null
   created_by_name: string
   lines: VariationLineApi[]
   assigned_user_ids?: string[]
+  evidence_url?: string | null
 
   // Signatures
   supervisor_approved?: boolean
@@ -104,9 +107,23 @@ export async function approveVariation(id: string, action: "approve" | "reject")
   })
 }
 
-export async function submitVariationToClient(id: string): Promise<VariationApi> {
+export async function submitVariationToClient(
+  id: string,
+  payload?: { client_name?: string; client_email?: string }
+): Promise<VariationApi> {
   return apiRequest(`/commercial/variations/${id}/submit-to-client/`, {
     method: "POST",
+    body: payload || {},
+  })
+}
+
+export async function remindClientVariation(
+  id: string,
+  payload: { client_email: string; client_name?: string }
+): Promise<VariationApi> {
+  return apiRequest(`/commercial/variations/${id}/remind-client/`, {
+    method: "POST",
+    body: payload,
   })
 }
 
