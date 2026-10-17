@@ -205,8 +205,18 @@ export default function ProfilePage() {
   const [justGeneratedPassword, setJustGeneratedPassword] = useState(false)
 
   const activeRole = useRoleStore((s) => s.role)
-  const isManagingDirector =
-    activeRole === "managing_director" || profileData?.role === "managing_director"
+  const currentRole = activeRole || profileData?.role || ""
+  const isManagingDirector = currentRole === "managing_director"
+  const isProjectDirector = currentRole === "project_director"
+  const isStreamlinedProfile = isManagingDirector || isProjectDirector
+
+  const roleTitle = isProjectDirector
+    ? "Project Director"
+    : isManagingDirector
+    ? "Managing Director"
+    : currentRole
+        ? currentRole.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+        : "User"
 
   // Basic / Managing Director Form
   const basicForm = useForm<BasicProfileFormValues>({
@@ -456,10 +466,10 @@ export default function ProfilePage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // MANAGING DIRECTOR PROFILE VIEW
+  // STREAMLINED PROFILE VIEW (Managing Director, Project Director)
   // Only shows: Basic info (name, email) and Change Password
   // ─────────────────────────────────────────────────────────────────────────────
-  if (isManagingDirector) {
+  if (isStreamlinedProfile) {
     return (
       <div className="w-full min-w-0 space-y-6 p-6 max-w-6xl mx-auto">
         {/* Header */}
@@ -467,13 +477,13 @@ export default function ProfilePage() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold text-white tracking-tight">
-                Managing Director Profile
+                {roleTitle} Profile
               </h1>
               <Badge
                 variant="outline"
                 className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 px-2.5 py-0.5 text-xs font-medium"
               >
-                Managing Director
+                {roleTitle}
               </Badge>
             </div>
             <p className="text-sm text-slate-400">
@@ -622,7 +632,7 @@ export default function ProfilePage() {
                       <ShieldCheck className="h-4 w-4 text-emerald-400" />
                       <span>Account Role</span>
                     </div>
-                    <span className="font-semibold text-slate-200">Managing Director</span>
+                    <span className="font-semibold text-slate-200">{roleTitle}</span>
                   </div>
                 </div>
               </form>

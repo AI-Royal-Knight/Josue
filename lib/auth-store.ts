@@ -12,6 +12,7 @@ import { createJSONStorage, persist } from "zustand/middleware"
 import type { RoleAssignment } from "@/lib/api/auth"
 
 export interface AuthUserState {
+  id?: string
   email: string
   first_name: string
   last_name: string
