@@ -231,8 +231,19 @@ function RFIDetailDialog({
   }
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    setAttachments((prev) => [...prev, ...files])
+    const rawFiles = Array.from(e.target.files ?? [])
+    const MAX_SIZE = 25 * 1024 * 1024 // 25 MB
+    const validFiles: File[] = []
+    for (const f of rawFiles) {
+      if (f.size > MAX_SIZE) {
+        toast.error(
+          `"${f.name}" is too large (${(f.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 25MB.`
+        )
+      } else {
+        validFiles.push(f)
+      }
+    }
+    setAttachments((prev) => [...prev, ...validFiles])
     e.target.value = ""
   }
 
@@ -1083,7 +1094,17 @@ export default function ProjectRFIsPage() {
                     <input
                       type="file"
                       className="hidden"
-                      onChange={(e) => setCreateFile(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        if (file && file.size > 25 * 1024 * 1024) {
+                          toast.error(
+                            `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 25MB.`
+                          )
+                          e.target.value = ""
+                          return
+                        }
+                        setCreateFile(file)
+                      }}
                     />
                   </label>
                 ) : (

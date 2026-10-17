@@ -38,7 +38,9 @@ export class ApiError extends Error {
   data: unknown
 
   constructor(status: number, data: unknown) {
-    let message = `API Error: ${status}`
+    let message = status === 413
+      ? "The attached file is too large. Please select a smaller file (under 25MB) or compress it."
+      : `API Error: ${status}`
     if (typeof data === "object" && data !== null) {
       const record = data as Record<string, unknown>
       if ("error" in record && typeof record.error === "string") {
@@ -100,6 +102,9 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 413 && !data) {
+      data = { error: "The attached file is too large. Please select a smaller file (under 25MB) or compress it." }
+    }
     if (response.status === 401 && !isPublic) {
       if (typeof window !== "undefined") {
         // Clear token directly to ensure it's removed immediately
