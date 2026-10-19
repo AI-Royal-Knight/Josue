@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table"
 import { Plus, Trash2, Loader2, UploadCloud, FileText, Image as ImageIcon, X } from "lucide-react"
 
-import { VariationFormData, VariationLine } from "../types"
+import { VariationFormData, VariationLine, VariationRow } from "../types"
 import { emptyLine, defaultForm, lineTotal, formatGBP } from "../utils"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -23,6 +23,8 @@ type Props = {
   onOpenChange: (open: boolean) => void
   onSubmit: (form: VariationFormData, formTotal: number) => Promise<boolean> | boolean
   projects: { id: string; name: string }[]
+  defaultProjectId?: string
+  existingVariations?: VariationRow[]
 }
 
 const COLUMNS = [
@@ -36,7 +38,14 @@ const COLUMNS = [
   { key: "actions",      label: "",                  width: "w-8"  },
 ]
 
-export default function CreateVariationDialog({ open, onOpenChange, onSubmit, projects }: Props) {
+export default function CreateVariationDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  projects,
+  defaultProjectId,
+  existingVariations = [],
+}: Props) {
   const [form, setForm] = useState<VariationFormData>(defaultForm())
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -45,11 +54,28 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
 
   useEffect(() => {
     if (open) {
-      setForm(defaultForm())
+      const initialProject = defaultProjectId || (projects.length === 1 ? projects[0].id : "")
+      setForm({
+        ...defaultForm(),
+        project: initialProject,
+      })
       setPreviewUrl(null)
       setIsDragging(false)
     }
-  }, [open])
+  }, [open, defaultProjectId, projects])
+
+  const nextVoReference = useMemo(() => {
+    if (!form.project) return ""
+    const projectVars = (existingVariations || []).filter((v) => v.projectId === form.project)
+    let maxNum = 0
+    for (const v of projectVars) {
+      const match = v.voNo?.match(/(\d+)/)
+      if (match) {
+        maxNum = Math.max(maxNum, parseInt(match[1], 10))
+      }
+    }
+    return `VO${String(maxNum + 1).padStart(3, "0")}`
+  }, [form.project, existingVariations])
 
   useEffect(() => {
     return () => {
@@ -149,6 +175,17 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
             </div>
 
             <div className="space-y-1">
+              <label className="text-xs text-slate-400">VO Reference</label>
+              <div className="flex h-9 w-full items-center rounded-md border border-white/10 bg-slate-900/60 px-3 text-sm font-semibold font-mono text-emerald-400">
+                {nextVoReference || (
+                  <span className="text-xs font-normal text-slate-500 font-sans">
+                    Select a project to generate VO reference
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1">
               <label className="text-xs text-slate-400">Site Instruction No.</label>
               <Input
                 placeholder="e.g. SI24654321019"
@@ -167,7 +204,7 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
             </div>
 
             {/* Evidence Attachment (Pictures and PDFs) */}
-            <div className="space-y-1">
+            <div className="space-y-1 sm:col-span-2">
               <label className="text-xs text-slate-400">Evidence (Picture or PDF)</label>
               <input
                 ref={fileInputRef}

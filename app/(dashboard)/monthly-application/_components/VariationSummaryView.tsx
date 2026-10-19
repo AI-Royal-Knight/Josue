@@ -116,7 +116,7 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
 
         return {
           id: v.id,
-          no: v.vo_number || `VO-${String(index + 1).padStart(3, "0")}`,
+          no: v.vo_number || `VO${String(index + 1).padStart(3, "0")}`,
           siteInstructionNumber: v.site_instruction_no || "—",
           evidence: v.evidence_url ? "Yes" : "No",
           evidence_url: v.evidence_url,

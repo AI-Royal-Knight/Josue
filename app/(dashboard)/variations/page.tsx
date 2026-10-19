@@ -308,8 +308,17 @@ export default function Page() {
           evidence: form.evidence,
         }
         const created = await createVariation(payload)
-        setRows((prev) => [apiToRow(created), ...prev])
-        toast.success("Variation created successfully.")
+        try {
+          const { variations } = await getVariations()
+          setRows(variations.map(apiToRow))
+        } catch {
+          setRows((prev) => [apiToRow(created), ...prev])
+        }
+        toast.success(
+          created.vo_number
+            ? `Variation ${created.vo_number} created successfully.`
+            : "Variation created successfully."
+        )
         return true
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to create variation"
@@ -761,10 +770,18 @@ export default function Page() {
   }, [openAssign, openReminder, openVariation, role, isCommercial])
 
   // ── Filtered rows ───────────────────────────────────────────────────────
-  const filteredRows = useMemo(
-    () => (selectedProject === "all" ? rows : rows.filter((r) => r.projectId === selectedProject)),
-    [rows, selectedProject]
-  )
+  const filteredRows = useMemo(() => {
+    const list = selectedProject === "all" ? [...rows] : rows.filter((r) => r.projectId === selectedProject)
+    if (selectedProject !== "all") {
+      return [...list].sort((a, b) => {
+        const numA = parseInt(a.voNo?.replace(/\D/g, "") || "0", 10)
+        const numB = parseInt(b.voNo?.replace(/\D/g, "") || "0", 10)
+        if (numA !== numB) return numA - numB
+        return (a.voNo || "").localeCompare(b.voNo || "")
+      })
+    }
+    return list
+  }, [rows, selectedProject])
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -818,6 +835,8 @@ export default function Page() {
         onOpenChange={setFormOpen}
         onSubmit={handleSubmitVariation}
         projects={projectOptions}
+        defaultProjectId={selectedProject !== "all" ? selectedProject : undefined}
+        existingVariations={rows}
       />
 
       <AssignUsersDialog
