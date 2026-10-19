@@ -21,7 +21,6 @@ type SpreadsheetTableProps = {
 }
 
 const COLUMN_WIDTHS: Record<string, string> = {
-  projectValue: "140px",
   labourTarget: "140px",
 }
 
@@ -169,9 +168,6 @@ export function SpreadsheetTable({
   }, [focused, selection, rows, copiedValue, onCopy, updateCell, onChange])
 
   const totals = {
-    projectValue: rows
-      .reduce((s, r) => s + (parseFloat(r.projectValue) || 0), 0)
-      .toFixed(2),
     labourTarget: rows.reduce(
       (s, r) => s + (parseFloat(r.labourTarget) || 0),
       0
@@ -301,16 +297,13 @@ export function SpreadsheetTable({
         <tbody>
           <tr>
             <td
-              colSpan={3}
+              colSpan={FIELD_HEADERS.length}
               className="px-3 py-3 text-right text-[13px] font-medium text-[#6b7280]"
             >
-              Totals:
+              Total Labour Target:
             </td>
-            <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
-              ${totals.projectValue}
-            </td>
-            <td className="px-3 py-3 text-right text-[13px] font-semibold text-[#e2e8f0] tabular-nums">
-              {totals.labourTarget}
+            <td className="px-3 py-3 text-right text-[13px] font-semibold text-emerald-400 tabular-nums">
+              £{totals.labourTarget.toFixed(2)}
             </td>
           </tr>
         </tbody>

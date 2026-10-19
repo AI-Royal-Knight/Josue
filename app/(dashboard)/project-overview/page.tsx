@@ -67,11 +67,12 @@ const columns: ColDef<FinancialBreakdownRow>[] = [
     valueGetter: (params) => {
       const data = params.data as FinancialBreakdownRow
       return (
-        data.projectValue +
+        data.labourTarget +
         data.overspend +
         data.poCalledOff +
         data.managementPrelims +
         data.loadingAndClearing +
+        data.plantHire +
         data.proformaNR
       )
     },
@@ -257,11 +258,12 @@ export default function Page() {
             if (!c.field) return csvEscape("")
             if (c.field === "totalSpent") {
               const total =
-                row.projectValue +
+                row.labourTarget +
                 row.overspend +
                 row.poCalledOff +
                 row.managementPrelims +
                 row.loadingAndClearing +
+                row.plantHire +
                 row.proformaNR
               return csvEscape(`£${total.toLocaleString("en-GB")}`)
             }
@@ -332,7 +334,7 @@ export default function Page() {
             { label: "Total Project Value", value: fmt(breakdownData.reduce((acc, r) => acc + r.projectValue, 0)) },
             {
               label: "Total Spend", value: fmt(breakdownData.reduce((acc, r) => {
-                const rowSpend = r.projectValue + r.overspend + r.poCalledOff + r.managementPrelims + r.loadingAndClearing + r.proformaNR;
+                const rowSpend = r.labourTarget + r.overspend + r.poCalledOff + r.managementPrelims + r.loadingAndClearing + r.plantHire + r.proformaNR;
                 return acc + rowSpend;
               }, 0))
             },

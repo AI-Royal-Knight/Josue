@@ -100,7 +100,9 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
     setIsDragging(false)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0]
-      if (file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      const isImg = file.type.startsWith("image/")
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+      if (isImg || isPdf) {
         handleFileChange(file)
       }
     }
@@ -182,8 +184,16 @@ export default function CreateVariationDialog({ open, onOpenChange, onSubmit, pr
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => fileInputRef.current?.click()}
-                  onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (fileInputRef.current) fileInputRef.current.value = ""
+                    fileInputRef.current?.click()
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (fileInputRef.current) fileInputRef.current.value = ""
+                      fileInputRef.current?.click()
+                    }
+                  }}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}

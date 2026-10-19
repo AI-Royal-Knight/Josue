@@ -1,38 +1,79 @@
-"use client";
+"use client"
 
-import { CalendarIcon } from "lucide-react";
+import * as React from "react"
+import { format, parseISO } from "date-fns"
+import { CalendarIcon } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import {
-  Button,
-  DatePicker,
-  Dialog,
-  Group,
-  Label,
   Popover,
-} from "react-aria-components";
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
-import { Calendar } from "@/components/ui/calendar-rac";
-import { DateInput } from "@/components/ui/datefield-rac";
+export interface DatePickrProps {
+  value?: Date | string | null
+  onChange?: (date: Date | undefined) => void
+  placeholder?: string
+  className?: string
+  disabled?: boolean
+  id?: string
+}
 
-export default function DatePickr() {
+export default function DatePickr({
+  value,
+  onChange,
+  placeholder = "Pick a date",
+  className,
+  disabled = false,
+  id,
+}: DatePickrProps) {
+  const [open, setOpen] = React.useState(false)
+
+  const selectedDate = React.useMemo(() => {
+    if (!value) return undefined
+    if (value instanceof Date) return isNaN(value.getTime()) ? undefined : value
+    try {
+      const parsed = parseISO(value)
+      return isNaN(parsed.getTime()) ? undefined : parsed
+    } catch {
+      return undefined
+    }
+  }, [value])
+
   return (
-    <DatePicker className="*:not-first:mt-2">
-      {/* <Label className="font-medium text-foreground text-sm">Date picker</Label> */}
-      <div className="flex">
-        <Group className="w-full">
-          <DateInput className="pe-9" />
-        </Group>
-        <Button className="-ms-9 -me-px z-10 flex w-9 items-center justify-center rounded-e-md text-muted-foreground/80 outline-none transition-[color,box-shadow] hover:text-foreground data-focus-visible:border-ring data-focus-visible:ring-[3px] data-focus-visible:ring-ring/50">
-          <CalendarIcon size={16} />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          className={cn(
+            "w-full justify-between text-left font-normal border-input bg-transparent hover:bg-accent hover:text-accent-foreground h-9 px-3",
+            !selectedDate && "text-muted-foreground",
+            className
+          )}
+        >
+          <span>
+            {selectedDate ? format(selectedDate, "PPP") : placeholder}
+          </span>
+          <CalendarIcon className="size-4 opacity-50 shrink-0" />
         </Button>
-      </div>
-      <Popover
-        className="data-[entering]:fade-in-0 data-[entering]:zoom-in-95 data-[exiting]:fade-out-0 data-[exiting]:zoom-out-95 data-[placement=bottom]:slide-in-from-top-2 data-[placement=left]:slide-in-from-right-2 data-[placement=right]:slide-in-from-left-2 data-[placement=top]:slide-in-from-bottom-2 z-50 rounded-lg border bg-background text-popover-foreground shadow-lg outline-hidden data-entering:animate-in data-exiting:animate-out"
-        offset={4}
-      >
-        <Dialog className="max-h-[inherit] overflow-auto p-2">
-          <Calendar />
-        </Dialog>
-      </Popover>
-    </DatePicker>
-  );
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-50 bg-slate-900 border border-white/10 text-slate-100" align="start">
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={(d) => {
+            onChange?.(d)
+            setOpen(false)
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  )
 }

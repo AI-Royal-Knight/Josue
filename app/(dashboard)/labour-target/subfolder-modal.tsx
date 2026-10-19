@@ -66,8 +66,8 @@ export function SubfolderModal({
           id: uid(),
           workSection: cols[0] ?? "",
           workArea: cols[1] ?? "",
-          projectValue: cleanNumber(cols[2]),
-          labourTarget: cleanNumber(cols[3]),
+          projectValue: cols.length >= 4 ? cleanNumber(cols[2]) : "0.00",
+          labourTarget: cleanNumber(cols.length >= 4 ? cols[3] : cols[2]),
         }
       })
       if (parsed.length) setRows(parsed)
@@ -79,7 +79,7 @@ export function SubfolderModal({
   }
 
   const handleDownloadDemo = () => {
-    const csvContent = "Work Section,Work Area,Project Value,Labour Target\ne.g. Electrical Rough-in,e.g. Level 1 - Unit 101,0.00,0"
+    const csvContent = "Work Section,Work Area,Labour Target\ne.g. Electrical Rough-in,e.g. Level 1 - Unit 101,0.00"
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")

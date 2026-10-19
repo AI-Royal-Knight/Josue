@@ -9,6 +9,7 @@ import {
 import { VariationRow } from "../types"
 import { formatGBP } from "../utils"
 import { useRoleStore } from "@/lib/role-store"
+import { useAuthStore } from "@/lib/auth-store"
 import { Paperclip, ExternalLink, CheckCircle2 } from "lucide-react"
 
 type Props = {
@@ -26,7 +27,9 @@ export default function ViewVariationDialog({
   const [clientName, setClientName] = useState("")
   const [clientEmail, setClientEmail] = useState("")
 
-  const role = useRoleStore((s) => s.role)
+  const user = useAuthStore((s) => s.user)
+  const roleFromStore = useRoleStore((s) => s.role)
+  const role = roleFromStore || user?.role || ""
   const isCommercial = role === "commercial_department"
 
   useEffect(() => {

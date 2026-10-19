@@ -131,52 +131,70 @@ function FolderGrid({
     () =>
       Array.from({ length: Math.max(ROWS_PER_FOLDER, ...folder.subfolders.map(s => s.rows?.length || 0)) }, (_, i) => {
         const row: Record<string, unknown> = { id: i + 1 }
+        let rowLtTotal = 0
+        let hasLt = false
         folder.subfolders.forEach((sub) => {
           row[`${sub.id}_ws`] = sub.rows[i]?.workSection || ""
           row[`${sub.id}_wa`] = sub.rows[i]?.workArea || ""
-          row[`${sub.id}_pv`] = sub.rows[i]?.projectValue || ""
           row[`${sub.id}_lt`] = sub.rows[i]?.labourTarget || ""
+          if (sub.rows[i]?.labourTarget) {
+            const parsed = parseFloat(String(sub.rows[i].labourTarget).replace(/[^0-9.-]/g, ""))
+            if (!isNaN(parsed)) {
+              rowLtTotal += parsed
+              hasLt = true
+            }
+          }
         })
+        row["lt_total"] = hasLt
+          ? `£${rowLtTotal.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : "£0.00"
         return row
       }),
     [folder]
   )
 
   const columns: GridColDef[] = useMemo(
-    () =>
-      folder.subfolders.flatMap((sub) => {
+    () => [
+      ...folder.subfolders.flatMap((sub) => {
         const cols: GridColDef[] = [
           {
             field: `${sub.id}_ws`,
             headerName: "Work Section",
             flex: 1,
             minWidth: 150,
-            editable: true,
+            editable: !folder.is_management,
           },
           {
             field: `${sub.id}_wa`,
             headerName: "Work Area",
             flex: 1,
             minWidth: 150,
-            editable: true,
-          },
-          {
-            field: `${sub.id}_pv`,
-            headerName: "Project Value",
-            flex: 1,
-            minWidth: 140,
-            editable: true,
+            editable: !folder.is_management,
           },
           {
             field: `${sub.id}_lt`,
             headerName: "Labour Target",
             flex: 1,
             minWidth: 140,
-            editable: true,
+            editable: !folder.is_management,
           }
         ]
         return cols
       }),
+      {
+        field: "lt_total",
+        headerName: "LT TOTAL",
+        width: 130,
+        editable: false,
+        headerAlign: "center",
+        align: "center",
+        renderCell: (params: any) => (
+          <span className="font-semibold text-emerald-400">
+            {params.value || "£0.00"}
+          </span>
+        ),
+      },
+    ],
     [folder]
   )
 
@@ -186,7 +204,6 @@ function FolderGrid({
         const children = [
           { field: `${sub.id}_ws` },
           { field: `${sub.id}_wa` },
-          { field: `${sub.id}_pv` },
           { field: `${sub.id}_lt` }
         ]
         return {
@@ -204,7 +221,7 @@ function FolderGrid({
           ),
         }
       }),
-    [folder, onSubfolderAssign]
+    [folder, onSubfolderAssign, isLocked]
   )
 
   const handleProcessRowUpdate = useCallback(
@@ -221,7 +238,6 @@ function FolderGrid({
           ...newSubRows[rowIndex],
           workSection: newRow[`${sub.id}_ws`] || "",
           workArea: newRow[`${sub.id}_wa`] || "",
-          projectValue: newRow[`${sub.id}_pv`] || "",
           labourTarget: newRow[`${sub.id}_lt`] || "",
         }
         return { ...sub, rows: newSubRows }

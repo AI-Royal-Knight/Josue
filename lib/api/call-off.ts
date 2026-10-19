@@ -30,8 +30,9 @@ export interface CallOffLineItemAPI {
   history: CallOffHistoryEntryAPI[]
 }
 
-export const getCallOffList = async (): Promise<CallOffLineItemAPI[]> => {
-  return apiRequest<CallOffLineItemAPI[]>("/procurement/call-offs/")
+export const getCallOffList = async (projectId?: string): Promise<CallOffLineItemAPI[]> => {
+  const url = projectId ? `/procurement/call-offs/?project=${encodeURIComponent(projectId)}` : "/procurement/call-offs/"
+  return apiRequest<CallOffLineItemAPI[]>(url)
 }
 
 export const toggleCallOffManagementApproval = async (id: string, approved: boolean): Promise<CallOffLineItemAPI> => {

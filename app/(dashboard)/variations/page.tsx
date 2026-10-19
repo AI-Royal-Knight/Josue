@@ -10,6 +10,7 @@ import TableStat from "@/components/common/table-stat"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Plus, XCircle, Loader2, UserPlus, Paperclip } from "lucide-react"
 import { useRoleStore } from "@/lib/role-store"
+import { useAuthStore } from "@/lib/auth-store"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import {
@@ -168,7 +169,9 @@ export default function Page() {
   const [selectedProject, setSelectedProject] = useState("all")
   const [loading, setLoading] = useState(true)
 
-  const role = useRoleStore((state) => state.role)
+  const user = useAuthStore((state) => state.user)
+  const roleFromStore = useRoleStore((state) => state.role)
+  const role = roleFromStore || user?.role || ""
   
   const isContractsManager = role === "contracts_manager"
   const isProjectDirector = role === "project_director"
@@ -323,10 +326,16 @@ export default function Page() {
   const [assignInitial, setAssignInitial] = useState<string[]>([])
 
   const openAssign = useCallback((rowId: string, currentIds: string[]) => {
+    const target = rows.find((r) => r.id === rowId)
+    const isCommercialApproved = target && (target.approvalStatus === "Approved" || Boolean(target.sigCommercialDepartment))
+    if (!isCommercialApproved) {
+      toast.error("Can only assign app users once approved by the Commercial Manager.")
+      return
+    }
     setAssignRowId(rowId)
     setAssignInitial(currentIds)
     setAssignOpen(true)
-  }, [])
+  }, [rows])
 
   const confirmAssign = useCallback(async (selectedIds: string[]) => {
     if (!assignRowId) return
@@ -416,9 +425,17 @@ export default function Page() {
   const [isSendingReminder, setIsSendingReminder] = useState(false)
 
   const openReminder = useCallback((row: VariationRow) => {
+    if (!isCommercial) {
+      toast.error("Only the Commercial Department can send reminders to clients.")
+      return
+    }
+    if (!row.clientEmail) {
+      toast.error("No client email has been provided for this variation.")
+      return
+    }
     setSelectedReminder(row)
     setReminderDialogOpen(true)
-  }, [])
+  }, [isCommercial])
 
   const handleSendReminder = useCallback(async (email: string) => {
     if (!selectedReminder) return
@@ -677,6 +694,9 @@ export default function Page() {
           if (!isCommercial) {
             return <span className="text-slate-500">No</span>
           }
+          if (!params.data?.clientEmail) {
+            return <span className="text-slate-500" title="No client email provided">No</span>
+          }
           return (
             <button
               type="button"
@@ -699,23 +719,37 @@ export default function Page() {
           const row = params.data
           if (!row) return null
           const count = params.value?.length ?? 0
+          const isCommercialApproved = row.approvalStatus === "Approved" || Boolean(row.sigCommercialDepartment)
+
           return (
             <div className="flex items-center justify-between gap-2 w-full">
               <span className="text-slate-300">
                 {count === 0 ? "None" : `${count} user${count > 1 ? "s" : ""}`}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  openAssign(row.id, row.assignedUserIds || [])
-                }}
-                title="Assign Users"
-              >
-                <UserPlus className="h-4 w-4" />
-              </Button>
+              {isCommercialApproved ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openAssign(row.id, row.assignedUserIds || [])
+                  }}
+                  title="Assign Users"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled
+                  className="h-7 w-7 p-0 text-slate-600 opacity-40 cursor-not-allowed"
+                  title="Requires Commercial Manager approval before assigning users"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           )
         }
@@ -724,7 +758,7 @@ export default function Page() {
     )
 
     return base
-  }, [openAssign, openReminder, openVariation, role])
+  }, [openAssign, openReminder, openVariation, role, isCommercial])
 
   // ── Filtered rows ───────────────────────────────────────────────────────
   const filteredRows = useMemo(

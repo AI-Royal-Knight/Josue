@@ -53,6 +53,15 @@ export type VariationApi = {
   commercial_department_approved?: boolean
   commercial_department_approved_date?: string | null
   fully_approved?: boolean
+
+  // Monthly Application fields
+  valuation_amount?: string | number
+  percent_claimed?: string | number
+  amount_claimed?: string | number
+  client_certified_amount?: string | number
+  corresponding_notice_no?: string
+  client_qs_comment?: string
+  difference?: string | number
 }
 
 export type CreateVariationPayload = {

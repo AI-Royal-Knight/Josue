@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils"
 import { useRoleStore } from "@/lib/role-store"
 
 import type { CallOffRow, PODialogState, HistoryDialogState, CallOffHistoryEntry } from "./types"
-import { formatGBP, initialData, summaryMetrics, baseTheme } from "./utils"
+import { formatGBP, baseTheme } from "./utils"
 import HistoryDialog from "./_components/HistoryDialog"
 import PODialog from "./_components/PODialog"
 import { getCallOffList, toggleCallOffManagementApproval, createCallOff, approveCallOff, approveAllCallOffs } from "@/lib/api/call-off"
@@ -75,14 +75,16 @@ type ChildRow = CallOffRow & { _kind: "child"; lineItemRef?: string }
 type VirtualRow = GroupHeaderRow | ChildRow
 
 export default function Page() {
+  const [selectedProject, setSelectedProject] = useState<string>("")
   const [data, setData] = useState<CallOffRow[]>([])
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (projectId?: string) => {
     try {
       setLoading(true)
-      const res = await getCallOffList()
+      const targetProject = projectId !== undefined ? projectId : selectedProject
+      const res = await getCallOffList(targetProject || undefined)
       const mapped = res.map((r) => {
         // Last call off is usually first in history if sorted descending by date
         const lastCO = r.history.length > 0 ? r.history[0] : null
@@ -131,11 +133,15 @@ export default function Page() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedProject])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (selectedProject) {
+      fetchData(selectedProject)
+    } else {
+      fetchData()
+    }
+  }, [selectedProject, fetchData])
   const [poDialog, setPoDialog] = useState<PODialogState | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sentPO, setSentPO] = useState<string | null>(null)
@@ -649,12 +655,43 @@ export default function Page() {
     []
   )
 
+  const dynamicSummaryMetrics = useMemo(() => {
+    const totalPOs = new Set(data.map((r) => r.poRef).filter(Boolean)).size
+    const totalCallOffs = data.reduce((sum, r) => sum + (r.history?.length || 0), 0)
+    const poRemaining = new Set(data.filter((r) => r.qtyRemaining > 0).map((r) => r.poRef)).size
+    const callOffRequests = data.reduce((sum, r) => {
+      const pending = r.history?.filter(
+        (h) => !h.approveBy || h.approveBy === "-" || h.approveBy.toLowerCase() === "pending"
+      ) || []
+      return sum + pending.length
+    }, 0)
+
+    return [
+      { label: "PO", value: String(totalPOs) },
+      { label: "Call Off", value: String(totalCallOffs) },
+      { label: "PO Remaining", value: String(poRemaining) },
+      { label: "Call Off Requests", value: String(callOffRequests) },
+    ]
+  }, [data])
+
   return (
     <div className="w-full space-y-6 p-6">
       <h2 className="text-2xl font-semibold">Call Off List</h2>
 
-      <SelectProject />
-      <TableStat summaryRows={summaryMetrics} />
+      <SelectProject
+        value={selectedProject}
+        onChange={(val) => {
+          setSelectedProject(val)
+          fetchData(val)
+        }}
+        onProjectSelect={(p) => {
+          if (p) {
+            setSelectedProject(String(p.id))
+            fetchData(String(p.id))
+          }
+        }}
+      />
+      <TableStat summaryRows={dynamicSummaryMetrics} />
 
       {sentPO && (
         <div className="flex items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">

@@ -60,95 +60,8 @@ type PendingAction =
   | { type: "approve" | "reject"; row: QuotationRow }
   | { type: "createPO"; row: QuotationRow }
 
-const initialRows: QuotationRow[] = [
-  {
-    no: 1,
-    quotesRef: "QR-2023-0891",
-    project: "Downtown Tower A",
-    mainFolder: "Structural",
-    subFolder: "Concrete",
-    variationRef: "VAR-001",
-    supplierName: "BuildMat Supplies Ltd",
-    supplierEmailAddress: "sales@buildmat.com",
-    dateOfQuoteApproved: "2023-10-12",
-    quoteTotal: "$45,000.00",
-    poCreated: true,
-    datePoWasCreated: "2023-10-14",
-    procurementComments: "",
-    approveQuotesStatus: "Approved",
-    quoteApprovalReasons: "Lowest bidder, meets all specs.",
-  },
-  {
-    no: 2,
-    quotesRef: "QR-2023-0892",
-    project: "Downtown Tower A",
-    mainFolder: "Structural",
-    subFolder: "Steel",
-    variationRef: "-",
-    supplierName: "IronWorks Inc.",
-    supplierEmailAddress: "quotes@ironworks.net",
-    dateOfQuoteApproved: "-",
-    quoteTotal: "$125,500.50",
-    poCreated: false,
-    datePoWasCreated: "-",
-    procurementComments: "",
-    approveQuotesStatus: "Pending",
-    quoteApprovalReasons: "-",
-  },
-  {
-    no: 3,
-    quotesRef: "QR-2023-0895",
-    project: "Riverside Complex",
-    mainFolder: "MEP",
-    subFolder: "HVAC",
-    variationRef: "VAR-012",
-    supplierName: "CoolAir Systems",
-    supplierEmailAddress: "bids@coolair.com",
-    dateOfQuoteApproved: "2023-10-15",
-    quoteTotal: "$89,200.00",
-    poCreated: true,
-    datePoWasCreated: "2023-10-16",
-    procurementComments: "",
-    approveQuotesStatus: "Approved",
-    quoteApprovalReasons: "Preferred vendor, fast lead time.",
-  },
-  {
-    no: 4,
-    quotesRef: "QR-2023-0898",
-    project: "Riverside Complex",
-    mainFolder: "MEP",
-    subFolder: "Electrical",
-    variationRef: "-",
-    supplierName: "VoltTech Solutions",
-    supplierEmailAddress: "contact@volttech.com",
-    dateOfQuoteApproved: "-",
-    quoteTotal: "$67,400.00",
-    poCreated: false,
-    datePoWasCreated: "-",
-    procurementComments: "",
-    approveQuotesStatus: "Pending",
-    quoteApprovalReasons: "-",
-  },
-  {
-    no: 5,
-    quotesRef: "QR-2023-0901",
-    project: "Westside Mall",
-    mainFolder: "Finishes",
-    subFolder: "Flooring",
-    variationRef: "VAR-003",
-    supplierName: "Premium Tiles Co.",
-    supplierEmailAddress: "orders@premiumtiles.com",
-    dateOfQuoteApproved: "-",
-    quoteTotal: "$112,000.00",
-    poCreated: false,
-    datePoWasCreated: "-",
-    procurementComments: "",
-    approveQuotesStatus: "Rejected",
-    quoteApprovalReasons: "Rejected due to budget constraints.",
-  },
-]
-
 export default function Page() {
+  const [selectedProject, setSelectedProject] = useState<string>("")
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -160,11 +73,12 @@ export default function Page() {
   const role = useRoleStore((s) => s.role)
   const isProcurement = role === "procurement_department"
 
-  const fetchQuotations = async () => {
+  const fetchQuotations = async (projectId?: string) => {
     try {
       setLoading(true)
       setErrorMsg(null)
-      const data = await getQuotations()
+      const targetProject = projectId !== undefined ? projectId : selectedProject
+      const data = await getQuotations(targetProject || undefined)
       const formatted = data.map((q: any, i: number) => ({
         id: q.id,
         no: i + 1,
@@ -173,7 +87,7 @@ export default function Page() {
         mainFolder: q.main_folder_name || "-",
         subFolder: q.sub_folder_name || "-",
         variationRef: q.variation_ref || "-",
-        supplierName: q.supplier_name,
+        supplierName: q.supplier_name || "Unregistered Supplier",
         supplierEmailAddress: q.supplier_email || "-",
         dateOfQuoteApproved: q.status === "Approved" ? q.date_of_quote : "-",
         quoteTotal: `£${Number(q.quote_total).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
@@ -201,16 +115,19 @@ export default function Page() {
   }
 
   useEffect(() => {
-    fetchQuotations()
-  }, [])
-
+    if (selectedProject) {
+      fetchQuotations(selectedProject)
+    } else {
+      fetchQuotations()
+    }
+  }, [selectedProject])
 
   const handleReQuote = async (comments: string) => {
     if (!reQuoteTarget) return
     try {
       await requestRequote(reQuoteTarget.id, comments)
       toast.success("Re-quote requested successfully. An email has been sent to the supplier.")
-      fetchQuotations() // Reload quotations
+      fetchQuotations(selectedProject) // Reload quotations
     } catch (err) {
       console.error(err)
       toast.error("Failed to request re-quote. Please try again.")
@@ -533,14 +450,32 @@ export default function Page() {
     <div className="w-full min-w-0 space-y-4 px-6 py-4">
       <h2>Quotations</h2>
 
-      <SelectProject />
+      <SelectProject
+        value={selectedProject}
+        onChange={(val) => {
+          setSelectedProject(val)
+          fetchQuotations(val)
+        }}
+        onProjectSelect={(p) => {
+          if (p) {
+            setSelectedProject(String(p.id))
+            fetchQuotations(String(p.id))
+          }
+        }}
+      />
 
       <div className="flex items-center justify-between">
         <TableStat
           summaryRows={[
-            { label: "Quotes Requested", qty: "128" },
-            { label: "Approved Quotes", qty: "87" },
-            { label: "Awaiting Quotes", qty: "23" },
+            { label: "Quotes Requested", qty: rows.length.toString() },
+            {
+              label: "Approved Quotes",
+              qty: rows.filter((r) => r.approveQuotesStatus === "Approved").length.toString(),
+            },
+            {
+              label: "Awaiting Quotes",
+              qty: rows.filter((r) => r.approveQuotesStatus === "Pending").length.toString(),
+            },
           ]}
         />
         <Button onClick={() => setNewQuoteOpen(true)}>
@@ -568,8 +503,9 @@ export default function Page() {
             <DialogTitle>Create New Quotation</DialogTitle>
           </DialogHeader>
           <CreateQuotationForm
+            initialProjectId={selectedProject}
             onSuccess={() => {
-              fetchQuotations()
+              fetchQuotations(selectedProject)
               setNewQuoteOpen(false)
             }}
             onCancel={() => setNewQuoteOpen(false)}

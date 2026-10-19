@@ -84,22 +84,66 @@ export function formatGBP(n: number) {
 }
 
 export function buildVariationDocHtml(variation: VariationRow) {
+  const formatText = (text: string) => (text || "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>")
+
   return `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>Variation ${variation.voNo}</title>
     <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #111; margin: 0; padding: 20px; }
-      .container { max-width: 760px; margin: 0 auto; padding: 24px; box-sizing: border-box; }
+      @page {
+        size: A4 portrait;
+        margin: 20mm 15mm;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        color: #111;
+        margin: 0;
+        padding: 20px;
+        -webkit-print-color-adjust: exact;
+      }
+      .container {
+        width: 100%;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0;
+        box-sizing: border-box;
+      }
       h1 { margin: 0 0 12px; font-size: 20px; font-weight: bold; }
       .meta { margin: 0 0 16px; font-size: 12px; line-height: 1.6; }
-      .desc-box { font-size: 13px; line-height: 1.5; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; margin: 16px 0; }
-      table { width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
+      .desc-box {
+        font-size: 13px;
+        line-height: 1.5;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        white-space: normal;
+        margin: 16px 0;
+      }
+      table {
+        width: 100%;
+        max-width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 16px;
+        mso-table-lspace: 0pt;
+        mso-table-rspace: 0pt;
+      }
       th, td { box-sizing: border-box; }
       th { border-bottom: 2px solid #222; padding: 8px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
       td { border-bottom: 1px solid #e5e7eb; padding: 8px 6px; }
-      .col-desc { width: 44%; text-align: left; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap; vertical-align: top; line-height: 1.4; }
+      .col-desc {
+        width: 44%;
+        text-align: left;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        white-space: normal;
+        vertical-align: top;
+        line-height: 1.4;
+      }
       .col-num { width: 14%; text-align: right; white-space: nowrap; vertical-align: top; }
       .col-qty { width: 12%; text-align: right; white-space: nowrap; vertical-align: top; }
       .col-total { width: 16%; text-align: right; white-space: nowrap; vertical-align: top; font-weight: 600; }
@@ -119,33 +163,35 @@ export function buildVariationDocHtml(variation: VariationRow) {
       <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
       <div class="desc-box">
         <strong>Description of Works:</strong><br/>
-        ${variation.descriptionOfWorks || "—"}
+        ${formatText(variation.descriptionOfWorks)}
       </div>
-      <table>
+      <table width="100%" cellpadding="6" cellspacing="0" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
         <thead>
           <tr>
-            <th class="col-desc">Description / Site Instruction</th>
-            <th class="col-num">Labour</th>
-            <th class="col-num">Material</th>
-            <th class="col-qty">QTY</th>
-            <th class="col-total">Total</th>
+            <th class="col-desc" width="44%" style="width: 44%;">Description / Site Instruction</th>
+            <th class="col-num" width="14%" style="width: 14%;">Labour</th>
+            <th class="col-num" width="14%" style="width: 14%;">Material</th>
+            <th class="col-qty" width="12%" style="width: 12%;">QTY</th>
+            <th class="col-total" width="16%" style="width: 16%;">Total</th>
           </tr>
         </thead>
         <tbody>
           ${variation.lines.map((l, i) => `
             <tr>
-              <td class="col-desc">${l.siteInstruction || `Item ${i + 1}`}</td>
-              <td class="col-num">${formatGBP(l.labour)}</td>
-              <td class="col-num">${formatGBP(l.material)}</td>
-              <td class="col-qty">${l.qty}</td>
-              <td class="col-total">${formatGBP((l.labour + l.material) * l.qty)}</td>
+              <td class="col-desc" width="44%" style="width: 44%; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; vertical-align: top;">
+                ${formatText(l.siteInstruction || `Item ${i + 1}`)}
+              </td>
+              <td class="col-num" width="14%" style="width: 14%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.labour)}</td>
+              <td class="col-num" width="14%" style="width: 14%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.material)}</td>
+              <td class="col-qty" width="12%" style="width: 12%; text-align: right; white-space: nowrap; vertical-align: top;">${l.qty}</td>
+              <td class="col-total" width="16%" style="width: 16%; text-align: right; white-space: nowrap; vertical-align: top; font-weight: 600;">${formatGBP((l.labour + l.material) * l.qty)}</td>
             </tr>
           `).join('')}
         </tbody>
         <tfoot>
           <tr>
             <td colspan="4" style="text-align: right;">Total Amount</td>
-            <td class="col-total">${formatGBP(variation.totalAmount)}</td>
+            <td class="col-total" width="16%" style="width: 16%; text-align: right; white-space: nowrap; font-weight: bold;">${formatGBP(variation.totalAmount)}</td>
           </tr>
         </tfoot>
       </table>

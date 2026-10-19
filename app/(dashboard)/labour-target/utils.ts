@@ -29,14 +29,9 @@ export const FIELD_HEADERS: {
       placeholder: "e.g. Level 1 – Unit 101",
     },
     {
-      field: "projectValue",
-      label: "Project Value (€)",
-      placeholder: "0.00",
-    },
-    {
       field: "labourTarget",
-      label: "Labour Target (hrs)",
-      placeholder: "0",
+      label: "Labour Target (£)",
+      placeholder: "0.00",
     },
   ];
 

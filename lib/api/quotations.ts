@@ -27,7 +27,8 @@ export interface Quotation {
   main_folder?: string | null
   sub_folder?: string | null
   variation_ref?: string | null
-  supplier: string
+  supplier?: string | null
+  supplier_name?: string | null
   supplier_email?: string | null
   date_of_quote: string
   quote_total: number
@@ -40,7 +41,6 @@ export interface Quotation {
   quote_approval_reasons?: string | null
   requote_comments?: string | null
   project_name: string
-  supplier_name: string
   main_folder_name?: string | null
   sub_folder_name?: string | null
   supplier_quote_pdf?: string | null
@@ -79,8 +79,9 @@ export interface ProcurementProject {
   folders: ProjectFolder[]
 }
 
-export const getQuotations = async (): Promise<Quotation[]> => {
-  return apiRequest<Quotation[]>("/procurement/quotations/")
+export const getQuotations = async (projectId?: string): Promise<Quotation[]> => {
+  const url = projectId ? `/procurement/quotations/?project=${encodeURIComponent(projectId)}` : "/procurement/quotations/"
+  return apiRequest<Quotation[]>(url)
 }
 
 export const createQuotation = async (payload: Partial<Quotation>): Promise<Quotation> => {

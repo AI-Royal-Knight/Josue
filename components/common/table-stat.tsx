@@ -11,9 +11,13 @@ type StatRow = {
 
 type TableStatProps = {
   summaryRows: StatRow[]
+  hideHeaderRow?: boolean
 }
 
-export default function TableStat({ summaryRows = [] }: TableStatProps) {
+export default function TableStat({
+  summaryRows = [],
+  hideHeaderRow = false,
+}: TableStatProps) {
   const hasMeaningfulValue = (value: unknown) => {
     if (value === null || value === undefined) return false
     if (typeof value === "number") return true
@@ -91,8 +95,11 @@ export default function TableStat({ summaryRows = [] }: TableStatProps) {
     ...(showValue ? { value: "Value" } : {}),
   }
 
-  const rowData: StatRow[] =
-    showQty || showValue ? [headerRow, ...summaryRows] : summaryRows
+  const rowData: StatRow[] = hideHeaderRow
+    ? summaryRows
+    : showQty || showValue
+    ? [headerRow, ...summaryRows]
+    : summaryRows
 
   return (
     <div className="w-full max-w-[550px] overflow-hidden [&_.ag-header]:hidden [&_.ag-header-cell]:hidden [&_.ag-header-row]:hidden [&_.ag-root-wrapper]:border-0">

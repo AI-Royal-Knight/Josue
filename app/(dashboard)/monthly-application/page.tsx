@@ -135,32 +135,34 @@ function MonthlyApplicationContent() {
         </div>
       </div>
 
-      <div className="flex items-end justify-end">
-        <ExportCsvButton
-          columns={[
-            { header: "Metric", field: "label" },
-            { header: "Value", field: "value" },
-          ]}
-          rows={[
-            {
-              label: "Previous Month claim",
-              value: formatCurrency(prevClaim),
-              valueColor: "yellow",
-            },
-            {
-              label: "This Months claim",
-              value: formatCurrency(thisMonthClaim),
-              valueColor: "green",
-            },
-            {
-              label: "Retention hold",
-              value: formatCurrency(retentionHold),
-              valueColor: "red",
-            },
-          ]}
-          fileName="monthly-application-summary.csv"
-        />
-      </div>
+      {activeTab !== "white-card" && (
+        <div className="flex items-end justify-end">
+          <ExportCsvButton
+            columns={[
+              { header: "Metric", field: "label" },
+              { header: "Value", field: "value" },
+            ]}
+            rows={[
+              {
+                label: "Previous Month claim",
+                value: formatCurrency(prevClaim),
+                valueColor: "yellow",
+              },
+              {
+                label: "This Months claim",
+                value: formatCurrency(thisMonthClaim),
+                valueColor: "green",
+              },
+              {
+                label: "Retention hold",
+                value: formatCurrency(retentionHold),
+                valueColor: "red",
+              },
+            ]}
+            fileName="monthly-application-summary.csv"
+          />
+        </div>
+      )}
       {content}
     </div>
   )

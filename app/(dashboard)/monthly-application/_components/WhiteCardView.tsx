@@ -9,17 +9,10 @@ import {
   type GridColumnGroupingModel,
 } from "@mui/x-data-grid"
 
-import { Eye, Download, FileText } from "lucide-react"
+import { Eye, Download, FileSpreadsheet, Folder } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 import { colors } from "@/constants/colors"
-
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
 
 import { SubfolderModal } from "@/app/(dashboard)/labour-target/subfolder-modal"
 import type {
@@ -27,10 +20,6 @@ import type {
   ModalState,
   Row,
 } from "@/app/(dashboard)/labour-target/types"
-import { defaultRows, uid } from "@/app/(dashboard)/labour-target/utils"
-import SelectSearch from "@/components/select-search"
-import { AgTable } from "@/components/common/AgTable"
-import TableStat from "@/components/common/table-stat"
 import {
   Dialog,
   DialogContent,
@@ -39,29 +28,20 @@ import {
 } from "@/components/ui/dialog"
 import PdfViewerDialog from "@/components/common/pdf-viewer-dialog"
 import { generateSimplePdf } from "@/lib/generate-pdf"
-import { getWhiteCard } from "@/lib/api/monthly-application"
+import { getWhiteCard, getMonthlyApplications, MonthlyApplicationApi } from "@/lib/api/monthly-application"
+import { formatCurrency } from "@/lib/utils"
+import { toast } from "sonner"
 
 const ROWS_PER_FOLDER = 5
 const ROW_HEIGHT = 42
-// Each DataGrid has: column-group header row + column-name header row + data rows
-// We measure this per-grid with a ResizeObserver; this is just the initial fallback.
 const HEADER_FALLBACK = 98
 
-const DEFAULT_FOLDERS: FolderType[] = [
-  {
-    id: "apartments",
-    name: "APARTMENTS",
-    subfolders: [
-      { id: "electrical", name: "Electrical", rows: defaultRows() },
-      { id: "plumbing", name: "Plumbing", rows: defaultRows() },
-    ],
-  },
-  {
-    id: "corridors",
-    name: "CORRIDORS",
-    subfolders: [{ id: "electrical", name: "Electrical", rows: defaultRows() }],
-  },
-]
+const parseFloatSafe = (val: any) => {
+  if (typeof val === "number") return val
+  if (!val) return 0
+  const parsed = parseFloat(val.toString().replace(/[^0-9.-]+/g, ""))
+  return isNaN(parsed) ? 0 : parsed
+}
 
 function SummaryGrid({
   folder,
@@ -80,30 +60,21 @@ function SummaryGrid({
         let pv_total = 0
         let total_claim = 0
 
-        const parseFloatSafe = (val: any) => {
-          if (typeof val === "number") return val;
-          if (!val) return 0;
-          const parsed = parseFloat(val.toString().replace(/[^0-9.-]+/g, ""));
-          return isNaN(parsed) ? 0 : parsed;
-        };
-
         folder.subfolders.forEach((sub: any) => {
           const subRow = sub.rows?.[i]
-          
+
           const pvStr = subRow?.projectValue || (i === 0 ? sub.project_value?.toFixed(2) || "" : "")
           const pv = parseFloatSafe(pvStr)
-          
           pv_total += pv
 
-          const bookedLtStr = subRow?.labourTarget || (i === 0 ? sub.labour_target?.toFixed(2) || "" : "")
-          const bookedLt = parseFloatSafe(bookedLtStr)
-          
-          const totalLt = parseFloatSafe(sub.labour_target)
-          
-          if (totalLt > 0) {
-            total_claim += (bookedLt / totalLt) * pv
-          } else {
-            total_claim += bookedLt
+          const ltStr = subRow?.labourTarget || (i === 0 ? sub.labour_target?.toFixed(2) || "" : "")
+          const rowLt = parseFloatSafe(ltStr)
+
+          // Actual booked amount submitted by mobile app users (default 0)
+          const bookedLt = parseFloatSafe(subRow?.bookedLabour ?? (i === 0 ? sub.booked_labour : 0))
+
+          if (rowLt > 0 && bookedLt > 0) {
+            total_claim += (bookedLt / rowLt) * pv
           }
         })
 
@@ -125,28 +96,27 @@ function SummaryGrid({
         field: "pv_total",
         headerName: "PV Total",
         width: 100,
-        editable: true,
+        editable: false,
         hideable: false,
       },
       {
         field: "total_claim",
         headerName: "Total Claim",
         width: 110,
-        editable: true,
+        editable: false,
         hideable: false,
       },
       {
         field: "percent_claim",
         headerName: "% Claim",
         width: 90,
-        editable: true,
+        editable: false,
         hideable: false,
       },
     ],
     []
   )
 
-  // Dummy column group so SummaryGrid matches FolderGrid's 2-header-row height
   const columnGroupingModel: GridColumnGroupingModel = useMemo(
     () => [
       {
@@ -178,7 +148,7 @@ function SummaryGrid({
       disableColumnSorting
       disableColumnMenu
       rowHeight={ROW_HEIGHT}
-      isCellEditable={() => !isLocked}
+      isCellEditable={() => false}
       sx={{
         ...agTableDataGridSx,
         ...sx,
@@ -189,27 +159,12 @@ function SummaryGrid({
           textAlign: "center",
           width: "100%",
         },
-        "& .MuiDataGrid-cell--editing": {
-          backgroundColor: "transparent !important",
-          boxShadow: "none",
-          padding: 0,
-        },
-        "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
-          backgroundColor: "transparent",
-          color: fg,
-          fontSize: "0.875rem",
-          padding: "0 8px",
-        },
-        "& .MuiDataGrid-cell--editing .MuiInputBase-input": {
-          color: fg,
-          padding: 0,
-        },
       }}
     />
   )
 }
 
-// Per-folder DataGrid (subfolder columns only — summary columns are in SummaryGrid)
+// Per-folder DataGrid — displays Work Section, Work Area, Project Value (NO Labour Target)
 function FolderGrid({
   folder,
   isLocked,
@@ -229,40 +184,35 @@ function FolderGrid({
           const subRow = sub.rows?.[i]
           row[`${sub.id}_ws`] = subRow?.workSection || ""
           row[`${sub.id}_wa`] = subRow?.workArea || ""
-          row[`${sub.id}_pv`] = subRow?.projectValue || (i === 0 ? sub.project_value?.toFixed(2) || "" : "")
-          row[`${sub.id}_lt`] = subRow?.labourTarget || (i === 0 ? sub.labour_target?.toFixed(2) || "" : "")
+          const pvStr = subRow?.projectValue || (i === 0 ? sub.project_value?.toFixed(2) || "" : "")
+          row[`${sub.id}_pv`] = pvStr ? (pvStr.toString().startsWith("£") ? pvStr : `£${parseFloatSafe(pvStr).toFixed(2)}`) : ""
         })
         return row
       }),
     [folder, rowCount]
   )
 
+  // Only Work Section, Work Area, and Project Value are shown (Labour Target is omitted per specification)
   const columns: GridColDef[] = useMemo(
     () =>
       folder.subfolders.flatMap((sub) => [
         {
           field: `${sub.id}_ws`,
           headerName: "Work Section",
-          width: 120,
-          editable: true,
+          width: 130,
+          editable: false,
         },
         {
           field: `${sub.id}_wa`,
           headerName: "Work Area",
-          width: 120,
-          editable: true,
+          width: 130,
+          editable: false,
         },
         {
           field: `${sub.id}_pv`,
           headerName: "Project Value",
           width: 120,
-          editable: true,
-        },
-        {
-          field: `${sub.id}_lt`,
-          headerName: "Labour Target",
-          width: 120,
-          editable: true,
+          editable: false,
         },
       ]),
     [folder]
@@ -277,13 +227,10 @@ function FolderGrid({
           { field: `${sub.id}_ws` },
           { field: `${sub.id}_wa` },
           { field: `${sub.id}_pv` },
-          { field: `${sub.id}_lt` },
         ],
       })),
     [folder]
   )
-
-  const fg = colors.foreground ?? "#e2e8f0"
 
   return (
     <DataGrid
@@ -299,7 +246,7 @@ function FolderGrid({
       disableColumnSorting
       disableColumnMenu
       rowHeight={ROW_HEIGHT}
-      isCellEditable={() => !isLocked}
+      isCellEditable={() => false}
       sx={{
         ...agTableDataGridSx,
         ...sx,
@@ -310,73 +257,58 @@ function FolderGrid({
           textAlign: "center",
           width: "100%",
         },
-        "& .MuiDataGrid-cell--editing": {
-          backgroundColor: "transparent !important",
-          boxShadow: "none",
-          padding: 0,
-        },
-        "& .MuiDataGrid-cell--editing .MuiInputBase-root": {
-          backgroundColor: "transparent",
-          color: fg,
-          fontSize: "0.875rem",
-          padding: "0 8px",
-        },
-        "& .MuiDataGrid-cell--editing .MuiInputBase-input": {
-          color: fg,
-          padding: 0,
-        },
       }}
     />
   )
 }
 
-export default function DynamicFolderTable({ projectId }: { projectId: string }) {
-  const [selectedRole, setSelectedRole] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-
-  const handleOpenModal = useCallback((role: string) => {
-    setSelectedRole(role)
-    setModalOpen(true)
-  }, [])
-
+export default function WhiteCardView({ projectId }: { projectId: string }) {
   const [folders, setFolders] = useState<FolderType[]>([])
   const [loading, setLoading] = useState(false)
+  const [applications, setApplications] = useState<MonthlyApplicationApi[]>([])
+  const [selectedApp, setSelectedApp] = useState<MonthlyApplicationApi | null>(null)
+  const [appDialogOpen, setAppDialogOpen] = useState(false)
+  const [appPdfOpen, setAppPdfOpen] = useState(false)
+
+  const [modal, setModal] = useState<ModalState>(null)
+  const [copiedValue, setCopiedValue] = useState("")
+
+  const gridRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const [headerHeights, setHeaderHeights] = useState<Record<string, number>>({})
 
   useEffect(() => {
     if (!projectId) {
       setFolders([])
+      setApplications([])
       return
     }
     setLoading(true)
-    getWhiteCard(projectId).then(data => {
-      if (data.groups) {
-        const mappedFolders: FolderType[] = data.groups.map((g: any) => ({
-          id: g.groupId,
-          name: g.headerName,
-          subfolders: g.subfolders.map((sub: any) => ({
-            id: sub.id,
-            name: sub.name,
-            rows: Array.isArray(sub.rows) ? sub.rows : [],
-            project_value: sub.project_value,
-            labour_target: sub.labour_target
+
+    Promise.all([
+      getWhiteCard(projectId),
+      getMonthlyApplications(projectId),
+    ])
+      .then(([whiteCardData, appData]) => {
+        if (whiteCardData.groups) {
+          const mappedFolders: FolderType[] = whiteCardData.groups.map((g: any) => ({
+            id: g.groupId,
+            name: g.headerName,
+            subfolders: g.subfolders.map((sub: any) => ({
+              id: sub.id,
+              name: sub.name,
+              rows: Array.isArray(sub.rows) ? sub.rows : [],
+              project_value: sub.project_value,
+              labour_target: sub.labour_target,
+              booked_labour: sub.booked_labour,
+            })),
           }))
-        }))
-        setFolders(mappedFolders)
-      }
-    }).catch(console.error)
+          setFolders(mappedFolders)
+        }
+        setApplications(appData.monthly_applications || [])
+      })
+      .catch(console.error)
       .finally(() => setLoading(false))
   }, [projectId])
-
-  const [isLocked, setIsLocked] = useState(false)
-
-  const [modal, setModal] = useState<ModalState>(null)
-  const [copiedValue, setCopiedValue] = useState("")
-  const [whiteCardDialogOpen, setWhiteCardDialogOpen] = useState(false)
-  const [whiteCardPdfOpen, setWhiteCardPdfOpen] = useState(false)
-
-  // ── Per-folder header height measurement
-  const gridRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-  const [headerHeights, setHeaderHeights] = useState<Record<string, number>>({})
 
   useEffect(() => {
     const observers: ResizeObserver[] = []
@@ -384,9 +316,7 @@ export default function DynamicFolderTable({ projectId }: { projectId: string })
       const el = gridRefs.current.get(folder.id)
       if (!el) return
       const measure = () => {
-        const header = el.querySelector(
-          ".MuiDataGrid-columnHeaders"
-        ) as HTMLElement | null
+        const header = el.querySelector(".MuiDataGrid-columnHeaders") as HTMLElement | null
         if (header) {
           setHeaderHeights((prev) =>
             prev[folder.id] === header.offsetHeight
@@ -409,11 +339,11 @@ export default function DynamicFolderTable({ projectId }: { projectId: string })
         prev.map((f) =>
           f.id === folderId
             ? {
-              ...f,
-              subfolders: f.subfolders.map((sf) =>
-                sf.id === subfolderId ? { ...sf, rows } : sf
-              ),
-            }
+                ...f,
+                subfolders: f.subfolders.map((sf) =>
+                  sf.id === subfolderId ? { ...sf, rows } : sf
+                ),
+              }
             : f
         )
       )
@@ -429,57 +359,80 @@ export default function DynamicFolderTable({ projectId }: { projectId: string })
     (sf) => sf.id === modal?.subfolderId
   )
 
-  const previousWhiteCard = {
-    no: 1,
-    dateRange: "15/03/2026 to 15/04/2026",
-    value: "$34,000",
+  const handleOpenAppDetails = (app: MonthlyApplicationApi) => {
+    setSelectedApp(app)
+    setAppDialogOpen(true)
   }
 
   const getWhiteCardPdf = useCallback(() => {
+    if (!selectedApp) return new Blob([])
+    const gross =
+      (parseFloat(selectedApp.contract_works_total) || 0) +
+      (parseFloat(selectedApp.variations_total) || 0)
+
     return generateSimplePdf({
       title: "WHITE CARD",
-      subtitle: `Period ${previousWhiteCard.dateRange}`,
+      subtitle: `Application #${selectedApp.application_number} – Date: ${selectedApp.date}`,
       headerFields: [
-        { label: "No.", value: String(previousWhiteCard.no) },
-        { label: "Date Range", value: previousWhiteCard.dateRange },
-        { label: "Value", value: previousWhiteCard.value },
+        { label: "Application No.", value: String(selectedApp.application_number) },
+        { label: "Date", value: String(selectedApp.date) },
+        { label: "Gross Total", value: formatCurrency(gross) },
       ],
       detailFields: [
-        { label: "Work Completed", value: previousWhiteCard.value },
+        {
+          label: "Contract Works Total",
+          value: formatCurrency(parseFloat(selectedApp.contract_works_total) || 0),
+        },
+        {
+          label: "Variations Total",
+          value: formatCurrency(parseFloat(selectedApp.variations_total) || 0),
+        },
+        {
+          label: "Amount Claimed",
+          value: formatCurrency(parseFloat(selectedApp.amount_claimed) || gross),
+        },
       ],
-      totalLabel: "Total",
-      totalValue: previousWhiteCard.value,
-      footer: "Previous month white card summary.",
+      totalLabel: "Total Claim",
+      totalValue: formatCurrency(parseFloat(selectedApp.amount_claimed) || gross),
+      footer: "Monthly application white card summary.",
     })
-  }, [])
+  }, [selectedApp])
 
   const downloadWhiteCardDoc = useCallback(() => {
+    if (!selectedApp) return
+    const gross =
+      (parseFloat(selectedApp.contract_works_total) || 0) +
+      (parseFloat(selectedApp.variations_total) || 0)
+
     const html = `<!DOCTYPE html>
 <html>
-  <head><meta charset="utf-8" /><title>White Card</title></head>
+  <head><meta charset="utf-8" /><title>White Card #${selectedApp.application_number}</title></head>
   <body style="font-family: Arial, sans-serif; color: #111; padding: 24px;">
     <h1>WHITE CARD</h1>
-    <p><strong>Period:</strong> ${previousWhiteCard.dateRange}</p>
+    <p><strong>Application:</strong> #${selectedApp.application_number}</p>
+    <p><strong>Date:</strong> ${selectedApp.date}</p>
     <hr style="border: none; border-top: 1px solid #ddd;" />
     <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px;">
       <thead>
         <tr>
-          <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px 4px;">No.</th>
-          <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px 4px;">Date Range</th>
+          <th style="text-align: left; border-bottom: 1px solid #ddd; padding: 8px 4px;">Description</th>
           <th style="text-align: right; border-bottom: 1px solid #ddd; padding: 8px 4px;">Value</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">${previousWhiteCard.no}</td>
-          <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">${previousWhiteCard.dateRange}</td>
-          <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${previousWhiteCard.value}</td>
+          <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">Contract Works</td>
+          <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${formatCurrency(parseFloat(selectedApp.contract_works_total) || 0)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0;">Variations</td>
+          <td style="padding: 8px 4px; border-bottom: 1px solid #f0f0f0; text-align: right;">${formatCurrency(parseFloat(selectedApp.variations_total) || 0)}</td>
         </tr>
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="2" style="padding: 12px 4px; text-align: right;"><strong>Total</strong></td>
-          <td style="padding: 12px 4px; text-align: right;"><strong>${previousWhiteCard.value}</strong></td>
+          <td style="padding: 12px 4px; text-align: right;"><strong>Total Gross Claim</strong></td>
+          <td style="padding: 12px 4px; text-align: right;"><strong>${formatCurrency(gross)}</strong></td>
         </tr>
       </tfoot>
     </table>
@@ -489,10 +442,88 @@ export default function DynamicFolderTable({ projectId }: { projectId: string })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `white-card-${previousWhiteCard.no}.doc`
+    anchor.download = `white-card-app-${selectedApp.application_number}.doc`
     anchor.click()
     URL.revokeObjectURL(url)
-  }, [])
+  }, [selectedApp])
+
+  // Full table workbook export (Work Section, Work Area, Project Value, PV Total, Total Claim, % Claim)
+  const exportWorkbook = useCallback(() => {
+    if (!folders.length) {
+      toast.error("No folder data to export")
+      return
+    }
+
+    const rowsData: string[][] = [
+      ["Main Folder", "Subfolder", "Work Section", "Work Area", "Project Value", "PV Total", "Total Claim", "% Claim"],
+    ]
+
+    let grandPv = 0
+    let grandClaim = 0
+
+    folders.forEach((folder) => {
+      const maxRows = Math.max(ROWS_PER_FOLDER, ...folder.subfolders.map((sub: any) => sub.rows?.length || 0))
+
+      for (let i = 0; i < maxRows; i++) {
+        let pv_total = 0
+        let total_claim = 0
+
+        folder.subfolders.forEach((sub: any) => {
+          const subRow = sub.rows?.[i]
+          const pvStr = subRow?.projectValue || (i === 0 ? sub.project_value?.toFixed(2) || "" : "")
+          const pv = parseFloatSafe(pvStr)
+          pv_total += pv
+
+          const ltStr = subRow?.labourTarget || (i === 0 ? sub.labour_target?.toFixed(2) || "" : "")
+          const rowLt = parseFloatSafe(ltStr)
+          const bookedLt = parseFloatSafe(subRow?.bookedLabour ?? (i === 0 ? sub.booked_labour : 0))
+
+          if (rowLt > 0 && bookedLt > 0) {
+            total_claim += (bookedLt / rowLt) * pv
+          }
+        })
+
+        const percent_claim = pv_total > 0 ? (total_claim / pv_total) * 100 : 0
+        grandPv += pv_total
+        grandClaim += total_claim
+
+        folder.subfolders.forEach((sub: any, subIndex: number) => {
+          const subRow = sub.rows?.[i]
+          const ws = subRow?.workSection || ""
+          const wa = subRow?.workArea || ""
+          const pvStr = subRow?.projectValue || (i === 0 ? sub.project_value?.toFixed(2) || "" : "")
+          const pv = parseFloatSafe(pvStr)
+
+          rowsData.push([
+            folder.name,
+            sub.name,
+            ws,
+            wa,
+            pv ? `£${pv.toFixed(2)}` : "£0.00",
+            subIndex === 0 && pv_total > 0 ? `£${pv_total.toFixed(2)}` : "",
+            subIndex === 0 && total_claim > 0 ? `£${total_claim.toFixed(2)}` : "",
+            subIndex === 0 && pv_total > 0 ? `${percent_claim.toFixed(1)}%` : "",
+          ])
+        })
+      }
+    })
+
+    const grandPercent = grandPv > 0 ? (grandClaim / grandPv) * 100 : 0
+    rowsData.push([])
+    rowsData.push(["GRAND TOTAL", "", "", "", `£${grandPv.toFixed(2)}`, `£${grandPv.toFixed(2)}`, `£${grandClaim.toFixed(2)}`, `${grandPercent.toFixed(1)}%`])
+
+    const csvContent = rowsData
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `white-card-workbook-${projectId}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success("Workbook exported successfully")
+  }, [folders, projectId])
 
   const borderColor = colors.border ?? "rgba(255,255,255,0.12)"
   const sectionBg = colors.oddRowBackground ?? "rgba(255,255,255,0.04)"
@@ -500,115 +531,151 @@ export default function DynamicFolderTable({ projectId }: { projectId: string })
 
   return (
     <div className="space-y-6">
-      <div className="w-1/5 overflow-hidden rounded-lg border border-white/10 bg-[#0a1730]">
-        <table className="text-xs">
-          <thead>
-            <tr className="border-b border-white/10 bg-[#070f1e]/40">
-              <th className="px-4 py-2.5 text-left font-medium text-slate-400">
-                No.
-              </th>
-              <th className="px-4 py-2.5 text-left font-medium text-slate-400">
-                Date Range
-              </th>
-              <th className="px-4 py-2.5 text-right font-medium text-slate-400">
-                Value
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              className="cursor-pointer border-b border-white/5 transition-colors hover:bg-white/[0.04]"
-              onClick={() => setWhiteCardDialogOpen(true)}
-            >
-              <td className="px-4 py-3 text-slate-200">
-                {previousWhiteCard.no}
-              </td>
-              <td className="px-4 py-3 text-slate-200">
-                {previousWhiteCard.dateRange}
-              </td>
-              <td className="px-4 py-3 text-right font-medium text-emerald-400">
-                {previousWhiteCard.value}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div className="flex items-center justify-between">
+        <div className="w-1/3 min-w-[320px] overflow-hidden rounded-lg border border-white/10 bg-[#0a1730]">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-white/10 bg-[#070f1e]/60">
+                <th className="px-4 py-2.5 text-left font-medium text-slate-300">
+                  No.
+                </th>
+                <th className="px-4 py-2.5 text-left font-medium text-slate-300">
+                  Application Date
+                </th>
+                <th className="px-4 py-2.5 text-right font-medium text-slate-300">
+                  Value Claimed
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {applications.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-3 text-center text-slate-400">
+                    No previous applications for this project
+                  </td>
+                </tr>
+              ) : (
+                applications.map((app) => {
+                  const gross =
+                    (parseFloat(app.contract_works_total) || 0) +
+                    (parseFloat(app.variations_total) || 0)
+                  return (
+                    <tr
+                      key={app.id}
+                      className="cursor-pointer border-b border-white/5 transition-colors hover:bg-white/[0.06]"
+                      onClick={() => handleOpenAppDetails(app)}
+                    >
+                      <td className="px-4 py-3 text-slate-200 font-medium">
+                        #{app.application_number}
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {app.date}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-emerald-400">
+                        {formatCurrency(parseFloat(app.amount_claimed) || gross)}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Dedicated Export Button for the full white card table workbook */}
+        <Button
+          onClick={exportWorkbook}
+          variant="outline"
+          className="gap-2 bg-[#1d2c46] hover:bg-[#25395a] text-slate-200 border-white/10"
+        >
+          <FileSpreadsheet className="size-4 text-emerald-400" />
+          Export White Card Workbook
+        </Button>
       </div>
 
-      {/* ── Previous White Card Dialog ── */}
-      <Dialog open={whiteCardDialogOpen} onOpenChange={setWhiteCardDialogOpen}>
+      {/* ── Previous Application Details Dialog ── */}
+      <Dialog open={appDialogOpen} onOpenChange={setAppDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Previous White Card</DialogTitle>
+            <DialogTitle>Application Details</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded border border-white/10 bg-slate-900 p-4 text-sm text-slate-200">
-              <div className="mb-3 flex items-start justify-between">
-                <div>
-                  <h4 className="text-base font-semibold text-white">
-                    WHITE CARD
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Period {previousWhiteCard.dateRange}
+          {selectedApp && (
+            <div className="space-y-4">
+              <div className="rounded border border-white/10 bg-slate-900 p-4 text-sm text-slate-200">
+                <div className="mb-3 flex items-start justify-between">
+                  <div>
+                    <h4 className="text-base font-semibold text-white">
+                      APPLICATION #{selectedApp.application_number}
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Date: {selectedApp.date}
+                    </p>
+                  </div>
+                </div>
+                <div className="mb-3 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-slate-500">Contract Works</span>
+                    <p className="font-medium text-slate-200">
+                      {formatCurrency(parseFloat(selectedApp.contract_works_total) || 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Variations</span>
+                    <p className="font-medium text-slate-200">
+                      {formatCurrency(parseFloat(selectedApp.variations_total) || 0)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <span className="text-xs text-slate-500">Total Claimed Value</span>
+                  <p className="mt-0.5 text-lg font-semibold text-emerald-400">
+                    {formatCurrency(
+                      parseFloat(selectedApp.amount_claimed) ||
+                        (parseFloat(selectedApp.contract_works_total) || 0) +
+                          (parseFloat(selectedApp.variations_total) || 0)
+                    )}
                   </p>
                 </div>
               </div>
-              <div className="mb-3 grid grid-cols-3 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-500">No.</span>
-                  <p className="font-medium text-slate-200">
-                    {previousWhiteCard.no}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-slate-500">Date Range</span>
-                  <p className="font-medium text-slate-200">
-                    {previousWhiteCard.dateRange}
-                  </p>
-                </div>
-              </div>
-              <div className="mb-4">
-                <span className="text-xs text-slate-500">Value</span>
-                <p className="mt-0.5 text-lg font-semibold text-emerald-400">
-                  {previousWhiteCard.value}
-                </p>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setAppPdfOpen(true)}
+                  className="gap-2"
+                >
+                  <Eye className="size-4" />
+                  View PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={downloadWhiteCardDoc}
+                  className="gap-2"
+                >
+                  <Download className="size-4" />
+                  Download Document
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setWhiteCardPdfOpen(true)
-                }}
-                className="gap-2"
-              >
-                <Eye className="size-4" />
-                View PDF
-              </Button>
-              <Button
-                variant="outline"
-                onClick={downloadWhiteCardDoc}
-                className="gap-2"
-              >
-                <Download className="size-4" />
-                Download Document
-              </Button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
       <PdfViewerDialog
-        open={whiteCardPdfOpen}
-        onOpenChange={setWhiteCardPdfOpen}
-        title={`White Card ${previousWhiteCard.dateRange}`}
+        open={appPdfOpen}
+        onOpenChange={setAppPdfOpen}
+        title={selectedApp ? `White Card #${selectedApp.application_number}` : "White Card"}
         getPdf={getWhiteCardPdf}
       />
 
+      {/* ── Main White Card Folders and Grids ── */}
       <Box sx={{ display: "flex", overflow: "hidden" }}>
         <Box sx={{ flex: 1, overflow: "auto" }}>
           <Box sx={{ minWidth: 1200 }}>
             {folders.map((folder) => {
-              const maxRows = Math.max(ROWS_PER_FOLDER, ...folder.subfolders.map((sub: any) => sub.rows?.length || 0))
+              const maxRows = Math.max(
+                ROWS_PER_FOLDER,
+                ...folder.subfolders.map((sub: any) => sub.rows?.length || 0)
+              )
               const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
               const sectionH = hh + maxRows * ROW_HEIGHT
               const isNotFirst = folders.indexOf(folder) > 0
@@ -619,73 +686,51 @@ export default function DynamicFolderTable({ projectId }: { projectId: string })
               }
 
               return (
-                <Box
-                  key={folder.id}
-                  sx={{ display: "flex", alignItems: "stretch" }}
-                >
-                  {/* Sidebar label — full height of header + data rows */}
-                  <Box
-                    title={
-                      isLocked ? undefined : "Right-click to add subfolder"
-                    }
-                    sx={{
-                      flexShrink: 0,
-                      width: 48,
-                      height: sectionH,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      writingMode: "vertical-lr",
-                      transform: "rotate(180deg)",
-                      fontWeight: 700,
-                      fontSize: 11,
-                      letterSpacing: "0.12em",
-                      userSelect: "none",
-                      cursor: isLocked ? "default" : "context-menu",
-                      color: fg,
-                      backgroundColor: sectionBg,
-                      border: `1px solid ${borderColor}`,
-                      transition: "background-color 140ms",
-                      "&:hover": isLocked
-                        ? {}
-                        : {
-                          backgroundColor: "rgba(251,191,36,0.07)",
-                        },
-                    }}
-                  >
-                    {folder.name}
+                <div key={folder.id} className="mb-6 rounded-lg border border-white/10 overflow-hidden bg-[#0a1730]">
+                  {/* Prominent Main Folder Name Header Banner */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#172544] border-b border-white/10 text-sm font-bold text-slate-100 tracking-wide">
+                    <div className="flex items-center gap-2">
+                      <Folder className="size-4 text-blue-400" />
+                      <span className="text-xs uppercase px-2 py-0.5 rounded bg-blue-600/30 text-blue-300 border border-blue-500/30 font-semibold">
+                        Folder
+                      </span>
+                      <span className="text-base text-white">{folder.name.toUpperCase()}</span>
+                    </div>
+                  </div>
+
+                  <Box sx={{ display: "flex", alignItems: "stretch" }}>
+                    {/* Folder's DataGrid (subfolder columns: Work Section, Work Area, Project Value) */}
+                    <Box
+                      ref={(el: HTMLDivElement | null) => {
+                        if (el) gridRefs.current.set(folder.id, el)
+                        else gridRefs.current.delete(folder.id)
+                      }}
+                      sx={{ flex: 1, minWidth: 0 }}
+                    >
+                      <FolderGrid
+                        folder={folder}
+                        isLocked={false}
+                        sx={isNotFirst ? borderTopNone : undefined}
+                        rowCount={maxRows}
+                      />
+                    </Box>
+
+                    {/* Summary columns (PV Total, Total Claim, % Claim) */}
+                    <Box sx={{ flexShrink: 0, width: 302 }}>
+                      <SummaryGrid
+                        folder={folder}
+                        isLocked={false}
+                        sx={isNotFirst ? borderTopNone : undefined}
+                        rowCount={maxRows}
+                      />
+                    </Box>
                   </Box>
-                  {/* This folder's own DataGrid (subfolder columns) */}
-                  <Box
-                    ref={(el: HTMLDivElement | null) => {
-                      if (el) gridRefs.current.set(folder.id, el)
-                      else gridRefs.current.delete(folder.id)
-                    }}
-                    sx={{ flex: 1, minWidth: 0 }}
-                  >
-                    <FolderGrid
-                      folder={folder}
-                      isLocked={isLocked}
-                      sx={isNotFirst ? borderTopNone : undefined}
-                      rowCount={maxRows}
-                    />
-                  </Box>
-                  {/* Summary columns (PV Total, Total Claim, % Claim) — always right-aligned */}
-                  <Box sx={{ flexShrink: 0, width: 302 }}>
-                    <SummaryGrid
-                      folder={folder}
-                      isLocked={isLocked}
-                      sx={isNotFirst ? borderTopNone : undefined}
-                      rowCount={maxRows}
-                    />
-                  </Box>
-                </Box>
+                </div>
               )
             })}
           </Box>
         </Box>
 
-        {/* ── Subfolder edit modal  */}
         {modal && activeSubfolder && activeFolder && (
           <SubfolderModal
             subfolder={activeSubfolder}

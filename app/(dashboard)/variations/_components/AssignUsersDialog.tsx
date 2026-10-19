@@ -55,13 +55,13 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
     if (open) {
       setUserSearch("")
       setLoading(true)
-      apiRequest<UserItem[]>("/account/users/?role=employee")
+      apiRequest<(UserItem & { approvedUser?: boolean })[]>("/account/users/?role=employee")
         .then((data) => {
-          // Strictly allow only mobile app users (employees)
-          const appUsers = data.filter((u) => u.role === "employee")
+          // Strictly allow only mobile app users (employees) approved by the Document Controller
+          const appUsers = data.filter((u) => u.role === "employee" && u.approvedUser === true)
           setUsers(appUsers)
           const appUserIds = new Set(appUsers.map((u) => u.id))
-          // Filter initial selection to only valid app users
+          // Filter initial selection to only valid approved app users
           setAssignSelected(initialSelected.filter((id) => appUserIds.has(id)))
         })
         .catch((err) => {
@@ -89,7 +89,7 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
             Assign App Users
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-400">
-            Only mobile app users (employees) can be assigned to variations.
+            Only mobile app users (employees) approved by the Document Controller can be assigned to variations.
           </DialogDescription>
         </DialogHeader>
 
