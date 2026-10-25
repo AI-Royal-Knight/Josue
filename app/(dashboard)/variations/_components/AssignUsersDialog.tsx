@@ -55,10 +55,14 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
     if (open) {
       setUserSearch("")
       setLoading(true)
-      apiRequest<(UserItem & { approvedUser?: boolean })[]>("/account/users/?role=employee")
+      apiRequest<(UserItem & { approvedUser?: boolean; approvedBy?: string; approvedByRole?: string })[]>("/account/users/?role=employee")
         .then((data) => {
           // Strictly allow only mobile app users (employees) approved by the Document Controller
-          const appUsers = data.filter((u) => u.role === "employee" && u.approvedUser === true)
+          const appUsers = data.filter((u) => 
+            u.role === "employee" && 
+            u.approvedUser === true && 
+            (u.approvedByRole === "document_controller" || (u.approvedBy && u.approvedBy.toLowerCase().includes("document controller")))
+          )
           setUsers(appUsers)
           const appUserIds = new Set(appUsers.map((u) => u.id))
           // Filter initial selection to only valid approved app users

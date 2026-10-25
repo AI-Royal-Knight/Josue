@@ -19,6 +19,7 @@ export type RFI = {
   trade: string
   status: "OPEN" | "CLOSED"
   document_url: string | null
+  attachments?: { name: string; url: string }[]
   created_at: string
   closed_at: string | null
   created_by?: string | null
@@ -48,20 +49,27 @@ export async function sendRFIMessage(
     formData.append("author_role", role)
   }
   if (files && files.length > 0) {
+    files.forEach((f) => {
+      formData.append("files", f)
+    })
     formData.append("attachment", files[0])
     formData.append("document", files[0])
   }
   
   return await apiRequest<ChatMessage>(`/project-admin/rfis/${id}/messages/`, {
     method: "POST",
-    body: formData
+    body: formData,
+    headers: role ? { "X-Active-Role": role } : undefined
   })
 }
 
 export async function assignRFIToTechnical(id: string, assigned: boolean): Promise<RFI> {
   return await apiRequest<RFI>(`/project-admin/rfis/${id}/assign-technical/`, {
     method: "PATCH",
-    body: { assigned_to_technical_department: assigned }
+    body: {
+      assigned_to_technical_department: assigned,
+      assigned: assigned
+    }
   })
 }
 

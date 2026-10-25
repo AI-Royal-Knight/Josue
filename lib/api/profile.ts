@@ -7,6 +7,7 @@ export interface ProfileResponse {
   first_name: string
   last_name: string
   role: string
+  secondary_role?: string | null
   profile: {
     cscs_card_no?: string | null
     cscs_expiry_date?: string | null

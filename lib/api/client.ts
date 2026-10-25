@@ -26,10 +26,20 @@ export function getApiBaseUrl(): string {
 
 export function getMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;
-  if (path.startsWith("http")) return path;
-  
   const apiBase = getApiBaseUrl();
   const hostUrl = apiBase.replace(/\/api\/v1\/?$/, ""); // strip /api/v1
+
+  if (
+    path.startsWith("http://localhost:8000") ||
+    path.startsWith("http://127.0.0.1:8000") ||
+    path.startsWith("http://backend:8000")
+  ) {
+    const relativePart = path.replace(/^https?:\/\/[^\/]+/, "");
+    return `${hostUrl}${relativePart.startsWith("/") ? "" : "/"}${relativePart}`;
+  }
+
+  if (path.startsWith("http")) return path;
+  
   return `${hostUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 

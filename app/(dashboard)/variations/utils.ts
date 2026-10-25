@@ -87,117 +87,169 @@ export function buildVariationDocHtml(variation: VariationRow) {
   const formatText = (text: string) => (text || "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>")
 
   return `<!DOCTYPE html>
-<html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
   <head>
     <meta charset="utf-8" />
     <title>Variation ${variation.voNo}</title>
+    <!--[if gte mso 9]>
+    <xml>
+      <w:WordDocument>
+        <w:View>Print</w:View>
+        <w:Zoom>100</w:Zoom>
+        <w:DoNotOptimizeForBrowser/>
+      </w:WordDocument>
+    </xml>
+    <![endif]-->
     <style>
-      @page {
-        size: A4 portrait;
-        margin: 20mm 15mm;
+      @page Section1 {
+        size: 595.3pt 841.9pt; /* A4 Portrait */
+        margin: 36pt 36pt 36pt 36pt;
+        mso-header-margin: 35.4pt;
+        mso-footer-margin: 35.4pt;
+        mso-paper-source: 0;
+      }
+      div.Section1 {
+        page: Section1;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        font-family: Calibri, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
         color: #111;
         margin: 0;
-        padding: 20px;
-        -webkit-print-color-adjust: exact;
+        padding: 0;
       }
       .container {
         width: 100%;
-        max-width: 720px;
+        max-width: 650px;
         margin: 0 auto;
-        padding: 0;
-        box-sizing: border-box;
       }
-      h1 { margin: 0 0 12px; font-size: 20px; font-weight: bold; }
-      .meta { margin: 0 0 16px; font-size: 12px; line-height: 1.6; }
+      h1 { margin: 0 0 12px; font-size: 18pt; font-weight: bold; color: #0f172a; }
+      .meta { margin: 0 0 16px; font-size: 10pt; line-height: 1.6; color: #334155; }
       .desc-box {
-        font-size: 13px;
+        font-size: 10pt;
         line-height: 1.5;
-        word-break: break-word;
-        overflow-wrap: break-word;
-        word-wrap: break-word;
-        white-space: normal;
         margin: 16px 0;
+        padding: 10px;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        word-break: break-word;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
       }
-      table {
-        width: 100%;
-        max-width: 100%;
-        table-layout: fixed;
+      table.var-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
         border-collapse: collapse;
-        font-size: 12px;
+        font-size: 9.5pt;
         margin-top: 16px;
         mso-table-lspace: 0pt;
         mso-table-rspace: 0pt;
       }
-      th, td { box-sizing: border-box; }
-      th { border-bottom: 2px solid #222; padding: 8px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-      td { border-bottom: 1px solid #e5e7eb; padding: 8px 6px; }
-      .col-desc {
-        width: 44%;
-        text-align: left;
-        word-break: break-word;
-        overflow-wrap: break-word;
-        word-wrap: break-word;
-        white-space: normal;
-        vertical-align: top;
-        line-height: 1.4;
+      table.var-table th {
+        border-bottom: 2pt solid #0f172a;
+        padding: 8px 6px;
+        font-size: 9pt;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background-color: #f1f5f9;
+        font-weight: bold;
       }
-      .col-num { width: 14%; text-align: right; white-space: nowrap; vertical-align: top; }
-      .col-qty { width: 12%; text-align: right; white-space: nowrap; vertical-align: top; }
-      .col-total { width: 16%; text-align: right; white-space: nowrap; vertical-align: top; font-weight: 600; }
-      tfoot td { border-top: 2px solid #222; padding: 12px 6px; font-weight: bold; }
+      table.var-table td {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 8px 6px;
+        vertical-align: top;
+      }
+      .col-desc {
+        width: 44% !important;
+        max-width: 250px;
+        text-align: left;
+        word-break: break-word !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
+        vertical-align: top;
+      }
+      .col-num {
+        width: 14% !important;
+        text-align: right;
+        white-space: nowrap;
+        vertical-align: top;
+      }
+      .col-qty {
+        width: 12% !important;
+        text-align: right;
+        white-space: nowrap;
+        vertical-align: top;
+      }
+      .col-total {
+        width: 16% !important;
+        text-align: right;
+        white-space: nowrap;
+        vertical-align: top;
+        font-weight: bold;
+      }
+      table.var-table tfoot td {
+        border-top: 2pt solid #0f172a;
+        padding: 10px 6px;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>VARIATION ORDER</h1>
-      <div class="meta">
-        <div><strong>VO No:</strong> ${variation.voNo}</div>
-        <div><strong>Project:</strong> ${variation.project}</div>
-        <div><strong>Date:</strong> ${variation.date}</div>
-        <div><strong>Site Instruction No:</strong> ${variation.siteInstructionNo || "—"}</div>
-        <div><strong>Status:</strong> ${variation.approvalStatus}</div>
-      </div>
-      <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
-      <div class="desc-box">
-        <strong>Description of Works:</strong><br/>
-        ${formatText(variation.descriptionOfWorks)}
-      </div>
-      <table width="100%" cellpadding="6" cellspacing="0" style="width: 100%; table-layout: fixed; border-collapse: collapse;">
-        <thead>
-          <tr>
-            <th class="col-desc" width="44%" style="width: 44%;">Description / Site Instruction</th>
-            <th class="col-num" width="14%" style="width: 14%;">Labour</th>
-            <th class="col-num" width="14%" style="width: 14%;">Material</th>
-            <th class="col-qty" width="12%" style="width: 12%;">QTY</th>
-            <th class="col-total" width="16%" style="width: 16%;">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${variation.lines.map((l, i) => `
+    <div class="Section1">
+      <div class="container">
+        <h1>VARIATION ORDER</h1>
+        <div class="meta">
+          <div><strong>VO No:</strong> ${variation.voNo}</div>
+          <div><strong>Project:</strong> ${variation.project}</div>
+          <div><strong>Date:</strong> ${variation.date}</div>
+          <div><strong>Site Instruction No:</strong> ${variation.siteInstructionNo || "—"}</div>
+          <div><strong>Status:</strong> ${variation.approvalStatus}</div>
+        </div>
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;" />
+        <div class="desc-box">
+          <strong>Description of Works:</strong><br/>
+          <div style="word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; line-height: 1.5; margin-top: 4px;">
+            ${formatText(variation.descriptionOfWorks)}
+          </div>
+        </div>
+        <table class="var-table" width="100%" cellpadding="6" cellspacing="0" style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse;">
+          <thead>
             <tr>
-              <td class="col-desc" width="44%" style="width: 44%; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; vertical-align: top;">
-                ${formatText(l.siteInstruction || `Item ${i + 1}`)}
-              </td>
-              <td class="col-num" width="14%" style="width: 14%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.labour)}</td>
-              <td class="col-num" width="14%" style="width: 14%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.material)}</td>
-              <td class="col-qty" width="12%" style="width: 12%; text-align: right; white-space: nowrap; vertical-align: top;">${l.qty}</td>
-              <td class="col-total" width="16%" style="width: 16%; text-align: right; white-space: nowrap; vertical-align: top; font-weight: 600;">${formatGBP((l.labour + l.material) * l.qty)}</td>
+              <th class="col-desc" width="44%" style="width: 44%; max-width: 250px; text-align: left; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal;">Description / Site Instruction</th>
+              <th class="col-num" width="14%" style="width: 14%; text-align: right;">Labour</th>
+              <th class="col-num" width="14%" style="width: 14%; text-align: right;">Material</th>
+              <th class="col-qty" width="12%" style="width: 12%; text-align: right;">QTY</th>
+              <th class="col-total" width="16%" style="width: 16%; text-align: right;">Total</th>
             </tr>
-          `).join('')}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="4" style="text-align: right;">Total Amount</td>
-            <td class="col-total" width="16%" style="width: 16%; text-align: right; white-space: nowrap; font-weight: bold;">${formatGBP(variation.totalAmount)}</td>
-          </tr>
-        </tfoot>
-      </table>
-      <p style="margin-top: 24px; font-size: 11px; color: #666;">
-        This is a generated variation order document.
-      </p>
+          </thead>
+          <tbody>
+            ${variation.lines.map((l, i) => `
+              <tr>
+                <td class="col-desc" width="44%" style="width: 44%; max-width: 250px; text-align: left; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; vertical-align: top;">
+                  <div style="word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; line-height: 1.4;">
+                    ${formatText(l.siteInstruction || `Item ${i + 1}`)}
+                  </div>
+                </td>
+                <td class="col-num" width="14%" style="width: 14%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.labour)}</td>
+                <td class="col-num" width="14%" style="width: 14%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.material)}</td>
+                <td class="col-qty" width="12%" style="width: 12%; text-align: right; white-space: nowrap; vertical-align: top;">${l.qty}</td>
+                <td class="col-total" width="16%" style="width: 16%; text-align: right; white-space: nowrap; vertical-align: top; font-weight: bold;">${formatGBP((l.labour + l.material) * l.qty)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="text-align: right; font-weight: bold; border-top: 2pt solid #0f172a;">Total Amount</td>
+              <td class="col-total" width="16%" style="width: 16%; text-align: right; white-space: nowrap; font-weight: bold; border-top: 2pt solid #0f172a;">${formatGBP(variation.totalAmount)}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <p style="margin-top: 24px; font-size: 9pt; color: #64748b;">
+          This is a generated variation order document.
+        </p>
+      </div>
     </div>
   </body>
 </html>`

@@ -17,6 +17,7 @@ import { Plus, Trash2, Loader2, UploadCloud, FileText, Image as ImageIcon, X } f
 import { VariationFormData, VariationLine, VariationRow } from "../types"
 import { emptyLine, defaultForm, lineTotal, formatGBP } from "../utils"
 import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 
 type Props = {
   open: boolean
@@ -29,7 +30,7 @@ type Props = {
 
 const COLUMNS = [
   { key: "no",           label: "No.",               width: "w-10" },
-  { key: "description",  label: "Description",       width: "min-w-[180px]" },
+  { key: "description",  label: "Description",       width: "min-w-[200px]" },
   { key: "labour",       label: "Labour (£)",        width: "w-24" },
   { key: "labourTarget", label: "Labour Target (£)", width: "w-28" },
   { key: "material",     label: "Material (£)",      width: "w-24" },
@@ -66,7 +67,7 @@ export default function CreateVariationDialog({
 
   const nextVoReference = useMemo(() => {
     if (!form.project) return ""
-    const projectVars = (existingVariations || []).filter((v) => v.projectId === form.project)
+    const projectVars = (existingVariations || []).filter((v) => String(v.projectId) === String(form.project))
     let maxNum = 0
     for (const v of projectVars) {
       const match = v.voNo?.match(/(\d+)/)
@@ -110,7 +111,19 @@ export default function CreateVariationDialog({
       setPreviewUrl(null)
     }
     if (file) {
-      if (file.type.startsWith("image/")) {
+      const isImg = file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic|svg)$/i.test(file.name)
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+      if (!isImg && !isPdf) {
+        toast.error("Please select a PDF or picture file.")
+        if (fileInputRef.current) fileInputRef.current.value = ""
+        return
+      }
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error("File size must be under 25MB.")
+        if (fileInputRef.current) fileInputRef.current.value = ""
+        return
+      }
+      if (isImg) {
         setPreviewUrl(URL.createObjectURL(file))
       }
       setForm((f) => ({ ...f, evidence: file }))
@@ -120,16 +133,18 @@ export default function CreateVariationDialog({
     }
   }
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(false)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0]
-      const isImg = file.type.startsWith("image/")
+      const isImg = file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic|svg)$/i.test(file.name)
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
       if (isImg || isPdf) {
         handleFileChange(file)
+      } else {
+        toast.error("Please upload a PDF or picture file.")
       }
     }
   }
@@ -207,10 +222,11 @@ export default function CreateVariationDialog({
             <div className="space-y-1 sm:col-span-2">
               <label className="text-xs text-slate-400">Evidence (Picture or PDF)</label>
               <input
+                id="variation-evidence-upload"
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,application/pdf,.pdf"
-                className="hidden"
+                accept="image/*,.pdf,application/pdf"
+                className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0] || null
                   handleFileChange(file)
@@ -218,23 +234,12 @@ export default function CreateVariationDialog({
               />
               
               {!form.evidence ? (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    if (fileInputRef.current) fileInputRef.current.value = ""
-                    fileInputRef.current?.click()
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      if (fileInputRef.current) fileInputRef.current.value = ""
-                      fileInputRef.current?.click()
-                    }
-                  }}
+                <label
+                  htmlFor="variation-evidence-upload"
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
-                  className={`flex h-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-2 text-center transition-colors ${
+                  className={`flex h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-3 text-center transition-colors ${
                     isDragging
                       ? "border-emerald-500 bg-emerald-500/10"
                       : "border-white/10 bg-white/5 hover:border-emerald-500/50 hover:bg-white/[0.07]"
@@ -242,12 +247,15 @@ export default function CreateVariationDialog({
                 >
                   <UploadCloud className="size-5 text-slate-400 mb-1" />
                   <span className="text-xs font-medium text-slate-200">
-                    Click to attach PDF or Picture
+                    Click to attach PDF or Picture (or drag and drop)
                   </span>
-                  <span className="text-[10px] text-slate-500">
-                    PDF, PNG, JPG, WEBP (max 10MB)
+                  <span className="text-[10px] text-slate-500 mt-0.5">
+                    PDF, PNG, JPG, WEBP (up to 25MB)
                   </span>
-                </div>
+                  <span className="mt-1.5 inline-flex items-center rounded border border-white/20 bg-white/5 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
+                    Browse File
+                  </span>
+                </label>
               ) : (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-900/80 p-2.5">
                   <div className="flex items-center gap-3 min-w-0">
@@ -279,7 +287,11 @@ export default function CreateVariationDialog({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleFileChange(null)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleFileChange(null)
+                    }}
                     className="h-7 w-7 text-slate-400 hover:text-red-400"
                     title="Remove attachment"
                   >
@@ -337,13 +349,13 @@ export default function CreateVariationDialog({
                       </TableCell>
 
                       {/* Description - takes up lines below when long */}
-                      <TableCell className="border-r border-white/10 px-1 py-1 align-top">
+                      <TableCell className="border-r border-white/10 px-1 py-1 align-top min-w-[200px]">
                         <Textarea
                           value={line.siteInstruction}
                           onChange={(e) => updateLine(i, { siteInstruction: e.target.value })}
                           placeholder="Description of row works…"
-                          rows={1}
-                          className="min-h-[30px] border-white/10 bg-transparent text-xs py-1 px-2 resize-y leading-snug"
+                          rows={2}
+                          className="min-h-[44px] border-white/10 bg-transparent text-xs py-1 px-2 resize-y leading-snug break-words whitespace-pre-wrap"
                         />
                       </TableCell>
 

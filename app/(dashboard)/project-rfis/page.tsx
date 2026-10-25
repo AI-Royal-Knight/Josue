@@ -47,6 +47,7 @@ import {
   assignRFIToTechnical,
   createRFI,
 } from "@/lib/api/rfis"
+import { getMediaUrl } from "@/lib/api/client"
 import { getMyProjects } from "@/lib/api/project-admin"
 import type { RFI, ChatMessage } from "@/lib/api/rfis"
 import type { ProjectItem } from "@/constants/projects"
@@ -66,7 +67,7 @@ function formatRoleName(role?: string | null): string {
 function getFilenameFromUrl(url?: string | null): string {
   if (!url) return "Attachment"
   try {
-    const raw = url.split("/").pop()?.split("?")[0] || "attachment"
+    const raw = url.split("?")[0].split("/").pop() || "attachment"
     return decodeURIComponent(raw)
   } catch {
     return "Attachment"
@@ -82,21 +83,35 @@ function AttachmentCard({
   filename?: string
   onPreview?: (url: string) => void
 }) {
+  const fullUrl = getMediaUrl(url) || url
   const cleanName = filename || getFilenameFromUrl(url)
   const isImageOrPdf = Boolean(
-    url.match(/\.(jpg|jpeg|png|webp|gif|svg|pdf)(\?.*)?$/i)
+    fullUrl.match(/\.(jpg|jpeg|png|webp|gif|svg|pdf)(\?.*)?$/i)
   )
 
-  const handleDownload = (e: React.MouseEvent) => {
+  const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    const link = document.createElement("a")
-    link.href = url
-    link.download = cleanName
-    link.target = "_blank"
-    link.rel = "noreferrer"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    try {
+      const resp = await fetch(fullUrl)
+      const blob = await resp.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = blobUrl
+      link.download = cleanName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+    } catch {
+      const link = document.createElement("a")
+      link.href = fullUrl
+      link.download = cleanName
+      link.target = "_blank"
+      link.rel = "noreferrer"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
   }
 
   return (
@@ -118,7 +133,7 @@ function AttachmentCard({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onPreview(url)}
+            onClick={() => onPreview(fullUrl)}
             className="h-7 px-2 text-[11px] font-medium text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
           >
             <Eye className="mr-1 h-3 w-3" />
@@ -136,7 +151,7 @@ function AttachmentCard({
           Download
         </Button>
         <a
-          href={url}
+          href={fullUrl}
           target="_blank"
           rel="noreferrer"
           className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-800 hover:text-slate-200"
@@ -153,6 +168,7 @@ function AttachmentCard({
 
 function RFIDetailDialog({
   rfi,
+  activeRole: activeRoleProp,
   onClose,
   onCloseRFI,
   onSendMessage,
@@ -160,6 +176,7 @@ function RFIDetailDialog({
   onViewDocument,
 }: {
   rfi: RFI
+  activeRole?: string
   onClose: () => void
   onCloseRFI: (id: string) => Promise<void>
   onSendMessage: (
@@ -179,7 +196,8 @@ function RFIDetailDialog({
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { user } = useAuthStore()
-  const activeRole = useRoleStore((s) => s.role) || user?.role || "project_director"
+  const storeRole = useRoleStore((s) => s.role)
+  const currentRole = activeRoleProp || storeRole || (typeof window !== "undefined" ? localStorage.getItem("tresta:activeRole") : null) || "project_director"
   const isClosed = rfi.status === "CLOSED"
 
   // Check creator identity against multiple possible formats
@@ -195,8 +213,10 @@ function RFIDetailDialog({
   )
 
   const isProjectDirector =
-    activeRole === "project_director" ||
+    currentRole === "project_director" ||
     user?.role === "project_director" ||
+    user?.secondary_role === "project_director" ||
+    (user as any)?.role_assignments?.some((a: any) => a.role === "project_director") ||
     user?.role === "managing_director" ||
     user?.role === "admin" ||
     user?.role === "super_admin"
@@ -214,14 +234,14 @@ function RFIDetailDialog({
     "super_admin",
     "managing_director",
     "project_director",
-  ].includes(activeRole || user?.role || "")
+  ].includes(currentRole || user?.role || "")
 
   const handleSend = async () => {
     const trimmed = message.trim()
     if (!trimmed && attachments.length === 0) return
     setIsSending(true)
     try {
-      await onSendMessage(rfi.id, trimmed, attachments, activeRole)
+      await onSendMessage(rfi.id, trimmed, attachments, currentRole)
       setMessage("")
       setAttachments([])
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100)
@@ -370,18 +390,45 @@ function RFIDetailDialog({
               {rfi.description}
             </p>
 
-            {/* Original RFI Attachment */}
-            {rfi.document_url && (
-              <div className="mt-4 pt-3 border-t border-[#192b45]">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                  Original Attachment
-                </p>
-                <AttachmentCard
-                  url={rfi.document_url}
-                  onPreview={onViewDocument}
-                />
-              </div>
-            )}
+            {/* Original RFI Attachment(s) */}
+            {(() => {
+              const originalAttachments: { name: string; url: string }[] = []
+              if (rfi.attachments && rfi.attachments.length > 0) {
+                originalAttachments.push(...rfi.attachments)
+              }
+              if (rfi.document_url) {
+                const urls = rfi.document_url.split(",").map((u) => u.trim()).filter(Boolean)
+                for (const u of urls) {
+                  if (!originalAttachments.some((a) => a.url === u)) {
+                    originalAttachments.push({
+                      name: getFilenameFromUrl(u),
+                      url: u,
+                    })
+                  }
+                }
+              }
+
+              if (originalAttachments.length === 0) return null
+
+              return (
+                <div className="mt-4 pt-3 border-t border-[#192b45] space-y-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <Paperclip className="h-3 w-3 text-indigo-400" />
+                    <span>Original Attachment{originalAttachments.length > 1 ? `s (${originalAttachments.length})` : ""}:</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {originalAttachments.map((att, idx) => (
+                      <AttachmentCard
+                        key={`orig-${att.url}-${idx}`}
+                        url={att.url}
+                        filename={att.name}
+                        onPreview={onViewDocument}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Section: Responses Thread */}
@@ -404,14 +451,16 @@ function RFIDetailDialog({
                   if (msg.attachments && msg.attachments.length > 0) {
                     allAttachments.push(...msg.attachments)
                   }
-                  if (
-                    msg.document_url &&
-                    !allAttachments.some((a) => a.url === msg.document_url)
-                  ) {
-                    allAttachments.push({
-                      name: getFilenameFromUrl(msg.document_url),
-                      url: msg.document_url,
-                    })
+                  if (msg.document_url) {
+                    const urls = msg.document_url.split(",").map((u) => u.trim()).filter(Boolean)
+                    for (const u of urls) {
+                      if (!allAttachments.some((a) => a.url === u)) {
+                        allAttachments.push({
+                          name: getFilenameFromUrl(u),
+                          url: u,
+                        })
+                      }
+                    }
                   }
 
                   const roleDisplay = formatRoleName(msg.author_role)
@@ -481,10 +530,10 @@ function RFIDetailDialog({
                 <CornerDownRight className="h-3.5 w-3.5 text-indigo-400" />
                 <span>Replying as:</span>
                 <span className="font-semibold text-indigo-300">
-                  {formatRoleName(activeRole)}
+                  {formatRoleName(currentRole)}
                 </span>
                 <span className="text-slate-500">
-                  ({user?.first_name || user?.email})
+                  ({user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : user?.email})
                 </span>
               </span>
               <span className="text-[11px] text-slate-500">Ctrl+Enter to send</span>
@@ -591,7 +640,30 @@ export default function ProjectRFIsPage() {
   const [isCreating, setIsCreating] = useState(false)
 
   const { user } = useAuthStore()
-  const activeRole = useRoleStore((s) => s.role) || user?.role || "project_director"
+  const storeRole = useRoleStore((s) => s.role)
+  const [activeRole, setActiveRole] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("tresta:activeRole")
+      if (stored) return stored
+      try {
+        const legacy = localStorage.getItem("tresta:selectedRole")
+        if (legacy) {
+          const parsed = JSON.parse(legacy)
+          if (parsed?.state?.role) return parsed.state.role
+        }
+      } catch {}
+    }
+    return storeRole || "project_director"
+  })
+
+  useEffect(() => {
+    if (storeRole) {
+      setActiveRole(storeRole)
+    } else if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("tresta:activeRole")
+      if (stored) setActiveRole(stored)
+    }
+  }, [storeRole])
 
   const fetchData = async () => {
     setLoading(true)
@@ -686,7 +758,6 @@ export default function ProjectRFIsPage() {
     } catch (e: any) {
       console.error("Failed to assign technical", e)
       toast.error(e?.message || "Failed to update Technical assignment")
-      throw e
     }
   }
 
@@ -845,7 +916,10 @@ export default function ProjectRFIsPage() {
           width: 130,
           minWidth: 110,
           cellRenderer: (params: ICellRendererParams<RFI>) => (
-            <div className="flex items-center justify-center h-full">
+            <div
+              className="flex items-center justify-center h-full"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Switch
                 checked={Boolean(params.value)}
                 onCheckedChange={(checked) => {
@@ -945,6 +1019,7 @@ export default function ProjectRFIsPage() {
       {selectedRFI && (
         <RFIDetailDialog
           rfi={selectedRFI}
+          activeRole={activeRole}
           onClose={() => setSelectedRFI(null)}
           onCloseRFI={handleCloseRFI}
           onSendMessage={handleSendMessage}
@@ -974,9 +1049,10 @@ export default function ProjectRFIsPage() {
                   variant="ghost"
                   className="h-7 text-xs text-slate-300 hover:text-white"
                   onClick={() => {
+                    const cleanName = getFilenameFromUrl(viewDocumentUrl)
                     const link = document.createElement("a")
                     link.href = viewDocumentUrl
-                    link.download = getFilenameFromUrl(viewDocumentUrl)
+                    link.download = cleanName
                     link.target = "_blank"
                     link.rel = "noreferrer"
                     document.body.appendChild(link)
@@ -998,12 +1074,20 @@ export default function ProjectRFIsPage() {
                 </a>
               </div>
             </DialogHeader>
-            <div className="flex-1 w-full h-full p-2 bg-[#050b14] overflow-hidden">
-              <iframe
-                src={viewDocumentUrl}
-                className="w-full h-full rounded border border-[#1e3a5f]/60 bg-white"
-                title="Document Viewer"
-              />
+            <div className="flex-1 w-full h-full p-2 bg-[#050b14] overflow-auto flex items-center justify-center">
+              {Boolean(viewDocumentUrl.match(/\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i)) ? (
+                <img
+                  src={viewDocumentUrl}
+                  alt="Document Preview"
+                  className="max-w-full max-h-full object-contain rounded"
+                />
+              ) : (
+                <iframe
+                  src={viewDocumentUrl}
+                  className="w-full h-full rounded border border-[#1e3a5f]/60 bg-white"
+                  title="Document Viewer"
+                />
+              )}
             </div>
           </DialogContent>
         </Dialog>
@@ -1086,7 +1170,25 @@ export default function ProjectRFIsPage() {
                   Attachment (Optional)
                 </Label>
                 {!createFile ? (
-                  <label className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#233550] bg-[#0c182e] p-4 cursor-pointer hover:border-indigo-500/60 transition-colors">
+                  <label
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const file = e.dataTransfer.files?.[0] || null
+                      if (file && file.size > 25 * 1024 * 1024) {
+                        toast.error(
+                          `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 25MB.`
+                        )
+                        return
+                      }
+                      if (file) setCreateFile(file)
+                    }}
+                    className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#233550] bg-[#0c182e] p-4 cursor-pointer hover:border-indigo-500/60 transition-colors"
+                  >
                     <Paperclip className="h-5 w-5 text-indigo-400" />
                     <span className="text-xs text-slate-300">
                       Click to browse or drop file (PDF, Images, Docs)

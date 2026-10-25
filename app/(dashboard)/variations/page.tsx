@@ -54,7 +54,7 @@ function apiToRow(v: VariationApi): VariationRow {
     date: v.date,
     variationSheetNumber: v.variation_sheet_number,
     project: v.project_name,
-    projectId: v.project,
+    projectId: typeof v.project === "object" && v.project !== null ? String((v.project as any).id) : String(v.project || ""),
     siteInstructionNo: v.site_instruction_no,
     descriptionOfWorks: v.description_of_works,
     createdBy: v.created_by_name,
@@ -466,7 +466,7 @@ export default function Page() {
 
   // ── Summary metrics ─────────────────────────────────────────────────────
   const summaryMetrics = useMemo(() => {
-    const filtered = selectedProject === "all" ? rows : rows.filter((r) => r.projectId === selectedProject)
+    const filtered = selectedProject === "all" ? rows : rows.filter((r) => String(r.projectId) === String(selectedProject))
     const total = filtered.reduce((s, r) => s + r.totalAmount, 0)
     const approved = filtered.filter((r) => r.approvalStatus === "Approved").length
     const pending = filtered.filter((r) => r.approvalStatus === "Pending").length
@@ -771,7 +771,7 @@ export default function Page() {
 
   // ── Filtered rows ───────────────────────────────────────────────────────
   const filteredRows = useMemo(() => {
-    const list = selectedProject === "all" ? [...rows] : rows.filter((r) => r.projectId === selectedProject)
+    const list = selectedProject === "all" ? [...rows] : rows.filter((r) => String(r.projectId) === String(selectedProject))
     if (selectedProject !== "all") {
       return [...list].sort((a, b) => {
         const numA = parseInt(a.voNo?.replace(/\D/g, "") || "0", 10)
@@ -780,7 +780,14 @@ export default function Page() {
         return (a.voNo || "").localeCompare(b.voNo || "")
       })
     }
-    return list
+    return [...list].sort((a, b) => {
+      const projComp = (a.project || "").localeCompare(b.project || "")
+      if (projComp !== 0) return projComp
+      const numA = parseInt(a.voNo?.replace(/\D/g, "") || "0", 10)
+      const numB = parseInt(b.voNo?.replace(/\D/g, "") || "0", 10)
+      if (numA !== numB) return numA - numB
+      return (a.voNo || "").localeCompare(b.voNo || "")
+    })
   }, [rows, selectedProject])
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -859,6 +866,7 @@ export default function Page() {
         onDownload={downloadVariationDoc}
         onSubmitToClient={submitVariationToClientHandler}
         isSubmitting={isSubmitting}
+        isCommercial={isCommercial}
       />
 
       <ReminderDialog

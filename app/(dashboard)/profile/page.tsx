@@ -30,6 +30,7 @@ import {
 import { getProfile, updateProfile, ProfileResponse } from "@/lib/api/profile"
 import { changePassword } from "@/lib/api/auth"
 import { useRoleStore } from "@/lib/role-store"
+import { useAuthStore } from "@/lib/auth-store"
 import { toast } from "sonner"
 
 // Password strength calculation helpers
@@ -204,19 +205,87 @@ export default function ProfilePage() {
   const [copiedPassword, setCopiedPassword] = useState(false)
   const [justGeneratedPassword, setJustGeneratedPassword] = useState(false)
 
-  const activeRole = useRoleStore((s) => s.role)
-  const currentRole = activeRole || profileData?.role || ""
-  const isManagingDirector = currentRole === "managing_director"
-  const isProjectDirector = currentRole === "project_director"
+  const storeRole = useRoleStore((s) => s.role)
+  const authUser = useAuthStore((s) => s.user)
+  const setUser = useAuthStore((s) => s.setUser)
+
+  const [localActiveRole, setLocalActiveRole] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const active = localStorage.getItem("tresta:activeRole")
+      if (active) return active
+      try {
+        const sel = localStorage.getItem("tresta:selectedRole")
+        if (sel) {
+          if (sel.startsWith("{")) {
+            const parsed = JSON.parse(sel)
+            if (parsed?.state?.role) return parsed.state.role
+          } else {
+            return sel
+          }
+        }
+      } catch {}
+    }
+    return null
+  })
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const active = localStorage.getItem("tresta:activeRole")
+      if (active && active !== localActiveRole) {
+        setLocalActiveRole(active)
+      } else if (!active) {
+        try {
+          const sel = localStorage.getItem("tresta:selectedRole")
+          if (sel) {
+            const parsed = sel.startsWith("{") ? JSON.parse(sel)?.state?.role : sel
+            if (parsed && parsed !== localActiveRole) {
+              setLocalActiveRole(parsed)
+            }
+          }
+        } catch {}
+      }
+    }
+  }, [storeRole])
+
+  // Determine current effective active role with prioritization
+  const effectiveRole =
+    localActiveRole ||
+    storeRole ||
+    (typeof window !== "undefined" ? localStorage.getItem("tresta:activeRole") : null) ||
+    authUser?.role ||
+    profileData?.role ||
+    ""
+
+  const isManagingDirector =
+    effectiveRole === "managing_director" ||
+    localActiveRole === "managing_director" ||
+    storeRole === "managing_director" ||
+    (typeof window !== "undefined" && localStorage.getItem("tresta:activeRole") === "managing_director") ||
+    authUser?.role === "managing_director" ||
+    profileData?.role === "managing_director"
+
+  const isProjectDirector =
+    effectiveRole === "project_director" ||
+    localActiveRole === "project_director" ||
+    storeRole === "project_director" ||
+    (typeof window !== "undefined" && localStorage.getItem("tresta:activeRole") === "project_director") ||
+    authUser?.role === "project_director" ||
+    authUser?.secondary_role === "project_director" ||
+    profileData?.role === "project_director" ||
+    profileData?.secondary_role === "project_director"
+
   const isStreamlinedProfile = isManagingDirector || isProjectDirector
 
-  const roleTitle = isProjectDirector
-    ? "Project Director"
-    : isManagingDirector
-    ? "Managing Director"
-    : currentRole
-        ? currentRole.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-        : "User"
+  const roleTitle =
+    effectiveRole === "project_director" || (isProjectDirector && !isManagingDirector)
+      ? "Project Director"
+      : effectiveRole === "managing_director" || isManagingDirector
+      ? "Managing Director"
+      : isProjectDirector
+      ? "Project Director"
+      : effectiveRole
+      ? effectiveRole.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : "User"
 
   // Basic / Managing Director Form
   const basicForm = useForm<BasicProfileFormValues>({
@@ -315,7 +384,7 @@ export default function ProfilePage() {
     }
   }
 
-  // Handle basic profile update (Managing Director)
+  // Handle basic profile update (Managing Director, Project Director)
   const onBasicSubmit = async (values: BasicProfileFormValues) => {
     try {
       setError(null)
@@ -324,6 +393,14 @@ export default function ProfilePage() {
         last_name: values.last_name,
         email: values.email,
       })
+      if (authUser) {
+        setUser({
+          ...authUser,
+          first_name: values.first_name,
+          last_name: values.last_name,
+          email: values.email,
+        })
+      }
       toast.success("Profile updated successfully.")
       setIsEditing(false)
       loadProfile()
@@ -375,6 +452,11 @@ export default function ProfilePage() {
       toast.error(msg)
     }
   }
+
+  // Watched basic form values
+  const watchedFirstName = basicForm.watch("first_name")
+  const watchedLastName = basicForm.watch("last_name")
+  const watchedEmail = basicForm.watch("email")
 
   // Watched password values for live strength & matching calculation
   const watchedOldPassword = passwordForm.watch("old_password") || ""
@@ -499,7 +581,11 @@ export default function ProfilePage() {
                   size="sm"
                   onClick={() => {
                     setIsEditing(false)
-                    basicForm.reset()
+                    basicForm.reset({
+                      first_name: profileData?.first_name || "",
+                      last_name: profileData?.last_name || "",
+                      email: profileData?.email || "",
+                    })
                   }}
                   className="border-white/10 text-slate-300 hover:text-white"
                 >
@@ -575,7 +661,7 @@ export default function ProfilePage() {
                       </div>
                     ) : (
                       <p className="rounded border border-white/5 bg-white/[0.02] px-3 py-2 text-sm text-slate-100">
-                        {basicForm.getValues("first_name") || "—"}
+                        {watchedFirstName || profileData?.first_name || "—"}
                       </p>
                     )}
                   </div>
@@ -597,7 +683,7 @@ export default function ProfilePage() {
                       </div>
                     ) : (
                       <p className="rounded border border-white/5 bg-white/[0.02] px-3 py-2 text-sm text-slate-100">
-                        {basicForm.getValues("last_name") || "—"}
+                        {watchedLastName || profileData?.last_name || "—"}
                       </p>
                     )}
                   </div>
@@ -621,7 +707,7 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <p className="rounded border border-white/5 bg-white/[0.02] px-3 py-2 text-sm text-slate-100">
-                      {basicForm.getValues("email") || "—"}
+                      {watchedEmail || profileData?.email || "—"}
                     </p>
                   )}
                 </div>

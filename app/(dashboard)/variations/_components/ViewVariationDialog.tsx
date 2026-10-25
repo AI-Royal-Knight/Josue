@@ -19,10 +19,11 @@ type Props = {
   onDownload: (row: VariationRow) => void
   onSubmitToClient: (name: string, email: string) => void
   isSubmitting: boolean
+  isCommercial?: boolean
 }
 
 export default function ViewVariationDialog({
-  open, onOpenChange, variation, onDownload, onSubmitToClient, isSubmitting
+  open, onOpenChange, variation, onDownload, onSubmitToClient, isSubmitting, isCommercial: isCommercialProp
 }: Props) {
   const [clientName, setClientName] = useState("")
   const [clientEmail, setClientEmail] = useState("")
@@ -30,7 +31,7 @@ export default function ViewVariationDialog({
   const user = useAuthStore((s) => s.user)
   const roleFromStore = useRoleStore((s) => s.role)
   const role = roleFromStore || user?.role || ""
-  const isCommercial = role === "commercial_department"
+  const isCommercial = isCommercialProp !== undefined ? isCommercialProp : role === "commercial_department"
 
   useEffect(() => {
     if (variation) {
@@ -119,13 +120,15 @@ export default function ViewVariationDialog({
                     const lineTot = (l.labour + l.material) * l.qty
                     return (
                       <tr key={i} className="border-b border-white/5">
-                        <td className="py-2 break-words whitespace-pre-wrap leading-relaxed align-top pr-2 text-slate-200">
-                          {l.siteInstruction || `Item ${i + 1}`}
+                        <td className="py-2.5 break-words whitespace-pre-wrap leading-relaxed align-top pr-2 text-slate-200">
+                          <div className="break-words whitespace-pre-wrap overflow-hidden leading-relaxed">
+                            {l.siteInstruction || `Item ${i + 1}`}
+                          </div>
                         </td>
-                        <td className="py-2 text-right align-top whitespace-nowrap">{formatGBP(l.labour)}</td>
-                        <td className="py-2 text-right align-top whitespace-nowrap">{formatGBP(l.material)}</td>
-                        <td className="py-2 text-right align-top whitespace-nowrap">{l.qty}</td>
-                        <td className="py-2 text-right font-medium text-slate-200 align-top whitespace-nowrap">
+                        <td className="py-2.5 text-right align-top whitespace-nowrap">{formatGBP(l.labour)}</td>
+                        <td className="py-2.5 text-right align-top whitespace-nowrap">{formatGBP(l.material)}</td>
+                        <td className="py-2.5 text-right align-top whitespace-nowrap">{l.qty}</td>
+                        <td className="py-2.5 text-right font-medium text-slate-200 align-top whitespace-nowrap">
                           {formatGBP(lineTot)}
                         </td>
                       </tr>
@@ -151,55 +154,62 @@ export default function ViewVariationDialog({
           </div>
 
           {/* Submit to Client Section - Only accessible to Commercial Department */}
-          <div className="rounded-lg border border-white/10 bg-slate-900/50 p-6">
-            <h3 className="mb-4 text-sm font-semibold text-white">Issue to Client for Signature</h3>
-            
-            {variation.submittedToClient ? (
+          {isCommercial ? (
+            <div className="rounded-lg border border-white/10 bg-slate-900/50 p-6">
+              <h3 className="mb-4 text-sm font-semibold text-white">Issue to Client for Signature</h3>
+              {variation.submittedToClient ? (
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="size-5" />
+                  <span className="text-sm font-medium">Already issued to client</span>
+                  {variation.clientEmail && (
+                    <span className="text-xs text-slate-400">({variation.clientEmail})</span>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-400">Client Name</label>
+                      <Input 
+                        placeholder="e.g. John Doe"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        className="bg-slate-900"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-400">Client Email Address</label>
+                      <Input 
+                        type="email"
+                        placeholder="e.g. john@client.com"
+                        value={clientEmail}
+                        onChange={(e) => setClientEmail(e.target.value)}
+                        className="bg-slate-900"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={() => onSubmitToClient(clientName, clientEmail)}
+                      disabled={!clientName || !clientEmail || isSubmitting}
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit to Client"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : variation.submittedToClient ? (
+            <div className="rounded-lg border border-white/10 bg-slate-900/50 p-4">
               <div className="flex items-center gap-2 text-emerald-400">
                 <CheckCircle2 className="size-5" />
-                <span className="text-sm font-medium">Already issued to client</span>
-                {variation.clientEmail && (
-                  <span className="text-xs text-slate-400">({variation.clientEmail})</span>
-                )}
+                <span className="text-sm font-medium">Issued to client:</span>
+                <span className="text-sm text-slate-200">
+                  {variation.clientName || "Client"} {variation.clientEmail ? `(${variation.clientEmail})` : ""}
+                </span>
               </div>
-            ) : isCommercial ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-slate-400">Client Name</label>
-                    <Input 
-                      placeholder="e.g. John Doe"
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                      className="bg-slate-900"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-slate-400">Client Email Address</label>
-                    <Input 
-                      type="email"
-                      placeholder="e.g. john@client.com"
-                      value={clientEmail}
-                      onChange={(e) => setClientEmail(e.target.value)}
-                      className="bg-slate-900"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button 
-                    onClick={() => onSubmitToClient(clientName, clientEmail)}
-                    disabled={!clientName || !clientEmail || isSubmitting}
-                  >
-                    {isSubmitting ? "Submitting..." : "Submit to Client"}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm text-slate-400">
-                This variation has not been issued to the client yet. Issuing variations to clients must be performed by the Commercial Department.
-              </div>
-            )}
-          </div>
+            </div>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>

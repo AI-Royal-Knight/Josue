@@ -53,7 +53,6 @@ export const DASHBOARD_NAV = {
     { title: "Users", url: "/users" },
     { title: "Invite Users", url: "/invite-users" },
     { title: "Variations", url: "/variations" },
-    { title: "Management Timesheets", url: "/management-timesheets" },
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Daily Register", url: "/daily-register" },

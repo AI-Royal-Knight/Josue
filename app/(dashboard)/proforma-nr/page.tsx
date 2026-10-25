@@ -26,6 +26,7 @@ import {
   deleteProformaAccess,
   ProformaAccessData,
   getProjectRoles,
+  getCompanyUsers,
   ProjectUser,
 } from "@/lib/api/project-admin"
 import { apiRequest } from "@/lib/api/client"
@@ -44,8 +45,8 @@ export default function ProformaAccessPage() {
     const totalUsers = accessList.length
 
     return [
-      { label: "Active users", value: totalActive.toString(), alert: false },
-      { label: "Paused users", value: totalPaused.toString(), alert: false },
+      { label: "Active users", value: totalActive.toString(), valueColor: "green" as const, alert: false },
+      { label: "Paused users", value: totalPaused.toString(), valueColor: "yellow" as const, alert: false },
       { label: "Total users", value: totalUsers.toString(), alert: false },
     ]
   }, [accessList])
@@ -118,7 +119,23 @@ export default function ProformaAccessPage() {
         console.warn("Could not fetch company employee users:", err)
       }
 
-      // 2. Also check project roles to ensure any project-assigned app users are included
+      // 2. Also check project-admin users endpoint
+      try {
+        const adminUsersRes = await getCompanyUsers("employee")
+        if (adminUsersRes && Array.isArray(adminUsersRes.users)) {
+          adminUsersRes.users
+            .filter((u) => u.role === "employee")
+            .forEach((u) => {
+              if (!userMap.has(u.id)) {
+                userMap.set(u.id, u)
+              }
+            })
+        }
+      } catch (err) {
+        console.warn("Could not fetch project-admin employee users:", err)
+      }
+
+      // 3. Also check project roles to ensure any project-assigned app users are included
       try {
         const rolesData = await getProjectRoles(projectId)
         rolesData.forEach((role) => {
@@ -208,8 +225,20 @@ export default function ProformaAccessPage() {
   const columns: ColDef<ProformaAccessData>[] = useMemo(
     () => [
       {
+        headerName: "No.",
+        valueGetter: "node.rowIndex + 1",
+        width: 70,
+        maxWidth: 80,
+        filter: false,
+        sortable: false,
+      },
+      {
         headerName: "Name",
-        valueGetter: (params) => params.data?.user?.first_name || "-",
+        valueGetter: (params) => {
+          const u = params.data?.user
+          if (!u) return "-"
+          return u.first_name || u.email?.split("@")[0] || "-"
+        },
         flex: 1,
         minWidth: 150,
       },
@@ -287,9 +316,7 @@ export default function ProformaAccessPage() {
       </div>
 
       <div className="flex items-center gap-4 shrink-0">
-        <div className="w-[320px]">
-          <SelectProject value={projectId} onChange={setProjectId} />
-        </div>
+        <SelectProject value={projectId} onChange={setProjectId} />
       </div>
 
       {/* Bug 1 & 2: Summary Stats displaying strictly Active, Paused, and Total users */}
