@@ -68,7 +68,8 @@ function getFilenameFromUrl(url?: string | null): string {
   if (!url) return "Attachment"
   try {
     const raw = url.split("?")[0].split("/").pop() || "attachment"
-    return decodeURIComponent(raw)
+    const decoded = decodeURIComponent(raw)
+    return decoded.replace(/^\d{10,}_/, "") || decoded
   } catch {
     return "Attachment"
   }
@@ -84,7 +85,8 @@ function AttachmentCard({
   onPreview?: (url: string) => void
 }) {
   const fullUrl = getMediaUrl(url) || url
-  const cleanName = filename || getFilenameFromUrl(url)
+  const rawName = filename || getFilenameFromUrl(url)
+  const cleanName = rawName.replace(/^\d{10,}_/, "") || rawName
   const isImageOrPdf = Boolean(
     fullUrl.match(/\.(jpg|jpeg|png|webp|gif|svg|pdf)(\?.*)?$/i)
   )
@@ -252,12 +254,12 @@ function RFIDetailDialog({
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = Array.from(e.target.files ?? [])
-    const MAX_SIZE = 25 * 1024 * 1024 // 25 MB
+    const MAX_SIZE = 100 * 1024 * 1024 // 100 MB
     const validFiles: File[] = []
     for (const f of rawFiles) {
       if (f.size > MAX_SIZE) {
         toast.error(
-          `"${f.name}" is too large (${(f.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 25MB.`
+          `"${f.name}" is too large (${(f.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 100MB.`
         )
       } else {
         validFiles.push(f)
@@ -737,7 +739,7 @@ export default function ProjectRFIsPage() {
 
   const handleAssignTechnical = async (rfiId: string, assigned: boolean) => {
     try {
-      const updatedRfi = await assignRFIToTechnical(rfiId, assigned)
+      const updatedRfi = await assignRFIToTechnical(rfiId, assigned, activeRole)
       setRfis((prev) =>
         prev.map((r) =>
           r.id === rfiId
@@ -924,6 +926,7 @@ export default function ProjectRFIsPage() {
                 checked={Boolean(params.value)}
                 onCheckedChange={(checked) => {
                   if (params.data) {
+                    params.node.setDataValue("assigned_to_technical_department", checked)
                     handleAssignTechnical(params.data.id, checked)
                   }
                 }}
@@ -1179,9 +1182,9 @@ export default function ProjectRFIsPage() {
                       e.preventDefault()
                       e.stopPropagation()
                       const file = e.dataTransfer.files?.[0] || null
-                      if (file && file.size > 25 * 1024 * 1024) {
+                      if (file && file.size > 100 * 1024 * 1024) {
                         toast.error(
-                          `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 25MB.`
+                          `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 100MB.`
                         )
                         return
                       }
@@ -1198,9 +1201,9 @@ export default function ProjectRFIsPage() {
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null
-                        if (file && file.size > 25 * 1024 * 1024) {
+                        if (file && file.size > 100 * 1024 * 1024) {
                           toast.error(
-                            `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 25MB.`
+                            `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 100MB.`
                           )
                           e.target.value = ""
                           return

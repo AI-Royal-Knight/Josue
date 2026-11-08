@@ -63,13 +63,14 @@ export async function sendRFIMessage(
   })
 }
 
-export async function assignRFIToTechnical(id: string, assigned: boolean): Promise<RFI> {
+export async function assignRFIToTechnical(id: string, assigned: boolean, role?: string): Promise<RFI> {
   return await apiRequest<RFI>(`/project-admin/rfis/${id}/assign-technical/`, {
     method: "PATCH",
     body: {
       assigned_to_technical_department: assigned,
       assigned: assigned
-    }
+    },
+    headers: role ? { "X-Active-Role": role } : undefined
   })
 }
 

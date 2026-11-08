@@ -58,9 +58,9 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
       apiRequest<(UserItem & { approvedUser?: boolean; approvedBy?: string; approvedByRole?: string })[]>("/account/users/?role=employee")
         .then((data) => {
           // Strictly allow only mobile app users (employees) approved by the Document Controller
-          const appUsers = data.filter((u) => 
+          const appUsers = (data || []).filter((u) => 
             u.role === "employee" && 
-            u.approvedUser === true && 
+            Boolean(u.approvedUser) && 
             (u.approvedByRole === "document_controller" || (u.approvedBy && u.approvedBy.toLowerCase().includes("document controller")))
           )
           setUsers(appUsers)
@@ -93,7 +93,7 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
             Assign App Users
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-400">
-            Only mobile app users (employees) approved by the Document Controller can be assigned to variations.
+            Only mobile app users (employees) accepted by the Document Controller can be assigned to variations.
           </DialogDescription>
         </DialogHeader>
 
@@ -115,7 +115,9 @@ export default function AssignUsersDialog({ open, onOpenChange, initialSelected,
         ) : (
           <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
             {filteredUsers.length === 0 ? (
-              <div className="py-8 text-center text-sm text-slate-500">No app users found.</div>
+              <div className="py-8 text-center text-xs text-slate-400">
+                No app users accepted by the Document Controller found.
+              </div>
             ) : (
               filteredUsers.map((u) => {
                 const fullName = `${u.name} ${u.surname || ""}`.trim()

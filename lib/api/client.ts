@@ -38,7 +38,18 @@ export function getMediaUrl(path: string | null | undefined): string | null {
     return `${hostUrl}${relativePart.startsWith("/") ? "" : "/"}${relativePart}`;
   }
 
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http")) {
+    if (
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:" &&
+      path.startsWith("http://") &&
+      !path.includes("localhost") &&
+      !path.includes("127.0.0.1")
+    ) {
+      return path.replace(/^http:\/\//, "https://");
+    }
+    return path;
+  }
   
   return `${hostUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 }
@@ -49,7 +60,7 @@ export class ApiError extends Error {
 
   constructor(status: number, data: unknown) {
     let message = status === 413
-      ? "The attached file is too large. Please select a smaller file (under 25MB) or compress it."
+      ? "The attached file is too large. Please select a smaller file (under 100MB) or compress it."
       : `API Error: ${status}`
     if (typeof data === "object" && data !== null) {
       const record = data as Record<string, unknown>

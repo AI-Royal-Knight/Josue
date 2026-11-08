@@ -98,12 +98,12 @@ export default function ProformaAccessPage() {
     try {
       const userMap = new Map<string, ProjectUser>()
 
-      // 1. Fetch registered mobile app users from company users endpoint
+      // 1. Fetch registered mobile app users from company users endpoint - strictly requiring approved status
       try {
         const companyUsers = await apiRequest<any[]>("/account/users/?role=employee")
         if (Array.isArray(companyUsers)) {
           companyUsers
-            .filter((u) => u.role === "employee")
+            .filter((u) => u.role === "employee" && Boolean(u.approvedUser))
             .forEach((u) => {
               const fullName = `${u.name || ""} ${u.surname || ""}`.trim()
               userMap.set(u.id, {
@@ -119,12 +119,12 @@ export default function ProformaAccessPage() {
         console.warn("Could not fetch company employee users:", err)
       }
 
-      // 2. Also check project-admin users endpoint
+      // 2. Also check project-admin users endpoint with approved_only filter
       try {
         const adminUsersRes = await getCompanyUsers("employee")
         if (adminUsersRes && Array.isArray(adminUsersRes.users)) {
           adminUsersRes.users
-            .filter((u) => u.role === "employee")
+            .filter((u) => u.role === "employee" && Boolean((u as any).approvedUser))
             .forEach((u) => {
               if (!userMap.has(u.id)) {
                 userMap.set(u.id, u)
@@ -133,22 +133,6 @@ export default function ProformaAccessPage() {
         }
       } catch (err) {
         console.warn("Could not fetch project-admin employee users:", err)
-      }
-
-      // 3. Also check project roles to ensure any project-assigned app users are included
-      try {
-        const rolesData = await getProjectRoles(projectId)
-        rolesData.forEach((role) => {
-          if (role.role_key === "employee") {
-            role.users.forEach((u) => {
-              if (!userMap.has(u.id)) {
-                userMap.set(u.id, u)
-              }
-            })
-          }
-        })
-      } catch (err) {
-        console.warn("Could not fetch project roles:", err)
       }
 
       setProjectUsers(Array.from(userMap.values()))
@@ -384,9 +368,9 @@ export default function ProformaAccessPage() {
           ) : filteredModalUsers.length === 0 ? (
             <div className="flex flex-col h-40 items-center justify-center text-center p-4 text-sm text-slate-400">
               <AlertCircle className="h-8 w-8 text-amber-400 mb-2" />
-              <span>No registered mobile app users found.</span>
+              <span>No registered and approved mobile app users found.</span>
               <span className="text-xs text-slate-500 mt-1">
-                Only users registered as mobile operatives (app users) can be assigned to Proforma NR.
+                Only mobile app users approved in the system can be assigned to Proforma NR.
               </span>
             </div>
           ) : (

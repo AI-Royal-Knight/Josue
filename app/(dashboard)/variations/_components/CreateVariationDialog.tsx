@@ -326,7 +326,7 @@ export default function CreateVariationDialog({
             </div>
 
             <div className="rounded-md border border-white/10 overflow-x-auto">
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
                     {COLUMNS.map((col) => (
