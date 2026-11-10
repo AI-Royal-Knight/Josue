@@ -333,7 +333,11 @@ export default function ProformaAccessPage() {
             rowData={accessList}
             columnDefs={columns}
             height="100%"
-            noRowsText="No mobile app users assigned to Proforma NR for this project yet. Click 'Assign User' to assign registered app users."
+            noRowsText={
+              !projectId
+                ? "Please select a project to view assigned Proforma NR users."
+                : "No mobile app users assigned to Proforma NR for this project yet. Click 'Assign User' to assign registered app users."
+            }
           />
         )}
       </div>

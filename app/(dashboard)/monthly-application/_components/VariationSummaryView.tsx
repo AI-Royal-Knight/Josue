@@ -102,9 +102,9 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
 
       // Filter: Only variations that have been reviewed and approved by commercial manager/department AND added to summary
       const approvedAndAdded = list.filter((v: VariationApi) => {
-        const isApproved = v.commercial_department_approved || v.approval_status === "approved"
-        const isAddedToSummary = v.submitted_to_client // marked as added to variation summary / submitted to client
-        return isApproved && isAddedToSummary
+        const isCommercialApproved = Boolean(v.commercial_department_approved)
+        const isAddedToSummary = Boolean(v.submitted_to_client) // marked as added to variation summary / submitted to client
+        return isCommercialApproved && isAddedToSummary
       })
 
       const mapped: VariationSummaryRow[] = approvedAndAdded.map((v: VariationApi, index: number) => {
@@ -361,8 +361,17 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
             columnDefs={columns}
             loading={loading}
             noRowsText="No variations have been reviewed, approved, and added to the variation summary yet."
+            defaultColDef={{
+              flex: 1,
+              minWidth: 120,
+              editable: false,
+              cellDataType: false,
+              sortable: true,
+              filter: false,
+            }}
             gridOptions={{
               suppressCellFocus: true,
+              suppressClickEdit: true,
               enableCellTextSelection: true,
               pinnedBottomRowData: totalRow ? [totalRow] : [],
               getRowStyle: (params: any) => {
@@ -380,6 +389,7 @@ export default function VariationSummaryView({ projectId }: { projectId: string 
                 flex: 1,
                 minWidth: 120,
                 editable: false,
+                cellDataType: false,
                 sortable: true,
                 filter: false,
               },

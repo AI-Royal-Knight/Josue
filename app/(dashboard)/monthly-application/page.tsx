@@ -49,9 +49,9 @@ function MonthlyApplicationContent() {
     loadData()
   }, [selectedProject])
 
-  const prevClaim = applications.length > 0 ? parseFloat(applications[0].amount_claimed) : 0
-  const thisMonthClaim = draft?.gross_total || 0
-  const retentionHold = (draft?.gross_total || 0) * 0.025
+  const prevClaim = applications.length > 0 ? parseFloat(applications[0].amount_claimed || "0") : 0
+  const thisMonthClaim = Number(draft?.gross_total || 0)
+  const retentionHold = thisMonthClaim > 0 ? thisMonthClaim * 0.025 : 0
   
   const content = useMemo(() => {
     if (!selectedProject) {

@@ -138,8 +138,40 @@ export default function Page() {
       setLoading(true)
       try {
         const result = await getVariations(selectedProject)
-        // @ts-ignore
-        setVariations(result.variations || [])
+        const list = result.variations || []
+        const approvedAndAdded = list.filter(
+          (v: any) => Boolean(v.commercial_department_approved) && Boolean(v.submitted_to_client)
+        )
+        const mapped: VariationSummaryRow[] = approvedAndAdded.map((v: any, index: number) => ({
+          no: v.vo_number || `VO${String(index + 1).padStart(3, "0")}`,
+          siteInstructionNumber: v.site_instruction_no || "—",
+          evidence: v.evidence_url ? "Yes" : "No",
+          evidence_url: v.evidence_url,
+          date: v.date || "",
+          variationSheetNumber: v.variation_sheet_number || "—",
+          workArea: v.workArea || "—",
+          workSection: v.workSection || "—",
+          descriptionOfWorks: v.description_of_works || "—",
+          labourCost: `£${parseFloat(
+            v.lines?.reduce((s: number, l: any) => s + parseFloat(l.labour || "0") * parseFloat(l.qty || "0"), 0) || 0
+          ).toFixed(2)}`,
+          materialCost: `£${parseFloat(
+            v.lines?.reduce((s: number, l: any) => s + parseFloat(l.material || "0") * parseFloat(l.qty || "0"), 0) || 0
+          ).toFixed(2)}`,
+          variationAmount: `£${parseFloat(v.total_amount || "0").toFixed(2)}`,
+          percentClaimed: v.percent_claimed ? `${v.percent_claimed}%` : "0%",
+          amountClaimed: `£${parseFloat(v.amount_claimed || "0").toFixed(2)}`,
+          addToApplication: Boolean(v.submitted_to_client),
+          signByClient: v.signed_by_client ? "Yes" : "No",
+          clientCertifiedAmount: `£${parseFloat(v.client_certified_amount || "0").toFixed(2)}`,
+          diffrenceAmount: `£${(
+            parseFloat(v.amount_claimed || "0") - parseFloat(v.client_certified_amount || "0")
+          ).toFixed(2)}`,
+          paymentStatusNr: v.payment_status_nr || "—",
+          claimGQComment: v.client_qs_comment || "—",
+          comments: v.comments || "—",
+        }))
+        setVariations(mapped)
       } catch (e) {
         console.error(e)
       } finally {
@@ -229,9 +261,18 @@ export default function Page() {
         rowData={variations}
         columnDefs={columns}
         height="auto"
+        defaultColDef={{
+          flex: 1,
+          minWidth: 160,
+          editable: false,
+          cellDataType: false,
+          sortable: true,
+          filter: false,
+        }}
         gridOptions={{
           headerHeight: 40,
           suppressCellFocus: true,
+          suppressClickEdit: true,
           domLayout: "autoHeight",
           //  grandTotalRow: "bottom"
           pinnedBottomRowData: [totalRow],
@@ -244,11 +285,7 @@ export default function Page() {
           getRowClass: (params) =>
             params.node.isRowPinned() ? "pinned-row" : "",
         }}
-        noRowsText="No variation data available"
-        defaultColDef={{
-          flex: 1,
-          minWidth: 160,
-        }}
+        noRowsText="No variations have been reviewed, approved, and added to the variation summary yet"
       />
     </div>
   )

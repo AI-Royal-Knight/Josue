@@ -9,7 +9,7 @@ import {
   type GridColumnGroupingModel,
 } from "@mui/x-data-grid"
 
-import { Plus, Save, Lock, Unlock, FolderPlus, Briefcase, UserPlus } from "lucide-react"
+import { Plus, Save, Lock, Unlock, FolderPlus, Briefcase, UserPlus, Download, Loader2, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 import { colors } from "@/constants/colors"
@@ -199,8 +199,8 @@ function FolderGrid({
   )
 
   const columnGroupingModel: GridColumnGroupingModel = useMemo(
-    () =>
-      folder.subfolders.map((sub) => {
+    () => [
+      ...folder.subfolders.map((sub) => {
         const children = [
           { field: `${sub.id}_ws` },
           { field: `${sub.id}_wa` },
@@ -221,6 +221,12 @@ function FolderGrid({
           ),
         }
       }),
+      {
+        groupId: `lt_total_group_${folder.id}`,
+        headerName: "TOTAL",
+        children: [{ field: "lt_total" }],
+      },
+    ],
     [folder, onSubfolderAssign, isLocked]
   )
 
@@ -337,6 +343,15 @@ export default function DynamicFolderTable() {
 
   const [folders, setFolders] = useState<FolderType[]>([])
   const [loading, setLoading] = useState(true)
+  const [hideManagementFolder, setHideManagementFolder] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const visibleFolders = useMemo(() => {
+    if (hideManagementFolder) {
+      return folders.filter((f) => !f.is_management)
+    }
+    return folders
+  }, [folders, hideManagementFolder])
 
   useEffect(() => {
     if (!projectId) return
@@ -437,6 +452,143 @@ export default function DynamicFolderTable() {
       toast.error("Failed to save progress")
     }
   }, [folders, projectId])
+
+  // Export Labour Target table (Requirement 7)
+  const handleExportTable = async () => {
+    if (!folders.length) {
+      toast.error("No project data available to export")
+      return
+    }
+
+    try {
+      setIsExporting(true)
+      const ExcelJS = (await import("exceljs")).default
+      const workbook = new ExcelJS.Workbook()
+      const sheet = workbook.addWorksheet("Labour Target")
+
+      // Title Banner
+      const titleRow = sheet.addRow([`Labour Target – Project ${projectId}`])
+      titleRow.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } }
+      titleRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF0F172A" },
+      }
+      titleRow.height = 30
+      sheet.mergeCells("A1:F1")
+      titleRow.alignment = { vertical: "middle", horizontal: "left" }
+
+      const dateRow = sheet.addRow([`Exported on: ${new Date().toLocaleDateString("en-GB")}`])
+      dateRow.font = { italic: true, size: 10, color: { argb: "FF94A3B8" } }
+      sheet.mergeCells("A2:F2")
+      dateRow.height = 20
+
+      sheet.addRow([]) // Spacer
+
+      // Column Headers (No Project Value - Requirement 1)
+      const headers = [
+        "Folder",
+        "Subfolder",
+        "Work Section",
+        "Work Area",
+        "Labour Target",
+        "LT Total (Row)",
+      ]
+      const headerRow = sheet.addRow(headers)
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 }
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF1E293B" },
+      }
+      headerRow.alignment = { vertical: "middle", horizontal: "center" }
+      headerRow.height = 24
+
+      let grandLtTotal = 0
+
+      // Rows for each folder and subfolder
+      folders.forEach((folder) => {
+        const maxRows = folder.subfolders.reduce((max, s) => Math.max(max, s.rows?.length || 0), 0)
+        for (let i = 0; i < maxRows; i++) {
+          let rowLtTotal = 0
+          folder.subfolders.forEach((sub) => {
+            const subRow = sub.rows[i]
+            if (subRow?.labourTarget) {
+              const val = parseFloat(String(subRow.labourTarget).replace(/[^0-9.-]/g, ""))
+              if (!isNaN(val)) rowLtTotal += val
+            }
+          })
+          grandLtTotal += rowLtTotal
+
+          folder.subfolders.forEach((sub, subIdx) => {
+            const subRow = sub.rows[i] || { workSection: "", workArea: "", labourTarget: "" }
+            const targetVal = subRow.labourTarget
+              ? parseFloat(String(subRow.labourTarget).replace(/[^0-9.-]/g, ""))
+              : 0
+
+            const r = sheet.addRow([
+              subIdx === 0 ? folder.name : "",
+              sub.name,
+              subRow.workSection || "",
+              subRow.workArea || "",
+              targetVal || "",
+              subIdx === 0 && rowLtTotal > 0 ? rowLtTotal : "",
+            ])
+            r.height = 20
+          })
+        }
+      })
+
+      // Grand Total Row
+      sheet.addRow([])
+      const totalRow = sheet.addRow(["GRAND TOTAL", "", "", "", "", grandLtTotal])
+      totalRow.font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } }
+      totalRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF059669" },
+      }
+      totalRow.height = 26
+
+      sheet.columns.forEach((col, idx) => {
+        col.width = idx === 0 ? 22 : idx === 1 ? 18 : idx === 2 ? 26 : idx === 3 ? 18 : 16
+      })
+      sheet.getColumn(5).numFmt = "£#,##0.00"
+      sheet.getColumn(6).numFmt = "£#,##0.00"
+
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 3) {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: "thin", color: { argb: "FFE2E8F0" } },
+              left: { style: "thin", color: { argb: "FFE2E8F0" } },
+              bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+              right: { style: "thin", color: { argb: "FFE2E8F0" } },
+            }
+          })
+        }
+      })
+
+      const buffer = await workbook.xlsx.writeBuffer()
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      const dateStr = new Date().toISOString().slice(0, 10)
+
+      anchor.href = url
+      anchor.download = `labour-target-${projectId}-${dateStr}.xlsx`
+      anchor.click()
+      URL.revokeObjectURL(url)
+      toast.success("Labour Target exported successfully")
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to export Labour Target")
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const handleToggleLock = useCallback(() => {
     setIsLocked((prev) => {
@@ -599,6 +751,26 @@ export default function DynamicFolderTable() {
       <div className="flex-1 overflow-auto p-4">
         {/* Toolbar */}
         <div className="flex justify-end gap-2 mb-2">
+          {/* Toggle Management Folder visibility (Requirement 2) */}
+          <UiButton
+            variant="outline"
+            onClick={() => setHideManagementFolder((prev) => !prev)}
+            className="border-white/10 bg-transparent text-slate-300 hover:bg-white/5"
+            title={hideManagementFolder ? "Show management folder" : "Hide management folder"}
+          >
+            {hideManagementFolder ? (
+              <>
+                <Eye size={16} className="mr-2 text-blue-400" />
+                Show Management Folder
+              </>
+            ) : (
+              <>
+                <EyeOff size={16} className="mr-2 text-slate-400" />
+                Hide Management Folder
+              </>
+            )}
+          </UiButton>
+
           <UiButton
             variant="outline"
             onClick={handleSaveProgress}
@@ -606,6 +778,22 @@ export default function DynamicFolderTable() {
             <Save size={16} className="mr-2" />
             Save progress
           </UiButton>
+
+          {/* Working Export Table Button (Requirement 7) */}
+          <UiButton
+            variant="outline"
+            onClick={handleExportTable}
+            disabled={isExporting || loading || folders.length === 0}
+            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200"
+          >
+            {isExporting ? (
+              <Loader2 size={16} className="mr-2 animate-spin" />
+            ) : (
+              <Download size={16} className="mr-2 text-emerald-400" />
+            )}
+            Export Table
+          </UiButton>
+
           <UiButton
             variant="outline"
             onClick={handleToggleLock}
@@ -624,7 +812,7 @@ export default function DynamicFolderTable() {
 
         {/* ── One row per folder: sidebar label + its own DataGrid  */}
         <div className="flex flex-col gap-8 w-full min-w-0">
-          {folders.map((folder) => {
+          {visibleFolders.map((folder) => {
             const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
 
             // Constrain the table container to the viewport height so internal scrollbars work perfectly
@@ -816,7 +1004,17 @@ export default function DynamicFolderTable() {
         assignments={
           assignTarget?.subfolderId
             ? (folders.find(f => f.id === assignTarget.folderId)?.subfolders.find(s => s.id === assignTarget.subfolderId)?.assignments || [])
-            : (folders.find(f => f.id === assignTarget?.folderId)?.subfolders[0]?.assignments || [])
+            : (() => {
+                const targetFolder = folders.find(f => f.id === assignTarget?.folderId)
+                const map = new Map<string, SubfolderAssignment>()
+                targetFolder?.subfolders.forEach(sf => {
+                  sf.assignments?.forEach(a => {
+                    const uid = a.user?.id
+                    if (uid && !map.has(uid)) map.set(uid, a)
+                  })
+                })
+                return Array.from(map.values())
+              })()
         }
         onAssign={onAssignConfirm}
       />

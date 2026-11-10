@@ -121,6 +121,8 @@ export function AgTable<TData extends object>({
       sortable: true,
       wrapHeaderText: true,
       autoHeaderHeight: true,
+      editable: false,
+      cellDataType: false,
       ...defaultColDef,
     }),
     [defaultColDef]
@@ -190,6 +192,8 @@ export function AgTable<TData extends object>({
           suppressMovableColumns={false}
           enableCellTextSelection
           stopEditingWhenCellsLoseFocus
+          singleClickEdit={false}
+          suppressClickEdit={true}
           noRowsOverlayComponent={() => (
             <span className="text-sm text-slate-400">{noRowsText}</span>
           )}

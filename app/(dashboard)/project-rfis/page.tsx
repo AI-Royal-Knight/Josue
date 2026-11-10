@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { type ColDef, type ICellRendererParams } from "ag-grid-community"
 import { AgTable } from "@/components/common/AgTable"
 import TableStat from "@/components/common/table-stat"
@@ -26,6 +26,7 @@ import {
   MessageSquare,
   AlertCircle,
   CornerDownRight,
+  ImageIcon,
 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -42,6 +43,7 @@ import { toast } from "sonner"
 
 import {
   getRFIs,
+  getRFIDetail,
   closeRFI,
   sendRFIMessage,
   assignRFIToTechnical,
@@ -88,7 +90,12 @@ function AttachmentCard({
   const rawName = filename || getFilenameFromUrl(url)
   const cleanName = rawName.replace(/^\d{10,}_/, "") || rawName
   const isImageOrPdf = Boolean(
-    fullUrl.match(/\.(jpg|jpeg|png|webp|gif|svg|pdf)(\?.*)?$/i)
+    fullUrl.match(/\.(jpg|jpeg|png|webp|gif|svg|pdf)(\?.*)?$/i) ||
+    cleanName.match(/\.(jpg|jpeg|png|webp|gif|svg|pdf)$/i)
+  )
+  const isImage = Boolean(
+    fullUrl.match(/\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i) ||
+    cleanName.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i)
   )
 
   const handleDownload = async (e: React.MouseEvent) => {
@@ -119,8 +126,12 @@ function AttachmentCard({
   return (
     <div className="group flex items-center justify-between gap-3 rounded-lg border border-[#233550] bg-[#0c192d] p-2.5 transition-colors hover:border-blue-500/50">
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20">
-          <FileText className="h-4 w-4" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 overflow-hidden">
+          {isImage ? (
+            <img src={fullUrl} alt={cleanName} className="h-full w-full object-cover" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
         </div>
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-slate-200" title={cleanName}>
@@ -190,6 +201,7 @@ function RFIDetailDialog({
   onAssignTechnical: (rfiId: string, assigned: boolean) => Promise<void>
   onViewDocument: (url: string) => void
 }) {
+  const [detailRFI, setDetailRFI] = useState<RFI>(rfi)
   const [message, setMessage] = useState("")
   const [attachments, setAttachments] = useState<File[]>([])
   const [isSending, setIsSending] = useState(false)
@@ -199,15 +211,79 @@ function RFIDetailDialog({
 
   const { user } = useAuthStore()
   const storeRole = useRoleStore((s) => s.role)
-  const currentRole = activeRoleProp || storeRole || (typeof window !== "undefined" ? localStorage.getItem("tresta:activeRole") : null) || "project_director"
-  const isClosed = rfi.status === "CLOSED"
+
+  // Sync prop changes
+  useEffect(() => {
+    setDetailRFI(rfi)
+  }, [rfi])
+
+  // Fetch full and latest detail with attachments and messages
+  useEffect(() => {
+    let active = true
+    getRFIDetail(rfi.id)
+      .then((fresh) => {
+        if (active && fresh) {
+          setDetailRFI(fresh)
+        }
+      })
+      .catch((err) => console.error("Failed to load RFI detail", err))
+    return () => {
+      active = false
+    }
+  }, [rfi.id])
+
+  // Available roles for replying (Bug 6)
+  const availableRoles = useMemo(() => {
+    const roles = new Set<string>()
+    if (activeRoleProp) roles.add(activeRoleProp)
+    if (storeRole) roles.add(storeRole)
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("tresta:activeRole")
+      if (stored) roles.add(stored)
+    }
+    if (user?.role) roles.add(user.role)
+    if (user?.secondary_role) roles.add(user.secondary_role)
+    if (Array.isArray((user as any)?.role_assignments)) {
+      for (const a of (user as any).role_assignments) {
+        if (a.role) roles.add(a.role)
+      }
+    }
+    if (roles.size === 0) roles.add("project_director")
+    return Array.from(roles).filter(Boolean)
+  }, [activeRoleProp, storeRole, user])
+
+  const [replyingRole, setReplyingRole] = useState<string>(() => {
+    return (
+      activeRoleProp ||
+      storeRole ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("tresta:activeRole")
+        : null) ||
+      user?.role ||
+      "project_director"
+    )
+  })
+
+  useEffect(() => {
+    const current =
+      activeRoleProp ||
+      storeRole ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("tresta:activeRole")
+        : null)
+    if (current && availableRoles.includes(current)) {
+      setReplyingRole(current)
+    }
+  }, [activeRoleProp, storeRole, availableRoles])
+
+  const isClosed = detailRFI.status === "CLOSED"
 
   // Check creator identity against multiple possible formats
   const currentUserId = user?.id ? String(user.id) : null
-  const rfiCreatorId = rfi.created_by ? String(rfi.created_by) : null
+  const rfiCreatorId = detailRFI.created_by ? String(detailRFI.created_by) : null
   const userFullName = `${user?.first_name || ""} ${user?.last_name || ""}`.trim().toLowerCase()
   const userEmail = (user?.email || "").toLowerCase()
-  const rfiCreatorName = (rfi.created_by_name || "").toLowerCase()
+  const rfiCreatorName = (detailRFI.created_by_name || "").toLowerCase()
 
   const isCreator = Boolean(
     (currentUserId && rfiCreatorId && currentUserId === rfiCreatorId) ||
@@ -215,7 +291,9 @@ function RFIDetailDialog({
   )
 
   const isProjectDirector =
-    currentRole === "project_director" ||
+    replyingRole === "project_director" ||
+    activeRoleProp === "project_director" ||
+    storeRole === "project_director" ||
     user?.role === "project_director" ||
     user?.secondary_role === "project_director" ||
     (user as any)?.role_assignments?.some((a: any) => a.role === "project_director") ||
@@ -224,7 +302,7 @@ function RFIDetailDialog({
     user?.role === "super_admin"
 
   // Bug 7: RFI can be closed by the person who opened it or by the project director for that project
-  const canClose = !isClosed && (isCreator || isProjectDirector)
+  const canClose = !isClosed && (Boolean(detailRFI.can_close) || isCreator || isProjectDirector)
 
   const canAssignTech = [
     "contracts_manager",
@@ -236,17 +314,23 @@ function RFIDetailDialog({
     "super_admin",
     "managing_director",
     "project_director",
-  ].includes(currentRole || user?.role || "")
+    "technical_department",
+  ].includes(replyingRole || activeRoleProp || user?.role || "")
 
   const handleSend = async () => {
     const trimmed = message.trim()
     if (!trimmed && attachments.length === 0) return
     setIsSending(true)
     try {
-      await onSendMessage(rfi.id, trimmed, attachments, currentRole)
+      await onSendMessage(detailRFI.id, trimmed, attachments, replyingRole)
       setMessage("")
       setAttachments([])
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100)
+      // Refresh details to ensure newly attached files and formatted timestamps are synced
+      try {
+        const fresh = await getRFIDetail(detailRFI.id)
+        if (fresh) setDetailRFI(fresh)
+      } catch {}
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 150)
     } finally {
       setIsSending(false)
     }
@@ -273,10 +357,23 @@ function RFIDetailDialog({
     if (!window.confirm("Are you sure you want to close this RFI?")) return
     setIsClosing(true)
     try {
-      await onCloseRFI(rfi.id)
+      await onCloseRFI(detailRFI.id)
+      setDetailRFI((prev) => ({
+        ...prev,
+        status: "CLOSED",
+        closed_at: new Date().toISOString(),
+      }))
     } finally {
       setIsClosing(false)
     }
+  }
+
+  const handleToggleTech = async (checked: boolean) => {
+    setDetailRFI((prev) => ({
+      ...prev,
+      assigned_to_technical_department: checked,
+    }))
+    await onAssignTechnical(detailRFI.id, checked)
   }
 
   return (
@@ -291,22 +388,22 @@ function RFIDetailDialog({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5">
                 <DialogTitle className="text-lg font-bold text-slate-100">
-                  {rfi.rfi_number}
+                  {detailRFI.rfi_number}
                 </DialogTitle>
                 <Badge
                   className={cn(
                     "rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider",
-                    rfi.status === "OPEN"
+                    detailRFI.status === "OPEN"
                       ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                       : "bg-slate-500/20 text-slate-400 border border-slate-500/30"
                   )}
                 >
-                  {rfi.status}
+                  {detailRFI.status}
                 </Badge>
                 {isClosed && (
                   <span className="flex items-center gap-1 text-[12px] text-slate-400 font-medium">
                     <Lock className="h-3.5 w-3.5 text-slate-500" />
-                    Closed {rfi.closed_at ? format(new Date(rfi.closed_at), "yyyy-MM-dd") : ""}
+                    Closed {detailRFI.closed_at ? format(new Date(detailRFI.closed_at), "yyyy-MM-dd") : ""}
                   </span>
                 )}
               </div>
@@ -314,20 +411,20 @@ function RFIDetailDialog({
               <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
                 <span>
                   <span className="text-slate-500">Project:</span>{" "}
-                  <strong className="text-slate-300 font-medium">{rfi.project_name}</strong>
+                  <strong className="text-slate-300 font-medium">{detailRFI.project_name}</strong>
                 </span>
                 <span>
                   <span className="text-slate-500">Trade:</span>{" "}
-                  <span className="text-slate-300">{rfi.trade}</span>
+                  <span className="text-slate-300">{detailRFI.trade}</span>
                 </span>
                 <span>
                   <span className="text-slate-500">Created by:</span>{" "}
-                  <span className="text-slate-300">{rfi.created_by_name}</span>
+                  <span className="text-slate-300">{detailRFI.created_by_name}</span>
                 </span>
                 <span>
                   <span className="text-slate-500">Date:</span>{" "}
                   <span className="text-slate-300">
-                    {rfi.created_at ? format(new Date(rfi.created_at), "yyyy-MM-dd") : "—"}
+                    {detailRFI.created_at ? format(new Date(detailRFI.created_at), "yyyy-MM-dd") : "—"}
                   </span>
                 </span>
               </div>
@@ -345,8 +442,8 @@ function RFIDetailDialog({
                   </Label>
                   <Switch
                     id="tech-assign-switch"
-                    checked={Boolean(rfi.assigned_to_technical_department)}
-                    onCheckedChange={(checked) => onAssignTechnical(rfi.id, checked)}
+                    checked={Boolean(detailRFI.assigned_to_technical_department)}
+                    onCheckedChange={handleToggleTech}
                   />
                 </div>
               )}
@@ -385,21 +482,21 @@ function RFIDetailDialog({
                 RFI Description & Scope
               </span>
               <span className="text-[11px] text-slate-500">
-                Opened by {rfi.created_by_name}
+                Opened by {detailRFI.created_by_name}
               </span>
             </div>
             <p className="text-[13px] leading-relaxed text-slate-200 whitespace-pre-wrap">
-              {rfi.description}
+              {detailRFI.description}
             </p>
 
             {/* Original RFI Attachment(s) */}
             {(() => {
               const originalAttachments: { name: string; url: string }[] = []
-              if (rfi.attachments && rfi.attachments.length > 0) {
-                originalAttachments.push(...rfi.attachments)
+              if (detailRFI.attachments && detailRFI.attachments.length > 0) {
+                originalAttachments.push(...detailRFI.attachments)
               }
-              if (rfi.document_url) {
-                const urls = rfi.document_url.split(",").map((u) => u.trim()).filter(Boolean)
+              if (detailRFI.document_url) {
+                const urls = detailRFI.document_url.split(",").map((u) => u.trim()).filter(Boolean)
                 for (const u of urls) {
                   if (!originalAttachments.some((a) => a.url === u)) {
                     originalAttachments.push({
@@ -438,17 +535,17 @@ function RFIDetailDialog({
             <div className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-indigo-400" />
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                Responses & Activity ({rfi.messages.length})
+                Responses & Activity ({detailRFI.messages?.length || 0})
               </h3>
             </div>
 
-            {rfi.messages.length === 0 ? (
+            {(!detailRFI.messages || detailRFI.messages.length === 0) ? (
               <div className="rounded-lg border border-dashed border-[#1e3a5f] p-6 text-center text-xs text-slate-500">
                 No responses have been posted yet. Use the form below to respond.
               </div>
             ) : (
               <div className="space-y-4">
-                {rfi.messages.map((msg: ChatMessage) => {
+                {detailRFI.messages.map((msg: ChatMessage) => {
                   const allAttachments: { name: string; url: string }[] = []
                   if (msg.attachments && msg.attachments.length > 0) {
                     allAttachments.push(...msg.attachments)
@@ -528,16 +625,31 @@ function RFIDetailDialog({
         {!isClosed ? (
           <div className="shrink-0 border-t border-[#1e3a5f] bg-[#070f1e] px-6 py-4 space-y-2.5">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <CornerDownRight className="h-3.5 w-3.5 text-indigo-400" />
                 <span>Replying as:</span>
-                <span className="font-semibold text-indigo-300">
-                  {formatRoleName(currentRole)}
-                </span>
+                {availableRoles.length > 1 ? (
+                  <Select value={replyingRole} onValueChange={setReplyingRole}>
+                    <SelectTrigger className="h-7 w-[180px] bg-[#0c182e] border-[#2d4060] text-indigo-300 text-xs font-semibold py-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#0c182e] border-[#1e3a5f] text-slate-200 text-xs">
+                      {availableRoles.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {formatRoleName(r)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="font-semibold text-indigo-300">
+                    {formatRoleName(replyingRole)}
+                  </span>
+                )}
                 <span className="text-slate-500">
                   ({user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : user?.email})
                 </span>
-              </span>
+              </div>
               <span className="text-[11px] text-slate-500">Ctrl+Enter to send</span>
             </div>
 
@@ -638,7 +750,7 @@ export default function ProjectRFIsPage() {
     description: "",
     trade: "General",
   })
-  const [createFile, setCreateFile] = useState<File | null>(null)
+  const [createFiles, setCreateFiles] = useState<File[]>([])
   const [isCreating, setIsCreating] = useState(false)
 
   const { user } = useAuthStore()
@@ -779,16 +891,17 @@ export default function ProjectRFIsPage() {
       formData.append("project_id", createData.project_id)
       formData.append("description", createData.description.trim())
       formData.append("trade", createData.trade || "General")
-      if (createFile) {
-        formData.append("document", createFile)
-        formData.append("attachment", createFile)
+      for (const f of createFiles) {
+        formData.append("files", f)
+        formData.append("document", f)
+        formData.append("attachment", f)
       }
 
       const newRfi = await createRFI(formData)
       setRfis((prev) => [newRfi, ...prev])
       setIsCreateOpen(false)
       setCreateData({ project_id: "", description: "", trade: "General" })
-      setCreateFile(null)
+      setCreateFiles([])
       toast.success("RFI created successfully")
     } catch (e: any) {
       console.error("Failed to create RFI", e)
@@ -1167,71 +1280,97 @@ export default function ProjectRFIsPage() {
                 />
               </div>
 
-              {/* Bug 1: Allow file attachments when creating an RFI */}
+              {/* Bug 1: Allow file attachments when creating an RFI (multiple, up to 100MB) */}
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-slate-300">
-                  Attachment (Optional)
-                </Label>
-                {!createFile ? (
-                  <label
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      const file = e.dataTransfer.files?.[0] || null
-                      if (file && file.size > 100 * 1024 * 1024) {
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-slate-300">
+                    Attachments (Optional)
+                  </Label>
+                  <span className="text-[11px] text-slate-500">Max 100MB per file</span>
+                </div>
+
+                <label
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    const files = Array.from(e.dataTransfer.files || [])
+                    const valid: File[] = []
+                    for (const f of files) {
+                      if (f.size > 100 * 1024 * 1024) {
                         toast.error(
-                          `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 100MB.`
+                          `"${f.name}" is too large (${(f.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 100MB.`
                         )
-                        return
+                      } else {
+                        valid.push(f)
                       }
-                      if (file) setCreateFile(file)
-                    }}
-                    className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#233550] bg-[#0c182e] p-4 cursor-pointer hover:border-indigo-500/60 transition-colors"
-                  >
-                    <Paperclip className="h-5 w-5 text-indigo-400" />
-                    <span className="text-xs text-slate-300">
-                      Click to browse or drop file (PDF, Images, Docs)
-                    </span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        if (file && file.size > 100 * 1024 * 1024) {
+                    }
+                    if (valid.length > 0) {
+                      setCreateFiles((prev) => [...prev, ...valid])
+                    }
+                  }}
+                  className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#233550] bg-[#0c182e] p-3.5 cursor-pointer hover:border-indigo-500/60 transition-colors"
+                >
+                  <Paperclip className="h-4 w-4 text-indigo-400" />
+                  <span className="text-xs text-slate-300">
+                    Click to browse or drop files (PDF, Images, Docs)
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      const valid: File[] = []
+                      for (const f of files) {
+                        if (f.size > 100 * 1024 * 1024) {
                           toast.error(
-                            `"${file.name}" is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 100MB.`
+                            `"${f.name}" is too large (${(f.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed upload size is 100MB.`
                           )
-                          e.target.value = ""
-                          return
+                        } else {
+                          valid.push(f)
                         }
-                        setCreateFile(file)
-                      }}
-                    />
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between rounded-lg border border-blue-500/40 bg-blue-500/10 p-2.5">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-4 w-4 text-blue-400 shrink-0" />
-                      <span className="truncate text-xs font-medium text-blue-200">
-                        {createFile.name}
-                      </span>
-                      <span className="text-[10px] text-blue-300/70 shrink-0">
-                        ({(createFile.size / 1024).toFixed(1)} KB)
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setCreateFile(null)}
-                      className="h-6 w-6 text-blue-300 hover:text-white"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                      }
+                      if (valid.length > 0) {
+                        setCreateFiles((prev) => [...prev, ...valid])
+                      }
+                      e.target.value = ""
+                    }}
+                  />
+                </label>
+
+                {createFiles.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-1 max-h-[140px] overflow-y-auto pr-1">
+                    {createFiles.map((f, idx) => (
+                      <div
+                        key={`${f.name}-${idx}`}
+                        className="flex items-center justify-between rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1.5"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                          <span className="truncate text-xs font-medium text-blue-200">
+                            {f.name}
+                          </span>
+                          <span className="text-[10px] text-blue-300/70 shrink-0">
+                            ({(f.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            setCreateFiles((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          className="h-5 w-5 text-blue-300 hover:text-white"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1242,7 +1381,7 @@ export default function ProjectRFIsPage() {
                   variant="ghost"
                   onClick={() => {
                     setIsCreateOpen(false)
-                    setCreateFile(null)
+                    setCreateFiles([])
                   }}
                   className="text-xs text-slate-400 hover:text-slate-200"
                 >

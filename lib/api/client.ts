@@ -32,7 +32,8 @@ export function getMediaUrl(path: string | null | undefined): string | null {
   if (
     path.startsWith("http://localhost:8000") ||
     path.startsWith("http://127.0.0.1:8000") ||
-    path.startsWith("http://backend:8000")
+    path.startsWith("http://backend:8000") ||
+    path.startsWith("http://testserver")
   ) {
     const relativePart = path.replace(/^https?:\/\/[^\/]+/, "");
     return `${hostUrl}${relativePart.startsWith("/") ? "" : "/"}${relativePart}`;
@@ -83,7 +84,17 @@ function getToken(): string | null {
 
 function getActiveRole(): string | null {
   if (typeof window === "undefined") return null
-  return localStorage.getItem("tresta:activeRole")
+  const role = localStorage.getItem("tresta:activeRole")
+  if (role) return role
+  try {
+    const raw = localStorage.getItem("tresta:selectedRole")
+    if (raw) {
+      if (!raw.startsWith("{")) return raw.trim()
+      const parsed = JSON.parse(raw)
+      if (parsed?.state?.role) return parsed.state.role
+    }
+  } catch {}
+  return null
 }
 
 interface ApiOptions extends Omit<RequestInit, "body"> {

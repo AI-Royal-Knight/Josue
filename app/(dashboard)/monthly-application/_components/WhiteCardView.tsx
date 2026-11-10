@@ -43,6 +43,20 @@ const parseFloatSafe = (val: any) => {
   return isNaN(parsed) ? 0 : parsed
 }
 
+function formatUKDate(dateStr?: string | null): string {
+  if (!dateStr) return "—"
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    const day = String(d.getDate()).padStart(2, "0")
+    const month = String(d.getMonth() + 1).padStart(2, "0")
+    const year = d.getFullYear()
+    return `${day}/${month}/${year}`
+  } catch {
+    return dateStr
+  }
+}
+
 function SummaryGrid({
   folder,
   isLocked,
@@ -74,7 +88,8 @@ function SummaryGrid({
           const bookedLt = parseFloatSafe(subRow?.bookedLabour ?? (i === 0 ? sub.booked_labour : 0))
 
           if (rowLt > 0 && bookedLt > 0) {
-            total_claim += (bookedLt / rowLt) * pv
+            const claimRatio = Math.min(bookedLt / rowLt, 1.0)
+            total_claim += claimRatio * pv
           }
         })
 
@@ -120,16 +135,22 @@ function SummaryGrid({
   const columnGroupingModel: GridColumnGroupingModel = useMemo(
     () => [
       {
-        groupId: "summary-group",
-        headerName: "",
+        groupId: `summary-${folder.id}`,
+        headerName: "SUMMARY",
         children: [
-          { field: "pv_total" },
-          { field: "total_claim" },
-          { field: "percent_claim" },
+          {
+            groupId: `summary-sub-${folder.id}`,
+            headerName: "",
+            children: [
+              { field: "pv_total" },
+              { field: "total_claim" },
+              { field: "percent_claim" },
+            ],
+          },
         ],
       },
     ],
-    []
+    [folder.id]
   )
 
   const fg = colors.foreground ?? "#e2e8f0"
@@ -219,16 +240,21 @@ function FolderGrid({
   )
 
   const columnGroupingModel: GridColumnGroupingModel = useMemo(
-    () =>
-      folder.subfolders.map((sub) => ({
-        groupId: sub.id,
-        headerName: sub.name.toUpperCase(),
-        children: [
-          { field: `${sub.id}_ws` },
-          { field: `${sub.id}_wa` },
-          { field: `${sub.id}_pv` },
-        ],
-      })),
+    () => [
+      {
+        groupId: `folder-group-${folder.id}`,
+        headerName: folder.name.toUpperCase(),
+        children: folder.subfolders.map((sub) => ({
+          groupId: sub.id,
+          headerName: sub.name.toUpperCase(),
+          children: [
+            { field: `${sub.id}_ws` },
+            { field: `${sub.id}_wa` },
+            { field: `${sub.id}_pv` },
+          ],
+        })),
+      },
+    ],
     [folder]
   )
 
@@ -372,10 +398,10 @@ export default function WhiteCardView({ projectId }: { projectId: string }) {
 
     return generateSimplePdf({
       title: "WHITE CARD",
-      subtitle: `Application #${selectedApp.application_number} – Date: ${selectedApp.date}`,
+      subtitle: `Application #${selectedApp.application_number} – Date: ${formatUKDate(selectedApp.date)}`,
       headerFields: [
         { label: "Application No.", value: String(selectedApp.application_number) },
-        { label: "Date", value: String(selectedApp.date) },
+        { label: "Date", value: formatUKDate(selectedApp.date) },
         { label: "Gross Total", value: formatCurrency(gross) },
       ],
       detailFields: [
@@ -410,7 +436,7 @@ export default function WhiteCardView({ projectId }: { projectId: string }) {
   <body style="font-family: Arial, sans-serif; color: #111; padding: 24px;">
     <h1>WHITE CARD</h1>
     <p><strong>Application:</strong> #${selectedApp.application_number}</p>
-    <p><strong>Date:</strong> ${selectedApp.date}</p>
+    <p><strong>Date:</strong> ${formatUKDate(selectedApp.date)}</p>
     <hr style="border: none; border-top: 1px solid #ddd;" />
     <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px;">
       <thead>
@@ -479,7 +505,8 @@ export default function WhiteCardView({ projectId }: { projectId: string }) {
           const bookedLt = parseFloatSafe(subRow?.bookedLabour ?? (i === 0 ? sub.booked_labour : 0))
 
           if (rowLt > 0 && bookedLt > 0) {
-            total_claim += (bookedLt / rowLt) * pv
+            const claimRatio = Math.min(bookedLt / rowLt, 1.0)
+            total_claim += claimRatio * pv
           }
         })
 
@@ -569,7 +596,7 @@ export default function WhiteCardView({ projectId }: { projectId: string }) {
                         #{app.application_number}
                       </td>
                       <td className="px-4 py-3 text-slate-300">
-                        {app.date}
+                        {formatUKDate(app.date)}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-emerald-400">
                         {formatCurrency(parseFloat(app.amount_claimed) || gross)}
@@ -608,7 +635,7 @@ export default function WhiteCardView({ projectId }: { projectId: string }) {
                       APPLICATION #{selectedApp.application_number}
                     </h4>
                     <p className="text-xs text-slate-400">
-                      Date: {selectedApp.date}
+                      Date: {formatUKDate(selectedApp.date)}
                     </p>
                   </div>
                 </div>

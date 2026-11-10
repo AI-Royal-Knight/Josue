@@ -9,11 +9,10 @@ type SubfolderCardProps = {
   onClick: () => void
 }
 
-const COLUMNS = ["Work section", "Work area", "Project Value", "Labour Target"]
+const COLUMNS = ["Work section", "Work area", "Labour Target"]
 const FIELDS = [
   "workSection",
   "workArea",
-  "projectValue",
   "labourTarget",
 ] as const
 

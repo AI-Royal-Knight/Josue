@@ -11,9 +11,10 @@ export const DASHBOARD_NAV: Record<string, NavItem[]> = {
   managing_director: [
     { title: "Projects Overview", url: "/projects-overview" },
     { title: "Variation List", url: "/variation-list" },
-    { title: "Proforma NR List", url: "/proforma-nr-list" },
+    { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
     { title: "Profile", url: "/profile" },
   ],
   project_director: [
@@ -25,6 +26,7 @@ export const DASHBOARD_NAV: Record<string, NavItem[]> = {
     { title: "Proforma NR List", url: "/proforma-nr" },
     { title: "Users Invoices", url: "/users-invoices" },
     { title: "Daily Register", url: "/daily-register" },
+    { title: "Project RFI's", url: "/project-rfis" },
     { title: "Profile", url: "/profile" },
   ],
   procurement_department: [

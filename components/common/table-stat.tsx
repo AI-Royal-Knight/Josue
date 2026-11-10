@@ -26,10 +26,10 @@ export default function TableStat({
   }
 
   const showQty =
-    summaryRows.length === 0 ||
+    summaryRows.length > 0 &&
     summaryRows.some((row) => hasMeaningfulValue(row.qty))
   const showValue =
-    summaryRows.length === 0 ||
+    summaryRows.length > 0 &&
     summaryRows.some((row) => hasMeaningfulValue(row.value))
 
   const metricFlex = showQty && showValue ? 0.5 : 1

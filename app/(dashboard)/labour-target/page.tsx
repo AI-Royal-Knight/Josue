@@ -9,7 +9,7 @@ import {
   type GridColumnGroupingModel,
 } from "@mui/x-data-grid"
 
-import { FolderPlus, UserPlus, Lock, Download, Loader2, Save, Users } from "lucide-react"
+import { FolderPlus, UserPlus, Lock, Download, Loader2, Save, Users, Eye, EyeOff } from "lucide-react"
 import { agTableDataGridSx } from "@/lib/agtable-datagrid-sx"
 import { colors } from "@/constants/colors"
 
@@ -184,8 +184,8 @@ function FolderGrid({
   )
 
   const columnGroupingModel: GridColumnGroupingModel = useMemo(
-    () =>
-      folder.subfolders.map((sub) => ({
+    () => [
+      ...folder.subfolders.map((sub) => ({
         groupId: sub.id,
         headerName: sub.name.toUpperCase(),
         children: [
@@ -194,6 +194,12 @@ function FolderGrid({
           { field: `${sub.id}_lt` },
         ],
       })),
+      {
+        groupId: `lt_total_group_${folder.id}`,
+        headerName: "TOTAL",
+        children: [{ field: "lt_total" }],
+      },
+    ],
     [folder]
   )
 
@@ -336,6 +342,8 @@ export default function DynamicFolderTable() {
   const activeProject = projects.find((p) => p.id === selectedProjectId)
   const folders = activeProject?.folders || []
 
+  const [hideManagementFolder, setHideManagementFolder] = useState(false)
+
   // Ensure rows exist for all subfolders (using defaultRows if empty)
   const processedFolders = useMemo(() => {
     return folders.map((f) => ({
@@ -346,6 +354,13 @@ export default function DynamicFolderTable() {
       })),
     }))
   }, [folders])
+
+  const visibleFolders = useMemo(() => {
+    if (hideManagementFolder) {
+      return processedFolders.filter((f) => !f.is_management)
+    }
+    return processedFolders
+  }, [processedFolders, hideManagementFolder])
 
   const [isLocked] = useState(false)
   const [modal, setModal] = useState<ModalState>(null)
@@ -570,6 +585,26 @@ export default function DynamicFolderTable() {
           className="w-[240px]"
         />
         <div className="flex gap-2">
+          {/* Toggle Management Folder visibility (Requirement 2) */}
+          <UiButton
+            variant="outline"
+            onClick={() => setHideManagementFolder((prev) => !prev)}
+            className="border-white/10 bg-transparent text-slate-300 hover:bg-white/5"
+            title={hideManagementFolder ? "Show management folder" : "Hide management folder"}
+          >
+            {hideManagementFolder ? (
+              <>
+                <Eye size={16} className="mr-2 text-blue-400" />
+                Show Management Folder
+              </>
+            ) : (
+              <>
+                <EyeOff size={16} className="mr-2 text-slate-400" />
+                Hide Management Folder
+              </>
+            )}
+          </UiButton>
+
           <UiButton
             variant="outline"
             onClick={async () => {
@@ -612,7 +647,7 @@ export default function DynamicFolderTable() {
       <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         <Box sx={{ flex: 1, overflow: "auto" }}>
           <Box sx={{ minWidth: 1200, display: "flex", flexDirection: "column", gap: 3 }}>
-            {processedFolders.map((folder, index) => {
+            {visibleFolders.map((folder, index) => {
               const hh = headerHeights[folder.id] ?? HEADER_FALLBACK
               const sectionH = hh + ROWS_PER_FOLDER * ROW_HEIGHT
 
@@ -785,8 +820,17 @@ export default function DynamicFolderTable() {
           if (!activeAssignFolder || activeAssignFolder.is_management) return null
 
           if (assignModal.subfolderId === null) {
-            // Main Folder Assignment
-            const existingAssignments = activeAssignFolder.subfolders[0]?.assignments || []
+            // Main Folder Assignment: union of assignments across all subfolders in this folder
+            const existingMap = new Map<string, SubfolderAssignment>()
+            activeAssignFolder.subfolders.forEach((sf) => {
+              sf.assignments?.forEach((a) => {
+                const uid = a.user?.id
+                if (uid && !existingMap.has(uid)) {
+                  existingMap.set(uid, a)
+                }
+              })
+            })
+            const existingAssignments = Array.from(existingMap.values())
             return (
               <AssignFolderModal
                 open={true}

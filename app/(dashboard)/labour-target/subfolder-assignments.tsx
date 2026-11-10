@@ -35,7 +35,7 @@ export function SubfolderAssignments({ assignments, onChange }: SubfolderAssignm
   useEffect(() => {
     if (open && users.length === 0) {
       setLoading(true)
-      getCompanyUsers()
+      getCompanyUsers("employee")
         .then((res) => setUsers(res.users))
         .catch(console.error)
         .finally(() => setLoading(false))

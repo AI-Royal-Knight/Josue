@@ -63,6 +63,11 @@ export const useRoleStore = create<RoleState>()(
       name: storageKey,
       storage: createJSONStorage(() => legacyCompatibleStateStorage),
       partialize: (state) => ({ role: state.role }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.role && typeof window !== "undefined") {
+          localStorage.setItem("tresta:activeRole", state.role)
+        }
+      },
     }
   )
 )

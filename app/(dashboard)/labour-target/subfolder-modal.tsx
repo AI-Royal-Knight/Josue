@@ -66,8 +66,8 @@ export function SubfolderModal({
           id: uid(),
           workSection: cols[0] ?? "",
           workArea: cols[1] ?? "",
-          projectValue: cols.length >= 4 ? cleanNumber(cols[2]) : "0.00",
-          labourTarget: cleanNumber(cols.length >= 4 ? cols[3] : cols[2]),
+          projectValue: "0.00",
+          labourTarget: cleanNumber(cols.length >= 3 ? cols[2] : cols[1]),
         }
       })
       if (parsed.length) setRows(parsed)

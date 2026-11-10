@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Loader2, Check, Eye, EyeOff, Settings2, UserCheck, UserX } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
-import { getProjectRoles, type ProjectUser, type SubfolderAssignment } from "@/lib/api/project-admin"
+import { getProjectRoles, getCompanyUsers, type ProjectUser, type SubfolderAssignment } from "@/lib/api/project-admin"
 import { ApiError } from "@/lib/api/client"
 
 type AssignFolderModalProps = {
@@ -52,15 +52,30 @@ export function AssignFolderModal({
         setLoading(true)
         setError(null)
         try {
-          // Strictly fetch employees (app users) from the project's role assignments
-          // Management roles are strictly excluded from assignment (Requirements 2 & 3)
-          const roles = await getProjectRoles(projectId)
-          const employeeRole = roles.find((r) => r.role_key === "employee")
-          const allEmployees: ProjectUser[] = employeeRole?.users ?? []
+          // Strictly fetch employees (app users) only — management roles are strictly excluded (Requirements 2 & 3)
+          let allEmployees: ProjectUser[] = []
+          try {
+            const companyRes = await getCompanyUsers("employee")
+            if (companyRes.users && companyRes.users.length > 0) {
+              allEmployees = companyRes.users
+            }
+          } catch {
+            // fallback
+          }
+
+          if (allEmployees.length === 0 && projectId) {
+            try {
+              const roles = await getProjectRoles(projectId)
+              const employeeRole = roles.find((r) => r.role_key === "employee")
+              allEmployees = employeeRole?.users ?? []
+            } catch {
+              // fallback
+            }
+          }
 
           // Pre-check employees who are already assigned
           const mapped = allEmployees.map((u) => {
-            const assignment = assignments.find((a) => a.user.id === u.id)
+            const assignment = assignments.find((a) => a.user?.id === u.id)
             return {
               ...u,
               checked: !!assignment,
@@ -120,7 +135,7 @@ export function AssignFolderModal({
     const newAssignments: SubfolderAssignment[] = localUsers
       .filter((u) => u.checked)
       .map((u) => {
-        const existing = assignments.find((a) => a.user.id === u.id)
+        const existing = assignments.find((a) => a.user?.id === u.id)
         return {
           user: u,
           hide_labour_target: u.hide_labour_target,

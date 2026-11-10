@@ -26,11 +26,16 @@ export type RFI = {
   created_by_name: string
   messages: ChatMessage[]
   assigned_to_technical_department: boolean
+  can_close?: boolean
 }
 
 export async function getRFIs(): Promise<RFI[]> {
   const res = await apiRequest<{ rfis: RFI[] }>("/project-admin/rfis/")
   return res.rfis
+}
+
+export async function getRFIDetail(id: string): Promise<RFI> {
+  return await apiRequest<RFI>(`/project-admin/rfis/${id}/`)
 }
 
 export async function closeRFI(id: string): Promise<RFI> {
@@ -47,13 +52,14 @@ export async function sendRFIMessage(
   formData.append("text", text)
   if (role) {
     formData.append("author_role", role)
+    formData.append("role", role)
   }
   if (files && files.length > 0) {
     files.forEach((f) => {
       formData.append("files", f)
+      formData.append("attachment", f)
+      formData.append("document", f)
     })
-    formData.append("attachment", files[0])
-    formData.append("document", files[0])
   }
   
   return await apiRequest<ChatMessage>(`/project-admin/rfis/${id}/messages/`, {
