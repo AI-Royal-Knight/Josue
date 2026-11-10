@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useRef, useEffect } from "react"
 import type { ColDef } from "ag-grid-community"
 import { AgGridProvider, AgGridReact } from "ag-grid-react"
 import { AllCommunityModule } from "ag-grid-community"
@@ -36,7 +36,6 @@ import { formatGBP, baseTheme } from "./utils"
 import HistoryDialog from "./_components/HistoryDialog"
 import PODialog from "./_components/PODialog"
 import { getCallOffList, toggleCallOffManagementApproval, createCallOff, approveCallOff, approveAllCallOffs } from "@/lib/api/call-off"
-import { useEffect } from "react"
 import { toast } from "sonner"
 
 type GroupHeaderRow = {
@@ -79,12 +78,22 @@ export default function Page() {
   const [data, setData] = useState<CallOffRow[]>([])
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const latestReqIdRef = useRef(0)
 
   const fetchData = useCallback(async (projectId?: string) => {
+    const targetProject = projectId !== undefined ? projectId : selectedProject
+    if (!targetProject) {
+      setData([])
+      setLoading(false)
+      return
+    }
+
+    const reqId = ++latestReqIdRef.current
     try {
       setLoading(true)
-      const targetProject = projectId !== undefined ? projectId : selectedProject
-      const res = await getCallOffList(targetProject || undefined)
+      const res = await getCallOffList(targetProject)
+      if (reqId !== latestReqIdRef.current) return
+
       const mapped = res.map((r) => {
         // Last call off is usually first in history if sorted descending by date
         const lastCO = r.history.length > 0 ? r.history[0] : null
@@ -129,9 +138,14 @@ export default function Page() {
       setData(mapped)
       setExpanded(new Set(Array.from(new Set(mapped.map((m) => m.poRef)))))
     } catch (err) {
-      console.error(err)
+      if (reqId === latestReqIdRef.current) {
+        console.error(err)
+        setData([])
+      }
     } finally {
-      setLoading(false)
+      if (reqId === latestReqIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [selectedProject])
 
@@ -139,7 +153,8 @@ export default function Page() {
     if (selectedProject) {
       fetchData(selectedProject)
     } else {
-      fetchData()
+      setData([])
+      setLoading(false)
     }
   }, [selectedProject, fetchData])
   const [poDialog, setPoDialog] = useState<PODialogState | null>(null)
@@ -682,12 +697,10 @@ export default function Page() {
         value={selectedProject}
         onChange={(val) => {
           setSelectedProject(val)
-          fetchData(val)
         }}
         onProjectSelect={(p) => {
           if (p) {
             setSelectedProject(String(p.id))
-            fetchData(String(p.id))
           }
         }}
       />

@@ -16,11 +16,11 @@ import {
 
 import { getProcurementProjects, ProcurementProject, createQuotation } from "@/lib/api/quotations"
 import { getSuppliers } from "@/lib/api/suppliers"
+import { useAuthStore } from "@/lib/auth-store"
 
 import { Button } from "@/components/ui/button"
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field"
 import Search from "@/components/ui/search"
-import DatePickr from "@/components/ui/date-picker"
 import ErrorMessage from "@/components/shared/form-error-message"
 import { Input } from "@/components/ui/input"
 import { LineItemTable } from "./LineItemTable"
@@ -88,27 +88,15 @@ export function makeRow(): LineItem {
 }
 
 const createQuotationSchema = z.object({
-  project: z.string().min(1, "Select a project"),
+  project: z.string().min(1, "Please select a project"),
   name: z.string().min(1, "Name is required"),
   variationRef: z.string().optional(),
   supplier: z.string().optional().or(z.literal("")),
   supplierName: z.string().optional().or(z.literal("")),
   supplierEmail: z.string().optional().or(z.literal("")),
-  quoteTotal: z.preprocess(
-    (val) => {
-      if (typeof val === "string") {
-        const parsed = Number(val.replace(/,/g, ""));
-        return isNaN(parsed) ? val : parsed;
-      }
-      return val === "" ? undefined : Number(val);
-    },
-    z.number({ message: "Quote total is required" }).nonnegative("Must be ≥ 0")
-  ),
-  date: z.date({ message: "Date is required" }).optional(),
-  attachments: z
-    .instanceof(File)
-    .refine((f) => f.type === "application/pdf", "Only PDF files are allowed")
-    .optional(),
+  quoteTotal: z.any().optional(),
+  date: z.union([z.date(), z.string()]).optional(),
+  attachments: z.any().optional(),
 })
 
 type CreateQuotationFormInput = z.input<typeof createQuotationSchema>
@@ -224,7 +212,10 @@ export default function CreateQuotationForm({
   onSuccess,
   onCancel,
 }: CreateQuotationFormProps) {
-  const loggedInUserName = "Current User"
+  const user = useAuthStore((s) => s.user)
+  const loggedInUserName = user
+    ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email
+    : "Current User"
 
   const {
     register,
@@ -252,7 +243,16 @@ export default function CreateQuotationForm({
   const [manualSupplierName, setManualSupplierName] = useState<string>("")
 
   useEffect(() => {
-    getProcurementProjects().then(setProjects).catch(console.error)
+    getProcurementProjects()
+      .then((data) => {
+        setProjects(data)
+        if (data.length > 0 && !selectedProjectVal) {
+          const firstId = String(data[0].id)
+          setSelectedProjectVal(firstId)
+          setValue("project", firstId, { shouldValidate: true })
+        }
+      })
+      .catch(console.error)
     getSuppliers().then(setSuppliers).catch(console.error)
   }, [])
 
@@ -264,7 +264,7 @@ export default function CreateQuotationForm({
   useEffect(() => {
     if (initialProjectId) {
       setSelectedProjectVal(initialProjectId)
-      setValue("project", initialProjectId)
+      setValue("project", initialProjectId, { shouldValidate: true })
     }
   }, [initialProjectId, setValue])
 
@@ -310,10 +310,10 @@ export default function CreateQuotationForm({
       setSubmitError(null)
 
       const validEmails = supplierEmails.map(e => e.trim()).filter(Boolean)
-      const hasSupplierId = Boolean(data.supplier && data.supplier !== "unregistered")
+      const hasSupplierId = Boolean(data.supplier && data.supplier !== "unregistered" && data.supplier !== "")
 
       if (!hasSupplierId && validEmails.length === 0) {
-        setSubmitError("Please select a registered supplier or provide at least one supplier email.")
+        setSubmitError("Please enter at least one supplier email address to request a quotation.")
         return
       }
 
@@ -324,13 +324,26 @@ export default function CreateQuotationForm({
         return acc + qty * each * (1 - discount / 100)
       }, 0)
 
-      const formattedDate = data.date ? format(data.date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
+      let formattedDate: string
+      if (data.date instanceof Date && !isNaN(data.date.getTime())) {
+        formattedDate = format(data.date, "yyyy-MM-dd")
+      } else if (typeof data.date === "string" && data.date) {
+        formattedDate = data.date.slice(0, 10)
+      } else {
+        formattedDate = format(new Date(), "yyyy-MM-dd")
+      }
+
+      const derivedSupplierName =
+        manualSupplierName.trim() ||
+        (validEmails[0]
+          ? validEmails[0].split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+          : "Unregistered Supplier")
 
       const payload = {
         quote_total: computedTotal,
         project: data.project,
         supplier: hasSupplierId ? data.supplier : null,
-        supplier_name: manualSupplierName.trim() || undefined,
+        supplier_name: derivedSupplierName,
         supplier_email: validEmails.join(", ") || undefined,
         date_of_quote: formattedDate,
         main_folder: mainFolder || undefined,
@@ -386,8 +399,18 @@ export default function CreateQuotationForm({
     }
   }
 
+  const onInvalid = (formErrors: any) => {
+    console.warn("Quotation form validation errors:", formErrors)
+    const firstErr = Object.values(formErrors)[0] as any
+    if (firstErr?.message) {
+      setSubmitError(String(firstErr.message))
+    } else {
+      setSubmitError("Please complete all required fields.")
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
       {/* ── Quote Ref ── */}
       <div className="flex items-center justify-between rounded-md border border-input bg-muted/40 px-4 py-2">
         <p className="text-xs text-muted-foreground">Quote Ref : <span className="italic">(Auto-generated upon save)</span></p>
@@ -512,11 +535,26 @@ export default function CreateQuotationForm({
         <Field>
           <FieldLabel htmlFor="date">Date</FieldLabel>
           <FieldContent>
-            <DatePickr
-              id="date"
-              value={watch("date")}
-              onChange={(newDate) => setValue("date", newDate || new Date(), { shouldValidate: true })}
-            />
+            <div className="relative">
+              <Input
+                id="date"
+                type="date"
+                value={
+                  watch("date")
+                    ? (watch("date") instanceof Date
+                        ? format(watch("date") as Date, "yyyy-MM-dd")
+                        : String(watch("date")).slice(0, 10))
+                    : format(new Date(), "yyyy-MM-dd")
+                }
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val) {
+                    setValue("date", new Date(val), { shouldValidate: true })
+                  }
+                }}
+                className="w-full border-input bg-transparent text-sm cursor-pointer [&::-webkit-calendar-picker-indicator]:invert"
+              />
+            </div>
             {errors.date && <ErrorMessage message={errors.date.message} />}
           </FieldContent>
         </Field>
@@ -524,52 +562,60 @@ export default function CreateQuotationForm({
 
       <div className="grid grid-cols-2 gap-4">
         <Field>
-          <FieldLabel htmlFor="supplier">Registered Supplier</FieldLabel>
+          <FieldLabel htmlFor="supplier">
+            Registered Supplier <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
+          </FieldLabel>
           <FieldContent>
-            <Select
-              value={selectedSupplierId}
-              onValueChange={(v) => {
-                setSelectedSupplierId(v)
-                if (v === "unregistered") {
-                  setValue("supplier", "")
-                } else {
-                  setValue("supplier", v)
-                  const found = suppliers.find((s) => String(s.id) === v)
-                  if (found) {
-                    const name = found.supplier?.company_name || ""
-                    setManualSupplierName(name)
-                    setValue("supplierName", name)
-                    if (found.supplier?.email) {
-                      setSupplierEmails([found.supplier.email])
+            {suppliers.length > 0 ? (
+              <Select
+                value={selectedSupplierId}
+                onValueChange={(v) => {
+                  setSelectedSupplierId(v)
+                  if (v === "unregistered") {
+                    setValue("supplier", "")
+                  } else {
+                    setValue("supplier", v)
+                    const found = suppliers.find((s) => String(s.id) === v)
+                    if (found) {
+                      const name = found.supplier?.company_name || ""
+                      setManualSupplierName(name)
+                      setValue("supplierName", name)
+                      if (found.supplier?.email) {
+                        setSupplierEmails([found.supplier.email])
+                      }
                     }
                   }
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={suppliers.length === 0 ? "No registered suppliers (Enter below)" : "Select supplier (optional)"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unregistered">
-                  {suppliers.length === 0 ? "No registered suppliers (Unregistered)" : "— Unregistered / Enter Manually —"}
-                </SelectItem>
-                {suppliers.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.supplier.company_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select supplier (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unregistered">— None / Enter Manually Below —</SelectItem>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.supplier.company_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-xs text-muted-foreground">
+                No registered suppliers — enter supplier email below
+              </div>
+            )}
             {errors.supplier && <ErrorMessage message={errors.supplier.message} />}
           </FieldContent>
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="supplierName">Supplier / Company Name</FieldLabel>
+          <FieldLabel htmlFor="supplierName">
+            Supplier / Company Name <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
+          </FieldLabel>
           <FieldContent>
             <Input
               id="supplierName"
-              placeholder="Company name (or leave blank to use email)"
+              placeholder="e.g. Acme Supplies (or auto-named from email)"
               value={manualSupplierName}
               onChange={(e) => {
                 setManualSupplierName(e.target.value)
@@ -584,9 +630,9 @@ export default function CreateQuotationForm({
       <Field>
         <div className="flex items-center justify-between">
           <FieldLabel>
-            Supplier Contact (Email / Name)
+            Supplier Email Address(es) <span className="text-xs text-amber-400 font-normal">*</span>
             <span className="ml-2 text-xs font-normal text-muted-foreground">
-              (up to {MAX_EMAILS} contacts)
+              (up to {MAX_EMAILS} emails)
             </span>
           </FieldLabel>
           {supplierEmails.length < MAX_EMAILS && (
@@ -596,7 +642,7 @@ export default function CreateQuotationForm({
               className="flex items-center gap-1 text-xs text-primary hover:underline"
             >
               <Plus className="size-3.5" />
-              Add email
+              Add another email
             </button>
           )}
         </div>
@@ -605,8 +651,8 @@ export default function CreateQuotationForm({
             {supplierEmails.map((email, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <Input
-                  type="text"
-                  placeholder={`supplier${idx + 1} contact (e.g. sales@supplier.com)`}
+                  type="email"
+                  placeholder={`supplier${idx + 1}@example.com`}
                   value={email}
                   onChange={(e) => updateEmail(idx, e.target.value)}
                   className="flex-1"

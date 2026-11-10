@@ -66,14 +66,15 @@ export type VariationApi = {
 
 export type CreateVariationPayload = {
   project_id: string
+  vo_number?: string
   site_instruction_no: string
   attention_of: string
   description_of_works: string
   comments: string
   lines: {
     siteInstruction: string
-    workArea: string
-    workSection: string
+    workArea?: string
+    workSection?: string
     labour: number
     labourTarget: number
     material: number
@@ -94,6 +95,9 @@ export async function getVariations(projectId?: string): Promise<{ variations: V
 export async function createVariation(data: CreateVariationPayload): Promise<VariationApi> {
   const fd = new FormData()
   fd.append("project_id", data.project_id)
+  if (data.vo_number) {
+    fd.append("vo_number", data.vo_number)
+  }
   fd.append("site_instruction_no", data.site_instruction_no)
   fd.append("attention_of", data.attention_of)
   fd.append("description_of_works", data.description_of_works)
@@ -101,6 +105,8 @@ export async function createVariation(data: CreateVariationPayload): Promise<Var
   fd.append("lines", JSON.stringify(data.lines))
   if (data.evidence) {
     fd.append("evidence", data.evidence)
+    fd.append("attachment", data.evidence)
+    fd.append("file", data.evidence)
   }
 
   return apiRequest("/commercial/variations/", {

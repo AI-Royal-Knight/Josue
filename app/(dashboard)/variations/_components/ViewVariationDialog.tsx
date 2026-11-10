@@ -30,7 +30,8 @@ export default function ViewVariationDialog({
 
   const user = useAuthStore((s) => s.user)
   const roleFromStore = useRoleStore((s) => s.role)
-  const role = roleFromStore || user?.role || ""
+  const storedActiveRole = typeof window !== "undefined" ? localStorage.getItem("tresta:activeRole") : null
+  const role = storedActiveRole || roleFromStore || user?.role || ""
   const isCommercial = isCommercialProp !== undefined ? isCommercialProp : role === "commercial_department"
 
   useEffect(() => {

@@ -31,7 +31,9 @@ export interface CallOffLineItemAPI {
 }
 
 export const getCallOffList = async (projectId?: string): Promise<CallOffLineItemAPI[]> => {
-  const url = projectId ? `/procurement/call-offs/?project=${encodeURIComponent(projectId)}` : "/procurement/call-offs/"
+  const url = projectId && projectId !== "all"
+    ? `/procurement/call-offs/?project=${encodeURIComponent(projectId)}`
+    : "/procurement/call-offs/"
   return apiRequest<CallOffLineItemAPI[]>(url)
 }
 

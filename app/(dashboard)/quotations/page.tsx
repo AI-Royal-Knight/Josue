@@ -78,7 +78,12 @@ export default function Page() {
       setLoading(true)
       setErrorMsg(null)
       const targetProject = projectId !== undefined ? projectId : selectedProject
-      const data = await getQuotations(targetProject || undefined)
+      if (!targetProject) {
+        setRows([])
+        setLoading(false)
+        return
+      }
+      const data = await getQuotations(targetProject === "all" ? undefined : targetProject)
       const formatted = data.map((q: any, i: number) => ({
         id: q.id,
         no: i + 1,
@@ -117,8 +122,6 @@ export default function Page() {
   useEffect(() => {
     if (selectedProject) {
       fetchQuotations(selectedProject)
-    } else {
-      fetchQuotations()
     }
   }, [selectedProject])
 
@@ -259,33 +262,6 @@ export default function Page() {
         const status = row.approveQuotesStatus
 
         if (status === "Approved") {
-          if (loading) {
-            return (
-              <div className="flex h-[80vh] items-center justify-center">
-                <Loader2 className="size-6 animate-spin text-slate-400" />
-                <span className="ml-2 text-slate-400">Loading quotations…</span>
-              </div>
-            )
-          }
-
-          if (errorMsg) {
-            return (
-              <div className="flex h-[80vh] flex-col items-center justify-center gap-4 text-center">
-                <div className="rounded-full bg-slate-800/50 p-4">
-                  <svg className="size-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-xl font-medium text-slate-200">{errorMsg}</h3>
-                  <p className="text-sm text-slate-500">
-                    You must be assigned to at least one project to view or manage quotations.
-                  </p>
-                </div>
-              </div>
-            )
-          }
-
           return (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300">
               <CheckCircle2 className="size-3" /> Approved
@@ -484,14 +460,26 @@ export default function Page() {
         </Button>
       </div>
 
-      <AgTable
-        rowData={rows}
-        columnDefs={columns}
-        suppressCellClickAction
-        height="auto"
-        defaultColDef={{ flex: 1, minWidth: 150 }}
-        gridOptions={{ rowHeight: 48 }}
-      />
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-slate-400" />
+          <span className="ml-2 text-slate-400">Loading quotations…</span>
+        </div>
+      ) : errorMsg ? (
+        <div className="flex h-64 flex-col items-center justify-center gap-2 text-center">
+          <p className="text-base font-medium text-slate-300">{errorMsg}</p>
+          <p className="text-xs text-slate-500">You must be assigned to at least one project to view quotations.</p>
+        </div>
+      ) : (
+        <AgTable
+          rowData={rows}
+          columnDefs={columns}
+          suppressCellClickAction
+          height="auto"
+          defaultColDef={{ flex: 1, minWidth: 150 }}
+          gridOptions={{ rowHeight: 48 }}
+        />
+      )}
 
       {/* New quotation form */}
       <Dialog open={newQuoteOpen} onOpenChange={setNewQuoteOpen}>

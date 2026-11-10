@@ -59,6 +59,7 @@ export default function SelectProject({ value, onChange, onProjectSelect }: Prop
           <SelectValue placeholder={loading ? "Loading..." : "Select project"} />
         </SelectTrigger>
         <SelectContent className="border-white/10 bg-slate-900">
+          <SelectItem value="all">All Projects</SelectItem>
           {projects.length === 0 && !loading ? (
             <SelectItem value="none" disabled>
               No project assigned to you

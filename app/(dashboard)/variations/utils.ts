@@ -139,8 +139,8 @@ export function buildVariationDocHtml(variation: VariationRow) {
         white-space: normal;
       }
       table.var-table {
-        width: 520pt !important;
-        max-width: 520pt !important;
+        width: 100% !important;
+        max-width: 100% !important;
         table-layout: fixed !important;
         mso-table-layout-alt: fixed !important;
         border-collapse: collapse;
@@ -164,8 +164,8 @@ export function buildVariationDocHtml(variation: VariationRow) {
         vertical-align: top;
       }
       .col-desc {
-        width: 210pt !important;
-        max-width: 210pt !important;
+        width: 42% !important;
+        max-width: 42% !important;
         text-align: left;
         word-break: break-word !important;
         word-wrap: break-word !important;
@@ -175,22 +175,22 @@ export function buildVariationDocHtml(variation: VariationRow) {
         mso-hyphenate: auto;
       }
       .col-num {
-        width: 75pt !important;
-        max-width: 75pt !important;
+        width: 15% !important;
+        max-width: 15% !important;
         text-align: right;
         white-space: nowrap;
         vertical-align: top;
       }
       .col-qty {
-        width: 60pt !important;
-        max-width: 60pt !important;
+        width: 10% !important;
+        max-width: 10% !important;
         text-align: right;
         white-space: nowrap;
         vertical-align: top;
       }
       .col-total {
-        width: 100pt !important;
-        max-width: 100pt !important;
+        width: 18% !important;
+        max-width: 18% !important;
         text-align: right;
         white-space: nowrap;
         vertical-align: top;
@@ -221,42 +221,42 @@ export function buildVariationDocHtml(variation: VariationRow) {
             ${formatText(variation.descriptionOfWorks)}
           </div>
         </div>
-        <table class="var-table" width="520pt" cellpadding="6" cellspacing="0" style="width: 520pt; max-width: 520pt; table-layout: fixed; mso-table-layout-alt: fixed; border-collapse: collapse;">
+        <table class="var-table" width="100%" cellpadding="6" cellspacing="0" style="width: 100%; max-width: 100%; table-layout: fixed; mso-table-layout-alt: fixed; border-collapse: collapse;">
           <colgroup>
-            <col width="210" style="width: 210pt;">
-            <col width="75" style="width: 75pt;">
-            <col width="75" style="width: 75pt;">
-            <col width="60" style="width: 60pt;">
-            <col width="100" style="width: 100pt;">
+            <col width="42%" style="width: 42%;">
+            <col width="15%" style="width: 15%;">
+            <col width="15%" style="width: 15%;">
+            <col width="10%" style="width: 10%;">
+            <col width="18%" style="width: 18%;">
           </colgroup>
           <thead>
             <tr>
-              <th class="col-desc" width="210" style="width: 210pt; max-width: 210pt; text-align: left; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal;">Description / Site Instruction</th>
-              <th class="col-num" width="75" style="width: 75pt; max-width: 75pt; text-align: right;">Labour</th>
-              <th class="col-num" width="75" style="width: 75pt; max-width: 75pt; text-align: right;">Material</th>
-              <th class="col-qty" width="60" style="width: 60pt; max-width: 60pt; text-align: right;">QTY</th>
-              <th class="col-total" width="100" style="width: 100pt; max-width: 100pt; text-align: right;">Total</th>
+              <th class="col-desc" width="42%" style="width: 42%; max-width: 42%; text-align: left; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal;">Description / Site Instruction</th>
+              <th class="col-num" width="15%" style="width: 15%; max-width: 15%; text-align: right;">Labour</th>
+              <th class="col-num" width="15%" style="width: 15%; max-width: 15%; text-align: right;">Material</th>
+              <th class="col-qty" width="10%" style="width: 10%; max-width: 10%; text-align: right;">QTY</th>
+              <th class="col-total" width="18%" style="width: 18%; max-width: 18%; text-align: right;">Total</th>
             </tr>
           </thead>
           <tbody>
             ${variation.lines.map((l, i) => `
               <tr>
-                <td class="col-desc" width="210" style="width: 210pt; max-width: 210pt; text-align: left; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; vertical-align: top;">
-                  <div style="width: 210pt; max-width: 210pt; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; line-height: 1.4;">
+                <td class="col-desc" width="42%" style="width: 42%; max-width: 42%; text-align: left; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; vertical-align: top;">
+                  <div style="width: 100%; word-break: break-word; overflow-wrap: break-word; word-wrap: break-word; white-space: normal; line-height: 1.4;">
                     ${formatText(l.siteInstruction || `Item ${i + 1}`)}
                   </div>
                 </td>
-                <td class="col-num" width="75" style="width: 75pt; max-width: 75pt; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.labour)}</td>
-                <td class="col-num" width="75" style="width: 75pt; max-width: 75pt; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.material)}</td>
-                <td class="col-qty" width="60" style="width: 60pt; max-width: 60pt; text-align: right; white-space: nowrap; vertical-align: top;">${l.qty}</td>
-                <td class="col-total" width="100" style="width: 100pt; max-width: 100pt; text-align: right; white-space: nowrap; vertical-align: top; font-weight: bold;">${formatGBP((l.labour + l.material) * l.qty)}</td>
+                <td class="col-num" width="15%" style="width: 15%; max-width: 15%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.labour)}</td>
+                <td class="col-num" width="15%" style="width: 15%; max-width: 15%; text-align: right; white-space: nowrap; vertical-align: top;">${formatGBP(l.material)}</td>
+                <td class="col-qty" width="10%" style="width: 10%; max-width: 10%; text-align: right; white-space: nowrap; vertical-align: top;">${l.qty}</td>
+                <td class="col-total" width="18%" style="width: 18%; max-width: 18%; text-align: right; white-space: nowrap; vertical-align: top; font-weight: bold;">${formatGBP((l.labour + l.material) * l.qty)}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
             <tr>
               <td colspan="4" style="text-align: right; font-weight: bold; border-top: 2pt solid #0f172a;">Total Amount</td>
-              <td class="col-total" width="100" style="width: 100pt; max-width: 100pt; text-align: right; white-space: nowrap; font-weight: bold; border-top: 2pt solid #0f172a;">${formatGBP(variation.totalAmount)}</td>
+              <td class="col-total" width="18%" style="width: 18%; max-width: 18%; text-align: right; white-space: nowrap; font-weight: bold; border-top: 2pt solid #0f172a;">${formatGBP(variation.totalAmount)}</td>
             </tr>
           </tfoot>
         </table>

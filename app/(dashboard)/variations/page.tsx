@@ -170,8 +170,32 @@ export default function Page() {
   const [loading, setLoading] = useState(true)
 
   const user = useAuthStore((state) => state.user)
-  const roleFromStore = useRoleStore((state) => state.role)
-  const role = roleFromStore || user?.role || ""
+  const storeRole = useRoleStore((state) => state.role)
+  const [activeRole, setActiveRole] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("tresta:activeRole")
+      if (stored) return stored
+      try {
+        const legacy = localStorage.getItem("tresta:selectedRole")
+        if (legacy) {
+          const parsed = JSON.parse(legacy)
+          if (parsed?.state?.role) return parsed.state.role
+        }
+      } catch {}
+    }
+    return storeRole || user?.role || ""
+  })
+
+  useEffect(() => {
+    if (storeRole) {
+      setActiveRole(storeRole)
+    } else if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("tresta:activeRole")
+      if (stored) setActiveRole(stored)
+    }
+  }, [storeRole])
+
+  const role = activeRole || storeRole || user?.role || ""
   
   const isContractsManager = role === "contracts_manager"
   const isProjectDirector = role === "project_director"
@@ -748,17 +772,7 @@ export default function Page() {
                 >
                   <UserPlus className="h-4 w-4" />
                 </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled
-                  className="h-7 w-7 p-0 text-slate-600 opacity-40 cursor-not-allowed"
-                  title="Requires Commercial Manager approval before assigning users"
-                >
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              )}
+              ) : null}
             </div>
           )
         }

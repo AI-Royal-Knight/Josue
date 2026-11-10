@@ -112,14 +112,14 @@ export default function CreateVariationDialog({
     }
     if (file) {
       const isImg = file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|bmp|heic|svg)$/i.test(file.name)
-      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+      const isPdf = file.type === "application/pdf" || file.type.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")
       if (!isImg && !isPdf) {
         toast.error("Please select a PDF or picture file.")
         if (fileInputRef.current) fileInputRef.current.value = ""
         return
       }
-      if (file.size > 25 * 1024 * 1024) {
-        toast.error("File size must be under 25MB.")
+      if (file.size > 100 * 1024 * 1024) {
+        toast.error("File size must be under 100MB.")
         if (fileInputRef.current) fileInputRef.current.value = ""
         return
       }
@@ -234,8 +234,16 @@ export default function CreateVariationDialog({
               />
               
               {!form.evidence ? (
-                <label
-                  htmlFor="variation-evidence-upload"
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      fileInputRef.current?.click()
+                    }
+                  }}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
@@ -250,12 +258,12 @@ export default function CreateVariationDialog({
                     Click to attach PDF or Picture (or drag and drop)
                   </span>
                   <span className="text-[10px] text-slate-500 mt-0.5">
-                    PDF, PNG, JPG, WEBP (up to 25MB)
+                    PDF, PNG, JPG, WEBP (up to 100MB)
                   </span>
                   <span className="mt-1.5 inline-flex items-center rounded border border-white/20 bg-white/5 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
                     Browse File
                   </span>
-                </label>
+                </div>
               ) : (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-slate-900/80 p-2.5">
                   <div className="flex items-center gap-3 min-w-0">
